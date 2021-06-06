@@ -1,0 +1,8 @@
+nbproject/*.mk
+nbproject/*.properties
+nbproject/*.bash
+nbproject/private/*
+build/*
+dist/*
+proteus/*.pdsbak
+proteus/*.workspace
