@@ -331,7 +331,7 @@ unsigned char c_item = 0, c_sub_item = 0;
 
 unsigned char request_screen(unsigned char);
 
-__interrupt() void HW_isr(void) {
+int_handler_GLOBAL_begin
 
     int_handler_fuel_speed_begin
         // fuel injector
@@ -558,8 +558,8 @@ __interrupt() void HW_isr(void) {
             taho = 0;
         }
     int_handler_timer2_end    
-        
-}
+
+int_handler_GLOBAL_end
 
 void _LCD_Init(void) {
     LCD_Init(0x40);    // Initialize LCD module with I2C address = 0x40 ((0x20<<1) for PCF8574) or 0x70 ((0x38<<1) for PCF8574A)

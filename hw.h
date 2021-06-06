@@ -89,15 +89,10 @@
 #define enable_interrupts() ei();
 #define disable_interrupts() di();
 
-#define int_handler_fuel_speed(code)                       \
-    /* Was it the port B interrupt on change?*/            \
-    if (/*RBIE && */RBIF) {                                \
-        /* Dummy read of the port, as per datasheet */     \
-        asm("movf PORTB,f");                               \
-        code;                                              \
-        /* Reset the interrupt flag */                     \
-        RBIF = 0;                                          \
-    }                                                      \
+#define int_handler_GLOBAL_begin __interrupt() void HW_isr(void) {
+
+#define int_handler_GLOBAL_end }
+                                                    \
 
 #define int_handler_fuel_speed_begin                       \
     /* Was it the port B interrupt on change?*/            \
