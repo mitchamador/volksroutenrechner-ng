@@ -211,8 +211,6 @@ unsigned char data_ee_addr;
 #endif
 
 unsigned char tbuf[8];
-
-
 unsigned char tmp_param = 0;
 
 // buffer for strings
@@ -224,6 +222,24 @@ ds_time time;
 
 unsigned char fuel1_const;
 
+#define HOUR_SYMBOL 'h'
+#define LITRE_SYMBOL 'l'
+#define VOLT_SYMBOL 'V'
+#define KM1_SYMBOL 'k'
+#define KM2_SYMBOL 'm'
+#define SECONDS_SYMBOL 's'
+#define CELSIUS_SYMBOL 0xDF
+
+// custom lcd characters values
+#define _kmh0   0x00
+#define _kmh1	0x01
+#define _omin0	0x02
+#define _omin1	0x03
+#define _lkm0	0x04
+#define _lkm1	0x05
+#define _lh0	0x06
+#define _lh1    0x07
+
 const char empty_string[] = "----";
 const char no_time_string[] = "-----'--";
 const char trip_string[] = "trip ";
@@ -233,14 +249,6 @@ const char reset_string[] = "reset?";
 const char speed100_string[] = "0-100 timing"; 
 const char speed100_wait_string[] = "wait for start"; 
 const char timeout_string[] = "timeout"; 
-
-#define HOUR_SYMBOL 'h'
-#define LITRE_SYMBOL 'l'
-#define VOLT_SYMBOL 'V'
-#define KM1_SYMBOL 'k'
-#define KM2_SYMBOL 'm'
-#define SECONDS_SYMBOL 's'
-#define CELSIUS_SYMBOL 0xDF
 
 const char service_menu_title[] = "SERVICE MENU";
 const char service_counters[] = "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
@@ -254,6 +262,9 @@ const char voltage_adjust_str[] = "voltage adjust";
 const char settings_bits_str[] = "settings bits";
 const char temp_sensor_str[] = "temp sensors";
 const char service_counters_str[] = "service cntrs";
+
+const char day_of_week_str[] = "\0sunday\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday";
+const char month_str[] = "\0jan\0feb\0mar\0apr\0may\0jun\0jul\0aug\0sep\0oct\0nov\0dec";
 
 #ifdef EEPROM_CUSTOM_CHARS
 #define CUSTOM_CHAR_DATA(a0,a1,a2,a3,a4,a5,a6,a7) __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7);
@@ -272,20 +283,10 @@ CUSTOM_CHAR_DATA(0x00, 0x00, 0x08, 0x10, 0x00, 0x0A, 0x15, 0x15) // omin[1]
 CUSTOM_CHAR_DATA(0x0C, 0x14, 0x14, 0x01, 0x02, 0x05, 0x01, 0x01) // L100[0]
 CUSTOM_CHAR_DATA(0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x15, 0x1F) // L100[1]
 CUSTOM_CHAR_DATA(0x03, 0x05, 0x05, 0x00, 0x00, 0x01, 0x02, 0x00) // l/h[0]
-CUSTOM_CHAR_DATA(0x00, 0x00, 0x08, 0x10, 0x00, 0x14, 0x1C, 0x04)  // l/h[1]
+CUSTOM_CHAR_DATA(0x00, 0x00, 0x08, 0x10, 0x00, 0x14, 0x1C, 0x04) // l/h[1]
 #ifndef EEPROM_CUSTOM_CHARS
 };
 #endif
-
-// custom lcd characters values
-#define _kmh0   0x00
-#define _kmh1	0x01
-#define _omin0	0x02
-#define _omin1	0x03
-#define _lkm0	0x04
-#define _lkm1	0x05
-#define _lh0	0x06
-#define _lh1    0x07
 
 typedef void (*screen_func) (void);
 
@@ -619,8 +620,7 @@ void print_current_time_dmy(unsigned char day, unsigned char month, unsigned cha
         memcpy(buf, &no_time_string, 8);
     } else {
         bcd8_to_str(buf, day);
-        char* month_buf = get_month_text(month);
-        memcpy(&buf[2], month_buf, 3);
+        strcpy2(&buf[2], (char *) &month_str, bcd8_to_bin(month));
         buf[5] = '\'';
         bcd8_to_str(&buf[6], year);
     }
@@ -636,7 +636,7 @@ void print_current_time(ds_time* time) {
     print_current_time_dmy(time->day, time->month, time->year);
 
     LCD_CMD(0xc0);
-    LCD_Write_String16(buf, get_day_of_week_text((char *)buf, time->day_of_week), false);
+    LCD_Write_String16(buf, strcpy2((char *)buf, (char*) day_of_week_str, time->day_of_week), false);
 }
 
 void screen_time(void) {

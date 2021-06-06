@@ -53,15 +53,3 @@ void set_ds_time(ds_time* time) {
     I2C_Master_Stop();
 }
 
-const char* day_of_week = "\0sunday\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday";
-
-unsigned char get_day_of_week_text(char* buf, unsigned char _day_of_week) {
-    return strcpy2(buf, (char*) day_of_week, _day_of_week);
-}
-
-const char* month = "janfebmaraprmayjunjulaugsepoctnovdec";
-
-char* get_month_text(unsigned char _month) {
-    unsigned _t = bcd8_to_bin(_month) - 1;
-    return (char*) month + (_t << 1) + _t;
-}

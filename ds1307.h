@@ -18,8 +18,5 @@ typedef struct {
 void get_ds_time(ds_time*);
 void set_ds_time(ds_time*);
 
-unsigned char get_day_of_week_text(char*, unsigned char);
-char* get_month_text(unsigned char);
-
 #endif	/* DS1307_H */
 
