@@ -105,12 +105,10 @@ void add_leading_symbols(char* buf, char s, unsigned char v_len, unsigned char m
     }
 }
 
-unsigned char strcpy2(char* buf, const char* str, unsigned char pos) {
+unsigned char strcpy2(char* buf, char* str, unsigned char pos) {
     while (pos > 0) {
-        if (*str == '\0') {
+        if (*str++ == '\0') {
             pos--;
-        } else {
-            str++;
         }
     }
     while (*str != '\0') buf[pos++] = *str++;

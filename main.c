@@ -21,6 +21,9 @@
 // use ds18b20 temperature sensors
 #define USE_DS18B20
 
+// place custom chars data in eeprom
+#define EEPROM_CUSTOM_CHARS
+
 // * timer1 resolution * 0,01ms
 #define MAIN_INTERVAL 200
 #define DEBOUNCE 4
@@ -221,15 +224,15 @@ ds_time time;
 
 unsigned char fuel1_const;
 
-const char* empty_string = "----";
-const char* no_time_string = "-----'--";
-const char* trip_string = "trip ";
-const char* onoff_string = "\0 OFF\0  ON";
-const char* time_correction = "time correction?";
-const char* reset_string = "reset?"; 
-const char* speed100_string = "0-100 timing"; 
-const char* speed100_wait_string = "wait for start"; 
-const char* timeout_string = "timeout"; 
+const char empty_string[] = "----";
+const char no_time_string[] = "-----'--";
+const char trip_string[] = "trip ";
+const char onoff_string[] = "\0 OFF\0  ON";
+const char time_correction[] = "time correction?";
+const char reset_string[] = "reset?"; 
+const char speed100_string[] = "0-100 timing"; 
+const char speed100_wait_string[] = "wait for start"; 
+const char timeout_string[] = "timeout"; 
 
 #define HOUR_SYMBOL 'h'
 #define LITRE_SYMBOL 'l'
@@ -239,10 +242,10 @@ const char* timeout_string = "timeout";
 #define SECONDS_SYMBOL 's'
 #define CELSIUS_SYMBOL 0xDF
 
-const char* service_menu_title = "SERVICE MENU";
-const char* service_counters = "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
-const char* settings_bits = "\0dual inj\0skip temp\0key sound\0t'engn alarm\0serv alarm\0\0\0";
-const char* temp_sensors = "\0---\0out\0in\0eng";
+const char service_menu_title[] = "SERVICE MENU";
+const char service_counters[] = "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
+const char settings_bits[] = "\0dual inj\0skip temp\0key sound\0t'engn alarm\0serv alarm\0\0\0";
+const char temp_sensors[] = "\0---\0out\0in\0eng";
 
 const char fuel_constant_str[] = "FUEL constant";
 const char vss_constant_str[] = "VSS constant";
@@ -251,9 +254,6 @@ const char voltage_adjust_str[] = "voltage adjust";
 const char settings_bits_str[] = "settings bits";
 const char temp_sensor_str[] = "temp sensors";
 const char service_counters_str[] = "service cntrs";
-
-// place custom chars data in eeprom
-//#define EEPROM_CUSTOM_CHARS
 
 #ifdef EEPROM_CUSTOM_CHARS
 #define CUSTOM_CHAR_DATA(a0,a1,a2,a3,a4,a5,a6,a7) __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7);
@@ -616,7 +616,7 @@ void print_current_time_hm(unsigned char hour, unsigned char minute, bool right_
 
 void print_current_time_dmy(unsigned char day, unsigned char month, unsigned char year) {
     if (day == 0x00 || day == 0xFF) {
-        memcpy(buf, no_time_string, 8);
+        memcpy(buf, &no_time_string, 8);
     } else {
         bcd8_to_str(buf, day);
         char* month_buf = get_month_text(month);
@@ -642,7 +642,7 @@ void print_current_time(ds_time* time) {
 void screen_time(void) {
 
     get_ds_time(&time);
-    if (request_screen(strcpy2(buf, (char*) time_correction, 0)) == 1) {
+    if (request_screen(strcpy2(buf,(char *) &time_correction, 0)) == 1) {
 
         unsigned char c = 0;
         const char cursor_position[] = {0x81, 0x84, 0x89, 0x8c, 0x8f, 0xc0};
@@ -744,7 +744,7 @@ void print_trip_average_speed(trip_t* t, bool right_align) {
     }
     
     if (speed == 0) {
-        memcpy(buf, empty_string, 4);
+        memcpy(buf, &empty_string, 4);
         len = 4;
     } else {
         len = get_fractional_string(buf, speed);
@@ -792,12 +792,12 @@ void print_trip_total_fuel(trip_t* t, bool right_align) {
 void print_trip_average_fuel(trip_t* t, bool right_align) {
     
     if (t->fuel < AVERAGE_MIN_FUEL) {
-        memcpy(buf, empty_string, 4);
+        memcpy(buf, &empty_string, 4);
         len = 4;
     } else {
         unsigned short odo = (unsigned short) ((unsigned long) (t->odo * 10UL) + (t->odo_temp * 10UL / config.odo_const));
         if (odo < AVERAGE_MIN_DIST) {
-            memcpy(buf, empty_string, 4);
+            memcpy(buf, &empty_string, 4);
             len = 4;
         } else {
             len = get_fractional_string(buf, (unsigned short) (t->fuel * 100UL / odo));
@@ -833,7 +833,7 @@ void print_taho(bool right_align) {
     }
 
     if (taho == 0) {
-        memcpy(buf, empty_string, 4);
+        memcpy(buf, &empty_string, 4);
         len = 4;
     } else {
         unsigned short res = (unsigned short) ((TAHO_CONST / taho));
@@ -890,7 +890,7 @@ void print_temp(unsigned char index, bool header, bool right_align) {
         len = get_fractional_string(&buf[1], _t) + 1;
         if (header) {
             add_leading_symbols(buf, ' ', len, 8);
-            strcpy2(buf, temp_sensors, (index + 1) + 1);
+            strcpy2(buf, (char *) &temp_sensors, (index + 1) + 1);
             len = 8;
         }
         
@@ -1004,9 +1004,9 @@ void screen_main(void) {
         print_current_fuel_km(true);
     }
     
-    if (request_screen(strcpy2(buf, speed100_string, 0)) == 1) {
+    if (request_screen(strcpy2(buf, (char *) &speed100_string, 0)) == 1) {
         
-        len = strcpy2(buf, speed100_wait_string, 0);
+        len = strcpy2(buf, (char *) &speed100_wait_string, 0);
         LCD_CMD(0xC0 + (16 - len) / 2U);
         __LCD_Write_String(buf, len, len, false);
         
@@ -1042,7 +1042,7 @@ void screen_main(void) {
             buf[len++] = SECONDS_SYMBOL;
         } else {
             // timeout
-            len = strcpy2(buf, timeout_string, 0);
+            len = strcpy2(buf, (char *) &timeout_string, 0);
         }
         LCD_CMD(0xC4);
         LCD_Write_String8(buf, len, true);
@@ -1081,7 +1081,7 @@ unsigned char request_screen(unsigned char len) {
 
 
 void clear_trip(trip_t* trip) {
-    if (request_screen(strcpy2(buf, reset_string, 0)) == 1) {
+    if (request_screen(strcpy2(buf, (char *) &reset_string, 0)) == 1) {
         memset(trip, 0, sizeof(trip_t));
     }
 }
@@ -1120,7 +1120,7 @@ void screen_tripC(void) {
 void screen_tripAB(trip_t* trip, unsigned char ch) {
     LCD_CMD(0x80);
 
-    len = strcpy2(buf, trip_string, 0);
+    len = strcpy2(buf, (char *) &trip_string, 0);
     buf[len++] = ch;
     LCD_Write_String8(buf, len, false);
 
@@ -1189,7 +1189,7 @@ void screen_service_counters() {
     }
 
     LCD_CMD(0x80);
-    LCD_Write_String16(buf, strcpy2((char*)buf, service_counters, tmp_param + 1), false);
+    LCD_Write_String16(buf, strcpy2((char*)buf, (char *) &service_counters, tmp_param + 1), false);
 
     LCD_CMD(0xC0);
     if (tmp_param == 0) {
@@ -1211,7 +1211,7 @@ void screen_service_counters() {
     LCD_CMD(0xC8);
     print_current_time_dmy(s_time.day, s_time.month, s_time.year);
     
-    if (request_screen(strcpy2(buf, reset_string, 0)) == 1) {
+    if (request_screen(strcpy2(buf, (char *) &reset_string, 0)) == 1) {
 //    if (reset_screen() == 1) {
         get_ds_time(&time);
         if (tmp_param == 0 || tmp_param == 1) {
@@ -1364,7 +1364,7 @@ unsigned char edit_value_bits(unsigned char v, char* str) {
         if (tbuf[pos] == '1') {
             _onoff_index++;
         }
-        strcpy2((char*) &buf[12], (char*) onoff_string, _onoff_index + 1);
+        strcpy2((char*) &buf[12], (char *) &onoff_string, _onoff_index + 1);
         LCD_CMD(0x80);
         LCD_Write_String16(buf, 16, false);
         
@@ -1397,7 +1397,7 @@ void screen_service_total_trip(screen_service_item_t* item) {
 }
 
 void screen_service_settings_bits(screen_service_item_t* item) {
-    config.settings.byte = edit_value_bits(config.settings.byte, (char *) settings_bits);
+    config.settings.byte = edit_value_bits(config.settings.byte, (char *) &settings_bits);
 }
 
 #ifdef USE_DS18B20
@@ -1420,7 +1420,7 @@ void screen_service_temp_sensors(screen_service_item_t* item) {
             }
             timeout = 0; timeout_timer = 300;
         }
-        len = strcpy2(&buf[12], temp_sensors, t_num + 1);
+        len = strcpy2(&buf[12], (char *) &temp_sensors, t_num + 1);
         add_leading_symbols(&buf[12], ' ', len, 4);
         
         LCD_CMD(0xC0);
@@ -1452,13 +1452,13 @@ void screen_service_service_counters(screen_service_item_t* item) {
     LCD_CMD(0x80);
     LCD_Write_String16(buf, strcpy2(buf, item->name, 0), false);
     LCD_CMD(0xC0);
-    LCD_Write_String16(buf, strcpy2(buf, service_counters, c_sub_item + 1), false);
+    LCD_Write_String16(buf, strcpy2(buf, (char *) &service_counters, c_sub_item + 1), false);
 
     if (key2_press == 1) {
         key2_press = 0;
 
         LCD_CMD(0x80);
-        LCD_Write_String16(buf, strcpy2(buf, service_counters, c_sub_item + 1), false);
+        LCD_Write_String16(buf, strcpy2(buf, (char *) &service_counters, c_sub_item + 1), false);
         LCD_CMD(0xC0);
         memset(buf, ' ', 16);
         LCD_Write_String16(buf, 16, false);
@@ -1623,7 +1623,7 @@ void main()
 #endif        
     } else {
         LCD_CMD(0x80);
-        LCD_Write_String8(buf, strcpy2(buf, service_menu_title, 0), false);
+        LCD_Write_String8(buf, strcpy2(buf, (char *) &service_menu_title, 0), false);
         while (KEY1 == 0);
     }
     
@@ -1693,7 +1693,7 @@ void main()
         if (service_mode == 1) {
             screen_service_item_t item = items_service[c_item];
             LCD_CMD(0x80);
-            LCD_Write_String16(buf, strcpy2(buf, (char *) service_menu_title, 0), false);
+            LCD_Write_String16(buf, strcpy2(buf, (char *) &service_menu_title, 0), false);
             LCD_CMD(0xC0);
 
             buf[0] = '1' + c_item;
