@@ -18,6 +18,9 @@
 #error "only pic16f876a or pic 16f1936 supported"
 #endif
 
+// use ds18b20 temperature sensors
+#define USE_DS18B20
+
 // * timer1 resolution * 0,01ms
 #define MAIN_INTERVAL 200
 #define DEBOUNCE 4
@@ -175,8 +178,10 @@ __bit screen_refresh;
 volatile unsigned int timeout_timer;
 volatile __bit timeout;
 
+#ifdef USE_DS18B20
 volatile unsigned char timeout_temperature;
 volatile __bit temperature_fl, temperature_conv_fl;
+#endif
 
 // misc flags
 volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl;
@@ -191,13 +196,19 @@ volatile unsigned short taho_tmp, taho;
 
 unsigned short speed;
 
+#ifdef USE_DS18B20
 // ds18b20 temperatures and eeprom pointer
 #define TEMP_OUT 0
 #define TEMP_IN 1
 #define TEMP_ENGINE 2
 uint16_t temps[3] = {0, 0, 0};
 unsigned char temps_ee_addr;
+#else
+unsigned char data_ee_addr;
+#endif
+
 unsigned char tbuf[8];
+
 
 unsigned char tmp_param = 0;
 
@@ -241,8 +252,8 @@ const char settings_bits_str[] = "settings bits";
 const char temp_sensor_str[] = "temp sensors";
 const char service_counters_str[] = "service cntrs";
 
-
-#define EEPROM_CUSTOM_CHARS
+// place custom chars data in eeprom
+//#define EEPROM_CUSTOM_CHARS
 
 #ifdef EEPROM_CUSTOM_CHARS
 #define CUSTOM_CHAR_DATA(a0,a1,a2,a3,a4,a5,a6,a7) __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7);
@@ -294,7 +305,9 @@ typedef struct {
 const screen_item_t items_main[] = {
     {screen_main},
     {screen_tripC},
+#ifdef USE_DS18B20
     {screen_temp},
+#endif
     {screen_tripA},
     {screen_tripB},
     {screen_time},
@@ -323,7 +336,9 @@ const screen_service_item_t items_service[] = {
     {(char*) &total_trip_str, (screen_service_func) &screen_service_total_trip},
     {(char*) &voltage_adjust_str, (screen_service_func) &screen_service_ua_const},
     {(char*) &settings_bits_str, (screen_service_func) &screen_service_settings_bits},
+#ifdef USE_DS18B20
     {(char*) &temp_sensor_str, (screen_service_func) &screen_service_temp_sensors},
+#endif    
     {(char*) &service_counters_str, (screen_service_func) &screen_service_service_counters},
 };
 
@@ -525,11 +540,13 @@ int_handler_GLOBAL_begin
                  trips.tripC.time++;
              }
              
+#ifdef USE_DS18B20
              if (timeout_temperature > 0) {
                 if (--timeout_temperature == 0) {
                     temperature_fl = 1;
                 }
              }
+#endif
         }
         
         if (timeout_timer > 0) {
@@ -569,7 +586,11 @@ void _LCD_Init(void) {
 #ifdef EEPROM_CUSTOM_CHARS
     for (i = 0; i < 64; i = i + 8) {
         LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
-        HW_read_eeprom_block((unsigned char*) buf, (temps_ee_addr + 24) + i, 8);
+#ifdef USE_DS18B20
+        HW_read_eeprom_block((unsigned char*) buf, temps_ee_addr + 24 + i, 8);
+#else        
+        HW_read_eeprom_block((unsigned char*) buf, data_ee_addr + i, 8);
+#endif
         unsigned char j;
         for (j = 0; j < 8; j++) {
             LCD_Write_Char(buf[j]);
@@ -585,7 +606,6 @@ void _LCD_Init(void) {
     }
 #endif
 }
-
 
 void print_current_time_hm(unsigned char hour, unsigned char minute, bool right_align) {
     bcd8_to_str(buf, hour);
@@ -810,7 +830,6 @@ void print_taho(bool right_align) {
         ;
     if (timeout == 1) {
         motor_fl = 0;
-        //T0CS = 1;
     }
 
     if (taho == 0) {
@@ -851,6 +870,7 @@ void print_main_odo(bool right_align) {
     LCD_Write_String8(buf, len, right_align);
 }
 
+#ifdef USE_DS18B20
 void print_temp(unsigned char index, bool header, bool right_align) {
     uint16_t _t = temps[index];
     if (_t & 0x8000) // if the temperature is negative
@@ -877,6 +897,7 @@ void print_temp(unsigned char index, bool header, bool right_align) {
         LCD_Write_String8(buf, len, right_align);
     }
 }
+#endif
 
 void print_voltage(bool right_align) {
     uint16_t adc_voltage = HW_adc_read();
@@ -888,9 +909,10 @@ void print_voltage(bool right_align) {
 unsigned char select_param(unsigned char* param, unsigned char total) {
     if (key2_press == 1) {
         key2_press = 0;
-        if (++*param >= total) {
-            *param = 0;
-        }
+        *param = *param + 1;
+    }
+    if (*param >= total) {
+        *param = 0;
     }
     return *param;
 }
@@ -915,17 +937,27 @@ void print_selected_param2(bool right_align) {
     }
 }
 
+#ifdef DS18B20
+#define COUNT_SELECTED_PARAM1 4
+#else
+#define COUNT_SELECTED_PARAM1 3
+#endif
+
 void print_selected_param1(bool right_align) {
-    switch (select_param(&config.selected_param1, 3)) {
-        case 0:
+    switch (select_param(&config.selected_param1, COUNT_SELECTED_PARAM1)) {
+#ifdef DS18B20
+        case COUNT_SELECTED_PARAM1 - 4:
             print_temp(TEMP_OUT, false, right_align);
             break;
-        case 1:
+#endif
+        case COUNT_SELECTED_PARAM1 - 3:
             print_voltage(right_align);
             break;
-        case 2:
-            get_ds_time(&time);
-            print_current_time_hm(time.hour, time.minute, right_align);
+        case COUNT_SELECTED_PARAM1 - 2:
+            print_trip_odometer(&trips.tripC, right_align);
+            break;
+        case COUNT_SELECTED_PARAM1 - 1:
+            print_trip_average_fuel(&trips.tripC, right_align);
             break;
     }
 }
@@ -937,7 +969,7 @@ void screen_main(void) {
     if (drive_fl == 0 || speed < MIN_SPEED) {
 //; 1) на месте с заглушенным двигателем
 //; время текущее       общий пробег (км)
-//; нар.темп.           вольтметр
+//; нар.темп./пробег C  вольтметр
         get_ds_time(&time);
         print_current_time_hm(time.hour, time.minute, false);
 
@@ -945,7 +977,11 @@ void screen_main(void) {
             print_main_odo(true);
 
             LCD_CMD(0xC0);
+#ifdef USE_DS18B20            
             print_temp(TEMP_OUT, false, false);
+#else
+            print_trip_odometer(&trips.tripC, false);
+#endif            
             print_voltage(true);
         } else {
 //; 2) на месте с работающим двигателем
@@ -1114,6 +1150,7 @@ void screen_tripB() {
     screen_tripAB(&trips.tripB, 'B');
 }
 
+#ifdef USE_DS18B20
 void screen_temp() {
     if (config.settings.skip_temp_screen) {
         key1_press = 1;
@@ -1127,7 +1164,7 @@ void screen_temp() {
         print_temp(TEMP_ENGINE, false, true);
     }
 }
-
+#endif
 
 void screen_service_counters() {
     
@@ -1363,6 +1400,7 @@ void screen_service_settings_bits(screen_service_item_t* item) {
     config.settings.byte = edit_value_bits(config.settings.byte, (char *) settings_bits);
 }
 
+#ifdef USE_DS18B20
 void screen_service_temp_sensors(screen_service_item_t* item) {
     
     ds18b20_read_rom((unsigned char*) tbuf);
@@ -1396,6 +1434,7 @@ void screen_service_temp_sensors(screen_service_item_t* item) {
         HW_write_eeprom_block(tbuf, temps_ee_addr + (t_num - 1) * 8, 8);
     }
 }
+#endif
 
 void screen_service_service_counters(screen_service_item_t* item) {
 
@@ -1479,7 +1518,11 @@ void read_eeprom() {
     ee_addr += (sizeof(trips_t) / 8 + 1) * 8;
     
     HW_read_eeprom_block((unsigned char*) &services, ee_addr, sizeof(services_t));
+#ifdef USE_DS18B20
     temps_ee_addr = ee_addr + (sizeof(services_t) / 8 + 1) * 8;
+#else
+    data_ee_addr = ee_addr + (sizeof(services_t) / 8 + 1) * 8;
+#endif
     
 }
 
@@ -1575,7 +1618,9 @@ void main()
     
     // select main or service items
     if (service_mode == 0) {
+#ifdef USE_DS18B20        
         temperature_fl = 1;
+#endif        
     } else {
         LCD_CMD(0x80);
         LCD_Write_String8(buf, strcpy2(buf, service_menu_title, 0), false);
@@ -1594,8 +1639,9 @@ void main()
                 power_off();
             }
         }
-        
+
         if (service_mode == 0) {
+#ifdef USE_DS18B20        
             if (temperature_fl == 1) {
                 temperature_fl = 0;
                 if (temperature_conv_fl == 1) {
@@ -1613,7 +1659,7 @@ void main()
                     ds18b20_start_conversion();
                 }
             }
-
+#endif            
             speed = (unsigned short) ((18000UL * kmh) / config.odo_const);
             if (trips.tripC_max_speed < speed) {
                 trips.tripC_max_speed = speed;

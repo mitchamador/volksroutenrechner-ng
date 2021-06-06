@@ -132,9 +132,6 @@
         TMR2IF = 0;                                        \
     }                                                      \
 
-
-
-
 uint16_t HW_adc_read(void);
 void HW_Init(void);
 void HW_read_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length);
