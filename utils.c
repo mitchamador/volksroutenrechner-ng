@@ -96,7 +96,7 @@ void add_leading_symbols(char* buf, char s, unsigned char len, unsigned char max
     // add leading zeroes
     unsigned char diff = max_len - len;
     for (i = len; i != 0; i--) {
-        buf[i + diff] = buf[i];
+        buf[i + diff - 1] = buf[i - 1];
     }
     for (i = 0; i < diff; i++) {
         buf[i] = s;
