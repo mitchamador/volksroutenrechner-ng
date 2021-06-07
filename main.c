@@ -159,10 +159,10 @@ __EEPROM_DATA(0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
 __EEPROM_DATA(0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
 __EEPROM_DATA(0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
 services_t services;
-__EEPROM_DATA(0xBA,0x15,0x03,0x00,0x01,0x00,0x16,0x01); /*services*/
-__EEPROM_DATA(0x0A,0x22,0x01,0x21,0x99,0x13,0x01,0xFF);
-__EEPROM_DATA(0xFF,0xFF,0x99,0x13,0x01,0x21,0x03,0x20);
-__EEPROM_DATA(0xAA,0x04,0x01,0x07,0x01,0x20,0x00,0x00);
+__EEPROM_DATA(0xBA,0x15,0x03,0x00,0x00,0x00,0x16,0x01); /*services*/
+__EEPROM_DATA(0x0A,0x22,0x01,0x21,0x99,0x13,0x0A,0xFF);
+__EEPROM_DATA(0xFF,0xFF,0x99,0x13,0x0A,0x21,0x03,0x20);
+__EEPROM_DATA(0xAA,0x04,0x0A,0x07,0x01,0x20,0x00,0x00);
 // ds18b20 serial numbers (OUT, IN, ENGINE))
 __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF); /*ds18b20 serial numbers*/
 __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
@@ -173,6 +173,10 @@ __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
 // key variables and flags
 unsigned char key1_counter, key2_counter;
 volatile __bit key1_press, key1_longpress, key2_press, key2_longpress;
+
+// 0.1s flag and counter
+volatile __bit counter_01sec_fl;
+unsigned char counter_01sec;
 
 // main interval
 unsigned char main_interval_counter;
@@ -191,7 +195,7 @@ volatile __bit temperature_fl, temperature_conv_fl;
 volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl;
 
 // speed100 flags and variables
-volatile __bit speed100_fl, speed100_measure_fl, speed100_ok_fl, speed100_timer_fl;
+volatile __bit speed100_fl, speed100_ok_fl, speed100_timer_fl;
 volatile unsigned short speed100_const, speed100_timer;
 
 volatile unsigned short kmh_temp, kmh;
@@ -213,7 +217,7 @@ unsigned char data_ee_addr;
 
 #ifdef USE_SOUND
 __bit buzzer_fl, buzzer_init_fl, buzzer_snd_fl;
-unsigned char buzzer_counter_r, buzzer_counter_10;
+unsigned char buzzer_counter_r, counter_01sec;
 unsigned char buzzer_counter;
 
 typedef struct {
@@ -370,17 +374,18 @@ int_handler_GLOBAL_begin
                 drive_fl = 1;
                 
                 // speed 100 calculation
-                if (speed100_measure_fl == 1) {
+                if (speed100_timer_fl == 1) {
                     if (speed100_fl == 1) {
                        // stop timer2
                         stop_timer_taho();
                         if (taho_tmp < speed100_const) {
                             speed100_ok_fl = 1;
                             speed100_timer_fl = 0;
+                        } else {
+                            speed100_fl = 0;
                         }
-                        speed100_fl = 0;
-                        speed100_measure_fl = 0;
-                    } else {
+                    }
+                    if (speed100_fl == 0) {
                         // start timer2
                         taho_tmp = 0;
                         start_timer_taho();
@@ -552,9 +557,11 @@ int_handler_GLOBAL_begin
         if (speed100_timer_fl == 1) {
             speed100_timer++;
         }
+
+        if (counter_01sec == 0) {
+            counter_01sec_fl = 1;
+            counter_01sec = 10;
 #ifdef USE_SOUND    
-        if (buzzer_counter_10 == 0) {
-            buzzer_counter_10 = 10;
             if (buzzer_fl == 1) {
                 if (buzzer_init_fl == 0) {
                     buzzer_init_fl = 1;
@@ -588,10 +595,10 @@ int_handler_GLOBAL_begin
                 }
                 buzzer_counter--;
             }
-        } else {
-            buzzer_counter_10--;
-        }
 #endif    
+        } else {
+            counter_01sec--;
+        }
     int_handler_timer1_end
 
     int_handler_timer2_begin
@@ -603,7 +610,6 @@ int_handler_GLOBAL_begin
             stop_timer_fuel();
             taho_measure_fl = 0;
             taho_fl = 0;
-            speed100_measure_fl = 0;
             speed100_fl = 0;
             motor_fl = 0;
             taho = 0;
@@ -970,7 +976,7 @@ void print_selected_param2(bool right_align) {
     }
 }
 
-#ifdef DS18B20
+#ifdef USE_DS18B20
 #define COUNT_SELECTED_PARAM1 4
 #else
 #define COUNT_SELECTED_PARAM1 3
@@ -978,7 +984,7 @@ void print_selected_param2(bool right_align) {
 
 void print_selected_param1(bool right_align) {
     switch (select_param(&config.selected_param1, COUNT_SELECTED_PARAM1)) {
-#ifdef DS18B20
+#ifdef USE_DS18B20
         case COUNT_SELECTED_PARAM1 - 4:
             print_temp(TEMP_OUT, false, right_align);
             break;
@@ -993,6 +999,13 @@ void print_selected_param1(bool right_align) {
             print_trip_average_fuel(&trips.tripC, right_align);
             break;
     }
+}
+
+void print_speed100(void) {
+    len = get_fractional_string((char*) tbuf, speed100_timer / 10U);
+    tbuf[len++] = SECONDS_SYMBOL;
+    LCD_CMD(0xC4);
+    LCD_Write_String8((char*) tbuf, len, true);
 }
 
 void screen_main(void) {
@@ -1036,53 +1049,58 @@ void screen_main(void) {
         print_selected_param1(false);
         print_current_fuel_km(true);
     }
-    
-    if (request_screen(strcpy2(buf, (char *) &speed100_string, 0)) == 1) {
-        
+
+    if (drive_fl == 0 && motor_fl == 1 && request_screen(strcpy2(buf, (char *) &speed100_string, 0)) == 1) {
         len = strcpy2(buf, (char *) &speed100_wait_string, 0);
         LCD_CMD(0xC0 + (16 - len) / 2U);
         __LCD_Write_String(buf, len, len, false);
-        
-        LCD_CMD(0xC0);
+
         memset(buf, ' ', 16);
         
         // 36000000 / 80us / odo_const
         speed100_const = (unsigned short) (450000UL / config.odo_const);
+
         timeout = 0; timeout_timer = 3000;
-        speed100_ok_fl = 0; speed100_timer = 0;
-        while (timeout == 0 && speed100_ok_fl == 0) {
+
+        speed100_fl = 0; speed100_ok_fl = 0; speed100_timer = 0;
+
+        while (timeout == 0 && speed100_ok_fl == 0 && key1_press == 0 && key2_press == 0) {
             if (drive_fl == 1) {
                 if (speed100_timer_fl == 0) {
                     speed100_timer_fl = 1;
+                    LCD_CMD(0xC0);
                     LCD_Write_String16(buf, 16, false);
                 }
-                speed100_measure_fl = 1;
 
-//                len = get_fractional_string(buf, speed100_timer / 10);
-//                buf[len++] = SECONDS_SYMBOL;
-//                LCD_CMD(0xC4);
-//                LCD_Write_String8(buf, len, true);
+                print_speed100();
 
-                while (speed100_measure_fl == 1 && timeout == 0 && speed100_ok_fl == 0)
-                    ;
-
+                counter_01sec_fl = 0;
+                while (counter_01sec_fl == 0);
             }
         }
         speed100_timer_fl = 0;
-        if (speed100_ok_fl) {
-            // достигнута скорость 100 км/ч
-            len = get_fractional_string(buf, speed100_timer / 10);
-            buf[len++] = SECONDS_SYMBOL;
-        } else {
-            // timeout
-            len = strcpy2(buf, (char *) &timeout_string, 0);
-        }
-        LCD_CMD(0xC4);
-        LCD_Write_String8(buf, len, true);
         
-        timeout = 0; timeout_timer = 500; while (timeout == 0);
+        if (key1_press == 0 && key2_press == 0) {
+            if (speed100_ok_fl) {
+                // достигнута скорость 100 км/ч
+                print_speed100();
+            } else {
+                // timeout
+                //LCD_CMD(0xC0);
+                //LCD_Write_String16(buf, 16, false);
+                LCD_Clear();
+                len = strcpy2(buf, (char *) &timeout_string, 0);
+                LCD_CMD(0xC0 + (16 - len) / 2U);
+                __LCD_Write_String(buf, len, len, false);
+            }
+#ifdef USE_SOUND    
+            buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[BUZZER_WARN];
+#endif
+            timeout = 0; timeout_timer = 600; while (timeout == 0);
+        }
+        key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0;
+
     }
-    
 }
 
 /**
@@ -1707,6 +1725,7 @@ void handle_temp() {
 
 void service_screen(unsigned char c_item) {
     screen_service_item_t item = items_service[c_item];
+    
     LCD_CMD(0x80);
     LCD_Write_String16(buf, strcpy2(buf, (char *) &service_menu_title, 0), false);
     LCD_CMD(0xC0);
