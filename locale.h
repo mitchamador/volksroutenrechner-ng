@@ -35,6 +35,7 @@ const char reset_string[] = "reset?";
 const char speed100_string[] = "0-100 timing"; 
 const char speed100_wait_string[] = "wait for start"; 
 const char timeout_string[] = "timeout"; 
+const char warning_str[] = "WARNING"; 
 
 const char service_menu_title[] = "SERVICE MENU";
 const char service_counters[] = "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";

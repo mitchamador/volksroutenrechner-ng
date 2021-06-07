@@ -16,14 +16,14 @@
 #include "utils.h"
 
 #if !defined(_16F876A) && !defined(_16F1936)
-#error "only pic16f876a or pic 16f1936 supported"
+#error "only pic16f876a or pic16f1936 supported"
 #endif
 
 // use ds18b20 temperature sensors
 #define USE_DS18B20
 
 // place custom chars data in eeprom
-//#define EEPROM_CUSTOM_CHARS
+#define EEPROM_CUSTOM_CHARS
 
 // * timer1 resolution * 0,01ms
 #define MAIN_INTERVAL 200
@@ -107,9 +107,6 @@ typedef struct {
     unsigned char minute, hour, day, month, year;
 } trip_time_t;
 
-//=======================================================================================
-// eeprom data
-
 // service counters limits
 typedef struct {
     // main odometer
@@ -149,22 +146,22 @@ typedef struct {
 } ds18b20_sn_t;
 
 config_t config;
-__EEPROM_DATA(0x7F,0x9F,0x04,0x00,0x16,0x13,0x80,0x3E);
+__EEPROM_DATA(0x7F,0x9F,0x04,0x00,0x16,0x13,0x80,0x3E); /*config*/
 __EEPROM_DATA(0x6E,0xA6,0x80,0x01,0x00,0x00,0x00,0x00);
 trips_t trips;
-__EEPROM_DATA(0x0A,0x00,0x90,0x1B,0x1A,0x28,0x64,0x00);
+__EEPROM_DATA(0x0A,0x00,0x90,0x1B,0x1A,0x28,0x64,0x00); /*trips*/
 __EEPROM_DATA(0x02,0x02,0x00,0x00,0x22,0x01,0xDD,0x3A);
 __EEPROM_DATA(0x3D,0x64,0x11,0x0F,0xC8,0x4F,0x00,0x00);
 __EEPROM_DATA(0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
 __EEPROM_DATA(0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
 __EEPROM_DATA(0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
 services_t services;
-__EEPROM_DATA(0xBA,0x15,0x03,0x00,0x00,0x00,0x16,0x0A);
-__EEPROM_DATA(0x0A,0x22,0x01,0x21,0x99,0x13,0x0A,0xFF);
-__EEPROM_DATA(0xFF,0xFF,0x99,0x13,0x28,0x21,0x03,0x20);
-__EEPROM_DATA(0xAA,0x0A,0x28,0x07,0x01,0x20,0x00,0x00);
+__EEPROM_DATA(0xBA,0x15,0x03,0x00,0x01,0x00,0x16,0x01); /*services*/
+__EEPROM_DATA(0x0A,0x22,0x01,0x21,0x99,0x13,0x01,0xFF);
+__EEPROM_DATA(0xFF,0xFF,0x99,0x13,0x01,0x21,0x03,0x20);
+__EEPROM_DATA(0xAA,0x04,0x01,0x07,0x01,0x20,0x00,0x00);
 // ds18b20 serial numbers (OUT, IN, ENGINE))
-__EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
+__EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF); /*ds18b20 serial numbers*/
 __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
 __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
 
@@ -1543,10 +1540,6 @@ unsigned char check_tripC_time() {
 void power_on() {
     HW_Init();
     
-    if (POWER_SUPPLY_ACTIVE) {
-        PWR_ON;
-    }
-    
     read_eeprom();
     
     _LCD_Init();
@@ -1557,6 +1550,59 @@ void power_on() {
         // clear tripC
         memset(&trips.tripC, 0, sizeof(trip_t));
         trips.tripC_max_speed = 0;
+    }
+}
+
+void check_service_counters() {
+    unsigned char i;
+    for (i = 0; i < 5; i++) {
+        unsigned char warn = 0;
+        if (i == 0) {
+            if (services.mh.limit != 0 && (services.mh.counter / 1800UL) > services.mh.limit) {
+                warn = 1;
+            }
+        } else {
+            srv_t* srv;
+            switch (i) {
+                case 1:
+                    srv = &services.oil_engine;
+                    break;
+                case 2:
+                    srv = &services.oil_gearbox;
+                    break;
+                case 3:
+                    srv = &services.air_filter;
+                    break;
+                case 4:
+                    srv = &services.sparks;
+                    break;
+            }
+            if (srv->limit != 0 && srv->counter > (srv->limit * 1000U)) {
+                warn = 1;
+            }
+        }
+        if (warn == 1) {
+//            str_center16(buf, strcpy2(buf, (char*) &warning_str, 0));
+//            LCD_CMD(0x80);
+//            LCD_Write_String16(buf, 16, false);
+//
+//            str_center16(buf, strcpy2(buf, (char*) &service_counters, i + 1));
+//            LCD_CMD(0xC0);
+//            LCD_Write_String16(buf, 16, false);
+            
+            LCD_Clear();
+            len = strcpy2(buf, (char*) &warning_str, 0);
+            LCD_CMD(0x80 + ((16 - len) >> 1));
+            __LCD_Write_String(buf, len, len, false);
+
+            len = strcpy2(buf, (char*) &service_counters, i + 1);
+            LCD_CMD(0xC0 + ((16 - len) >> 1));
+            __LCD_Write_String(buf, len, len, false);
+
+            timeout = 0; timeout_timer = 300;
+            while (timeout == 0 && key1_press == 0 && key2_press == 0);
+            key1_press = 0; key2_press = 0;
+        }
     }
 }
 
@@ -1581,10 +1627,15 @@ void main()
     } else {
         LCD_CMD(0x80);
         LCD_Write_String8(buf, strcpy2(buf, (char *) &service_menu_title, 0), false);
-        while (KEY1 == 0);
+        while (KEY1_PRESSED);
     }
     
     enable_interrupts();
+    
+    if (service_mode == 0) {
+        check_service_counters();
+        key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0;
+    }
     
     while (1) {
         screen_refresh = 0;
