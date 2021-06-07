@@ -37,15 +37,16 @@ uint16_t HW_adc_read() {
 
 void HW_Init(void) {
 
-    // set PORTA input
-    TRISA = POWER_SUPPLY_TRIS;
-    PORTA = 0;
-    // set PORTB key as digital input
-    TRISB = KEY_TRIS | TX_TRIS | FUEL_TRIS;
-    PORTB = 0;
+    // set port's data directions and init values
+    TRISA = TRISA_INIT;
+    PORTA = PORTA_INIT;
+
+    TRISB = TRISB_INIT;
+    PORTB = PORTB_INIT;
+
     // set port to output
-    TRISC = 0;
-    PORTC = 0;
+    TRISC = TRISC_INIT;
+    PORTC = PORTC_INIT;
     
 #if defined(_16F876A)
     // ADC set all ports to digital

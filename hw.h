@@ -22,6 +22,7 @@
 
 // PORTA definitions (analog input)
 #define POWER_SUPPLY PORTAbits.RA1
+#define POWER_SUPPLY_MASK (1 << _PORTA_RA1_POSITION)
 #define POWER_SUPPLY_TRIS (1 << _TRISA_TRISA1_POSITION)
 #define PWR PORTAbits.RA0
 #define ONEWIRE PORTAbits.RA5
@@ -57,6 +58,16 @@
 
 #define SND_ON SND = 1
 #define SND_OFF SND = 0
+
+// init values for port's data direction
+#define TRISA_INIT POWER_SUPPLY_TRIS
+#define TRISB_INIT KEY_TRIS | TX_TRIS | FUEL_TRIS
+#define TRISC_INIT 0
+
+// init values for port's data
+#define PORTA_INIT POWER_SUPPLY_MASK
+#define PORTB_INIT 0
+#define PORTC_INIT 0
 
 #if defined(_16F1936)
 #define RBIF IOCIF
