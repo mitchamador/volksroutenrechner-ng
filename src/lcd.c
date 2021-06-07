@@ -1,5 +1,4 @@
 
-#include <xc.h>
 #include "lcd.h"
 #include "i2c.h"
 #include <stdbool.h>

@@ -1,10 +1,3 @@
-/* 
- * File:   locale.h
- * Author: victor
- *
- * Created on 6 июня 2021 г., 22:31
- */
-
 #ifndef LOCALE_H
 #define	LOCALE_H
 

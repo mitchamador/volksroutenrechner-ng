@@ -1,7 +1,6 @@
 #ifndef _LCD_H
 #define _LCD_H
 
-/* File: I2C_LCD.h */
 #include <stdbool.h>
 
 #pragma warning disable 520

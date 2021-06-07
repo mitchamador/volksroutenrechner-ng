@@ -1,10 +1,3 @@
-/* 
- * File:   utils.h
- * Author: victor
- *
- * Created on 31 мая 2021 г., 10:51
- */
-
 #ifndef UTILS_H
 #define	UTILS_H
 
@@ -19,10 +12,10 @@ unsigned char bcd8_inc(unsigned char, unsigned char);
 signed char bcd_subtract(unsigned char, unsigned char);
 
 unsigned char strcpy2(char *, char *, unsigned char);
-unsigned char ultoa2(char *, unsigned long);
-unsigned char utoa2(char *, unsigned short, unsigned char);
+unsigned char ultoa2(char *, unsigned long, unsigned char);
 void add_leading_symbols(char*, char, unsigned char, unsigned char);
 void str_center16(char *, unsigned char);
+void ds18b20_serial_to_string(unsigned char*, unsigned char*);
 
 #endif	/* UTILS_H */
 

@@ -2,14 +2,14 @@
 
 __bit ds18b20_start()
 {
-  DS18B20_PIN = 0;      // send reset pulse to the DS18B20 sensor
-  DS18B20_PIN_Dir = 0;  // configure DS18B20_PIN pin as output
-  __delay_us(500);      // wait 500 us
+  DS18B20_CLEAR;      // send reset pulse to the DS18B20 sensor
+  DS18B20_OUTPUT;     // configure DS18B20_PIN pin as output
+  __delay_us(500);    // wait 500 us
  
-  DS18B20_PIN_Dir = 1;  // configure DS18B20_PIN pin as input
-  __delay_us(100);      // wait 100 us to read the DS18B20 sensor response
+  DS18B20_INPUT;      // configure DS18B20_PIN pin as input
+  __delay_us(100);    // wait 100 us to read the DS18B20 sensor response
  
-  if (!DS18B20_PIN)
+  if (DS18B20_GET == 0)
   {
     __delay_us(400);    // wait 400 us
     return 1;           // DS18B20 sensor is present
@@ -20,14 +20,14 @@ __bit ds18b20_start()
  
 void ds18b20_write_bit(uint8_t value)
 {
-  DS18B20_PIN = 0;
-  DS18B20_PIN_Dir = 0;  // configure DS18B20_PIN pin as output
+  DS18B20_CLEAR;
+  DS18B20_OUTPUT;  // configure DS18B20_PIN pin as output
   __delay_us(2);        // wait 2 us
  
-  DS18B20_PIN = (__bit)value;
+  DS18B20_VALUE((__bit)value);
   __delay_us(80);       // wait 80 us
  
-  DS18B20_PIN_Dir = 1;  // configure DS18B20_PIN pin as input
+  DS18B20_INPUT;  // configure DS18B20_PIN pin as input
   __delay_us(2);        // wait 2 us
 }
  
@@ -41,14 +41,14 @@ __bit ds18b20_read_bit(void)
 {
   static __bit value;
  
-  DS18B20_PIN = 0;
-  DS18B20_PIN_Dir = 0;  // configure DS18B20_PIN pin as output
+  DS18B20_CLEAR;
+  DS18B20_OUTPUT;  // configure DS18B20_PIN pin as output
   __delay_us(2);
  
-  DS18B20_PIN_Dir = 1;  // configure DS18B20_PIN pin as input
+  DS18B20_INPUT;  // configure DS18B20_PIN pin as input
   __delay_us(5);        // wait 5 us
  
-  value = DS18B20_PIN;  // read and store DS18B20 state
+  value = DS18B20_GET;  // read and store DS18B20 state
   __delay_us(100);      // wait 100 us
  
   return value;
@@ -150,21 +150,3 @@ __bit ds18b20_read_temp_matchrom(unsigned char *buf, uint16_t *raw_temp_value)
   return 1;   // OK --> return 1
 }
 
-void ds18b20_serial_to_string(unsigned char *sn, unsigned char *p) {
-    unsigned char i, in, t;
-    for (i = 0; i < 8; i++) {
-        in = *sn++;
-        t = (in >> 4);
-        if (t > 10) {
-            *p++ = 'A' - 10 + t;
-        } else {
-            *p++ = '0' + t;
-        }
-        t = in & 0x0F;
-        if (t > 10) {
-            *p++ = 'A' - 10 + t;
-        } else {
-            *p++ = '0' + t;
-        }
-    }
-}

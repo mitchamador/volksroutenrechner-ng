@@ -1,17 +1,8 @@
-/* 
- * File:   hw.h
- * Author: victor
- *
- * Created on 4 июня 2021 г., 23:50
- */
-
 #ifndef HW_H
 #define	HW_H
 
 #include <xc.h>
-
 #include <stdint.h>
-#include "i2c.h"
 
 //#pragma warning disable 1090
 
@@ -53,16 +44,29 @@
 #define DS18B20_PIN      RA5
 #define DS18B20_PIN_Dir  TRISA5
 
+ // configure DS18B20_PIN pin as output
+#define DS18B20_OUTPUT (DS18B20_PIN_Dir = 0)
+  // configure DS18B20_PIN pin as input
+#define DS18B20_INPUT  (DS18B20_PIN_Dir = 1)
+
+#define DS18B20_CLEAR    (DS18B20_PIN = 0)
+#define DS18B20_SET      (DS18B20_PIN = 1)
+#define DS18B20_VALUE(v) (DS18B20_PIN = v)
+#define DS18B20_GET      (DS18B20_PIN)
+
 #define SND     RC0
 #define SND_TRIS (1 << _TRISC_TRISC0_POISITION)
 
 #define SND_ON SND = 1
 #define SND_OFF SND = 0
 
+#define SCL_TRIS   (1 << _TRISC_TRISC3_POSITION)
+#define SDA_TRIS   (1 << _TRISC_TRISC4_POSITION)
+
 // init values for port's data direction
 #define TRISA_INIT POWER_SUPPLY_TRIS
 #define TRISB_INIT KEY_TRIS | TX_TRIS | FUEL_TRIS
-#define TRISC_INIT 0
+#define TRISC_INIT SCL_TRIS | SDA_TRIS
 
 // init values for port's data
 #define PORTA_INIT POWER_SUPPLY_MASK

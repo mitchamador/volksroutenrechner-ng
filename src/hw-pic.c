@@ -1,3 +1,4 @@
+#include "hw.h"
 #include "i2c.h"
 
 uint16_t HW_adc_read() {

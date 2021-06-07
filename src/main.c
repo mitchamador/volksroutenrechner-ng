@@ -5,7 +5,6 @@
 *********************************************************************************************/
 
 #include <xc.h>
-
 #include "hw.h"
 #include "locale.h"
 #include <stdbool.h>
@@ -738,7 +737,7 @@ void screen_time(void) {
 }
 
 unsigned char get_fractional_string(char * buf, unsigned short num) {
-    unsigned char len = utoa2(buf, (unsigned int) num, 10);
+    unsigned char len = ultoa2(buf, (unsigned int) num, 10);
 
     if (num < 10) {
         buf[1] = buf[0];
@@ -761,7 +760,7 @@ void print_trip_time(trip_t* t, bool right_align) {
     
     unsigned short time = (unsigned short) (t->time / 30);
     
-    len = utoa2(buf, (unsigned short) (time / 60), 10);
+    len = ultoa2(buf, (unsigned short) (time / 60), 10);
     
     buf[len++] = ':';
     bcd8_to_str(&buf[len], time % 60);
@@ -850,7 +849,7 @@ void print_trip_average_fuel(trip_t* t, bool right_align) {
 void print_speed(unsigned short speed, bool right_align) {
     if (speed > 1000) {
         // more than 100 km/h, skip fractional
-        len = utoa2(buf, (unsigned int) speed, 10) - 1;
+        len = ultoa2(buf, (unsigned int) speed, 10) - 1;
     } else {
         // lower than 100 km/h, use fractional
         len = get_fractional_string(buf, speed);
@@ -879,7 +878,7 @@ void print_taho(bool right_align) {
 #ifdef TAHO_ROUND
         res = res / TAHO_ROUND * TAHO_ROUND;
 #endif        
-        len = utoa2(buf, (unsigned int) res, 10);
+        len = ultoa2(buf, (unsigned int) res, 10);
         buf[len++] = _omin0;
         buf[len++] = _omin1;
     }
@@ -903,7 +902,7 @@ void print_current_fuel_lh(bool right_align) {
 }
 
 void print_main_odo(bool right_align) {
-    len = ultoa2(buf, (unsigned long) config.odo);
+    len = ultoa2(buf, (unsigned long) config.odo, 10);
     buf[len++] = KM1_SYMBOL;
     buf[len++] = KM2_SYMBOL;
     LCD_Write_String8(buf, len, right_align);
@@ -922,7 +921,7 @@ void print_temp(unsigned char index, bool header, bool right_align) {
     _t = (unsigned short) ((_t >> 4) * 10 + (((_t & 0x000F) * 10) >> 4));
     
     if (index == 2) {
-        len = utoa2(buf, _t / 10, 10);
+        len = ultoa2(buf, _t / 10, 10);
         buf[len++] = CELSIUS_SYMBOL;
         LCD_Write_String8(buf, len, right_align);
     } else {
@@ -1250,7 +1249,7 @@ void screen_service_counters() {
         s_time = srv->time;
         v = srv->counter;
     }
-    len = utoa2(buf, v, 10);
+    len = ultoa2(buf, v, 10);
     if (tmp_param == 0) {
         buf[len++] = HOUR_SYMBOL;
     } else {
@@ -1296,7 +1295,7 @@ unsigned char edit_value_char(unsigned char v, bool thousands) {
             timeout = 0; timeout_timer = 300;
         }
         
-        len = utoa2(buf, thousands ? (unsigned short) (v * 1000) : v , 10);
+        len = ultoa2(buf, thousands ? (unsigned short) (v * 1000) : v , 10);
         
         LCD_CMD(0xC4);
         LCD_Write_String8(buf, len, true);
@@ -1311,14 +1310,14 @@ unsigned char edit_value_char(unsigned char v, bool thousands) {
 
 unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
     // number of symbols to edit
-    unsigned char max_len = ultoa2(buf, max_value);;
+    unsigned char max_len = ultoa2(buf, max_value, 10);
     
     if (v > max_value) {
         v = max_value;
     }
     
     // convert value
-    unsigned char v_len = ultoa2(buf, v);
+    unsigned char v_len = ultoa2(buf, v, 10);
     
     add_leading_symbols(buf, '0', v_len, max_len);
     
@@ -1375,7 +1374,7 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
 
 unsigned char edit_value_bits(unsigned char v, char* str) {
     // convert value
-    add_leading_symbols((char*) tbuf, '0', utoa2((char*) tbuf, v, 2), 8);
+    add_leading_symbols((char*) tbuf, '0', ultoa2((char*) tbuf, v, 2), 8);
     
     unsigned char cursor_pos = 0xC4;
     unsigned char pos = 0;
@@ -1454,6 +1453,7 @@ void screen_service_settings_bits(screen_service_item_t* item) {
 #ifdef USE_DS18B20
 void screen_service_temp_sensors(screen_service_item_t* item) {
     
+    memset(tbuf, 0xFF, 8);
     ds18b20_read_rom((unsigned char*) tbuf);
     ds18b20_serial_to_string(tbuf, (unsigned char*) buf);
     

@@ -1,4 +1,3 @@
-#include <xc.h>
 #include "utils.h"
 
 unsigned char bcd8_to_bin(unsigned char b) {
@@ -32,30 +31,7 @@ signed char bcd_subtract(unsigned char a, unsigned char b) {
     return (signed char) bcd8_to_bin(a) - (signed char) bcd8_to_bin(b);
 }
 
-#if defined(_16F1936)
-char * utoa(char * buf, unsigned val, int b)
-{
-	unsigned	v;
-	char		c;
-
-	v = val;
-	do {
-		v /= b;
-		buf++;
-	} while(v != 0);
-	*buf-- = 0;
-	do {
-		c = val % b;
-		val /= b;
-		if(c >= 10)
-			c += 'A'-'0'-10;
-		c += '0';
-		*buf-- = c;
-	} while(val != 0);
-	return ++buf;
-}
-
-char * ultoa(char * buf, unsigned long val, int b) {
+char * __ultoa(char * buf, unsigned long val, unsigned int b) {
 	unsigned	long	v;
 	char		c;
 
@@ -66,7 +42,7 @@ char * ultoa(char * buf, unsigned long val, int b) {
 	} while(v != 0);
 	*buf-- = 0;
 	do {
-		c = val % b;
+		c = (unsigned char) (val % b);
 		val /= b;
 		if(c >= 10)
 			c += 'A'-'0'-10;
@@ -75,17 +51,9 @@ char * ultoa(char * buf, unsigned long val, int b) {
 	} while(val != 0);
 	return buf;
 }
-#endif
 
-unsigned char ultoa2(char * buf, unsigned long val) {
-    ultoa(buf, val, 10);
-    unsigned char _len = 0;
-    while(buf[++_len] != 0);
-    return _len;
-}
-
-unsigned char utoa2(char * buf, unsigned short val, unsigned char b) {
-    utoa(buf, val, b);
+unsigned char ultoa2(char * buf, unsigned long val, unsigned char b) {
+    __ultoa(buf, val, b);
     unsigned char _len = 0;
     while(buf[++_len] != 0);
     return _len;
@@ -124,5 +92,24 @@ void str_center16(char * buf, unsigned char len) {
     }
     for (i = len + pos; i < 16; i++) {
         buf[i] = ' ';
+    }
+}
+
+void ds18b20_serial_to_string(unsigned char *sn, unsigned char *p) {
+    unsigned char i, in, t;
+    for (i = 0; i < 8; i++) {
+        in = *sn++;
+        t = (in >> 4);
+        if (t > 10) {
+            *p++ = 'A' - 10 + t;
+        } else {
+            *p++ = '0' + t;
+        }
+        t = in & 0x0F;
+        if (t > 10) {
+            *p++ = 'A' - 10 + t;
+        } else {
+            *p++ = '0' + t;
+        }
     }
 }

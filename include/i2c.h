@@ -3,9 +3,6 @@
 
 #include "hw.h"
 
-#define SCL_D                  TRISC3
-#define SDA_D                  TRISC4
-
 //---[ I2C Routines ]---
 
 void I2C_Master_Init(void);

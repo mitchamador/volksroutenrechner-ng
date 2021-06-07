@@ -1,5 +1,3 @@
-
-#include <xc.h>
 #include "i2c.h"
 
 #define I2C_Master_Wait while ((SSPSTAT & 0x04) || (SSPCON2 & 0x1F)) \
@@ -13,10 +11,7 @@ void I2C_Master_Init()
   SSPCON2 = 0x00;
   SSPSTAT = 0x00;
   SSPADD = ((_XTAL_FREQ/4)/I2C_BaudRate) - 1;
-  SCL_D = 1;
-  SDA_D = 1; 
 }
-
 
 void I2C_Master_Start()
 {
