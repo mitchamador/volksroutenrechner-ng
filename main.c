@@ -22,6 +22,9 @@
 // use ds18b20 temperature sensors
 #define USE_DS18B20
 
+// use sound
+#define USE_SOUND
+
 // place custom chars data in eeprom
 #define EEPROM_CUSTOM_CHARS
 
@@ -206,6 +209,30 @@ uint16_t temps[3] = {0, 0, 0};
 unsigned char temps_ee_addr;
 #else
 unsigned char data_ee_addr;
+#endif
+
+#ifdef USE_SOUND
+__bit buzzer_fl, buzzer_init_fl, buzzer_snd_fl;
+unsigned char buzzer_counter_r, buzzer_counter_10;
+unsigned char buzzer_counter;
+
+typedef struct {
+    unsigned char counter; // number of repeats
+    unsigned char sound;   // sound on duration  (*0.1ms)
+    unsigned char pause;   // sound off duration (*0.1ms)
+} buzzer_t;
+
+buzzer_t *buzzer_mode;
+
+#define BUZZER_KEY 0
+#define BUZZER_LONGKEY 1
+#define BUZZER_WARN 2
+
+buzzer_t buzzer[3] = {
+    {1,1,1}, // BUZZER_KEY
+    {1,4,1}, // BUZZER_LONG_KEY
+    {3,3,2}  // BUZZER_WARN
+};
 #endif
 
 unsigned char tbuf[8];
@@ -444,6 +471,9 @@ int_handler_GLOBAL_begin
                 // long keypress
                 key1_longpress = 1;
                 screen_refresh = 1;
+#ifdef USE_SOUND
+                buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_LONGKEY];
+#endif
             }
         } else // key released
         {
@@ -451,6 +481,9 @@ int_handler_GLOBAL_begin
                 // key press
                 key1_press = 1;
                 screen_refresh = 1;
+#ifdef USE_SOUND
+                buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_KEY];
+#endif
             }
             key1_counter = 0;
         }
@@ -464,6 +497,9 @@ int_handler_GLOBAL_begin
                 // long keypress
                 key2_longpress = 1;
                 screen_refresh = 1;
+#ifdef USE_SOUND
+                buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_LONGKEY];
+#endif
             }
         } else // key released
         {
@@ -471,6 +507,9 @@ int_handler_GLOBAL_begin
                 // key press
                 key2_press = 1;
                 screen_refresh = 1;
+#ifdef USE_SOUND
+                buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_KEY];
+#endif
             }
             key2_counter = 0;
         }
@@ -513,6 +552,46 @@ int_handler_GLOBAL_begin
         if (speed100_timer_fl == 1) {
             speed100_timer++;
         }
+#ifdef USE_SOUND    
+        if (buzzer_counter_10 == 0) {
+            buzzer_counter_10 = 10;
+            if (buzzer_fl == 1) {
+                if (buzzer_init_fl == 0) {
+                    buzzer_init_fl = 1;
+                    buzzer_counter_r = buzzer_mode->counter;
+                    buzzer_snd_fl = 1;
+                    buzzer_counter = buzzer_mode->sound;
+                }
+        
+                if (buzzer_snd_fl == 1) {
+                    if (buzzer_counter == 0) {
+                        buzzer_snd_fl = 0;
+                        buzzer_counter = buzzer_mode->pause;
+                    } else {
+                        SND_ON;
+                    }
+                }  
+                if (buzzer_snd_fl == 0) {
+                    if (buzzer_counter == 0) {
+                        if (--buzzer_counter_r > 0) {
+                            buzzer_snd_fl = 1;
+                            buzzer_counter = buzzer_mode->sound;
+                            SND_ON;
+                        } else {
+                            buzzer_init_fl = 0;
+                            buzzer_fl = 0;
+                        }
+                    }
+                    if (buzzer_snd_fl == 0) {
+                        SND_OFF;
+                    }
+                }
+                buzzer_counter--;
+            }
+        } else {
+            buzzer_counter_10--;
+        }
+#endif    
     int_handler_timer1_end
 
     int_handler_timer2_begin
@@ -1589,7 +1668,9 @@ void check_service_counters() {
 //            str_center16(buf, strcpy2(buf, (char*) &service_counters, i + 1));
 //            LCD_CMD(0xC0);
 //            LCD_Write_String16(buf, 16, false);
-            
+#ifdef USE_SOUND            
+            buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[BUZZER_WARN];
+#endif            
             LCD_Clear();
             len = strcpy2(buf, (char*) &warning_str, 0);
             LCD_CMD(0x80 + ((16 - len) >> 1));
@@ -1603,6 +1684,70 @@ void check_service_counters() {
             while (timeout == 0 && key1_press == 0 && key2_press == 0);
             key1_press = 0; key2_press = 0;
         }
+    }
+}
+
+void handle_temp() {
+    temperature_fl = 0;
+    if (temperature_conv_fl == 1) {
+        // read temperature for ds18b20
+        temperature_conv_fl = 0;
+        unsigned char i;
+        for (i = 0; i < 3; i++) {
+            HW_read_eeprom_block((unsigned char *) &tbuf, temps_ee_addr + i * 8, 8);
+            ds18b20_read_temp_matchrom((unsigned char *) &tbuf, &temps[i]);
+        }
+    } else {
+        // start conversion for ds18b20
+        temperature_conv_fl = 1;
+        timeout_temperature = 1;
+        ds18b20_start_conversion();
+    }
+}
+
+void service_screen(unsigned char c_item) {
+    screen_service_item_t item = items_service[c_item];
+    LCD_CMD(0x80);
+    LCD_Write_String16(buf, strcpy2(buf, (char *) &service_menu_title, 0), false);
+    LCD_CMD(0xC0);
+
+    buf[0] = '1' + c_item;
+    buf[1] = '.';
+    LCD_Write_String16(buf, strcpy2(&buf[2], item.name, 0) + 2, false);
+
+    if (key2_press == 1) {
+        key2_press = 0;
+        LCD_Clear();
+        c_sub_item = 0;
+        timeout = 0;
+        timeout_timer = 300;
+        while (timeout == 0) {
+            screen_refresh = 0;
+
+            LCD_CMD(0x80);
+            LCD_Write_String16(buf, strcpy2(buf, item.name, 0), false);
+
+            item.screen(&item);
+
+            while (screen_refresh == 0 && timeout == 0);
+        }
+        screen_refresh = 1;
+    }
+}
+
+void handle_misc_values() {
+    speed = (unsigned short) ((18000UL * kmh) / config.odo_const);
+    if (trips.tripC_max_speed < speed) {
+        trips.tripC_max_speed = speed;
+    }
+    if (drive_fl == 1 && speed == 0) {
+        drive_fl = 0;
+    }
+    if (trips.tripA.odo > MAX_ODO_TRIPA) {
+        memset(&trips.tripA, 0, sizeof (trip_t));
+    }
+    if (trips.tripB.odo > MAX_ODO_TRIPB) {
+        memset(&trips.tripB, 0, sizeof (trip_t));
     }
 }
 
@@ -1651,36 +1796,10 @@ void main()
         if (service_mode == 0) {
 #ifdef USE_DS18B20        
             if (temperature_fl == 1) {
-                temperature_fl = 0;
-                if (temperature_conv_fl == 1) {
-                    // read temperature for ds18b20
-                    temperature_conv_fl = 0;
-                    unsigned char i;
-                    for (i = 0; i < 3; i++) {
-                        HW_read_eeprom_block((unsigned char *) &tbuf, temps_ee_addr + i * 8, 8);
-                        ds18b20_read_temp_matchrom((unsigned char *) &tbuf, &temps[i]);
-                    }
-                } else {
-                    // start conversion for ds18b20
-                    temperature_conv_fl = 1;
-                    timeout_temperature = 1;
-                    ds18b20_start_conversion();
-                }
+                handle_temp();
             }
 #endif            
-            speed = (unsigned short) ((18000UL * kmh) / config.odo_const);
-            if (trips.tripC_max_speed < speed) {
-                trips.tripC_max_speed = speed;
-            }
-            if (drive_fl == 1 && speed == 0) {
-                drive_fl = 0;
-            }
-            if (trips.tripA.odo > MAX_ODO_TRIPA) {
-                memset(&trips.tripA, 0, sizeof (trip_t));
-            }
-            if (trips.tripB.odo > MAX_ODO_TRIPB) {
-                memset(&trips.tripB, 0, sizeof (trip_t));
-            }
+            handle_misc_values();
         }        
 
         // show next screen
@@ -1699,33 +1818,7 @@ void main()
         }
         
         if (service_mode == 1) {
-            screen_service_item_t item = items_service[c_item];
-            LCD_CMD(0x80);
-            LCD_Write_String16(buf, strcpy2(buf, (char *) &service_menu_title, 0), false);
-            LCD_CMD(0xC0);
-
-            buf[0] = '1' + c_item;
-            buf[1] = '.';
-            LCD_Write_String16(buf, strcpy2(&buf[2], item.name, 0) + 2, false);
-
-            if (key2_press == 1) {
-                key2_press = 0;
-                LCD_Clear();
-                c_sub_item = 0;
-                timeout = 0; timeout_timer = 300;
-                while (timeout == 0) {
-                    screen_refresh = 0;
-
-                    LCD_CMD(0x80);
-                    LCD_Write_String16(buf, strcpy2(buf, item.name, 0), false);
-
-                    item.screen(&item);
-
-                    while (screen_refresh == 0 && timeout == 0);
-                }
-                screen_refresh = 1;
-            }
-
+            service_screen(c_item);
         } else {
             items_main[c_item].screen();
         }
