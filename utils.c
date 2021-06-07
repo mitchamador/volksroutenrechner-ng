@@ -91,17 +91,15 @@ unsigned char utoa2(char * buf, unsigned short val, unsigned char b) {
     return _len;
 }
 
-void add_leading_symbols(char* buf, char s, unsigned char v_len, unsigned char max_len) {
+void add_leading_symbols(char* buf, char s, unsigned char len, unsigned char max_len) {
     unsigned char i;
     // add leading zeroes
-    if (v_len < max_len) {
-        unsigned char diff = max_len - v_len;
-        for (i = v_len + 1; i > 0; i--) {
-            buf[i + diff - 1] = buf[i - 1];
-        }
-        for (i = 0; i < diff; i++) {
-            buf[i] = s;
-        }
+    unsigned char diff = max_len - len;
+    for (i = len; i != 0; i--) {
+        buf[i + diff] = buf[i];
+    }
+    for (i = 0; i < diff; i++) {
+        buf[i] = s;
     }
 }
 
@@ -113,4 +111,18 @@ unsigned char strcpy2(char* buf, char* str, unsigned char pos) {
     }
     while (*str != '\0') buf[pos++] = *str++;
     return pos;
+}
+
+void str_center16(char * buf, unsigned char len) {
+    unsigned char i;
+    unsigned char pos = (16 - len) >> 1;
+    for (i = len; i != 0; i--) {
+        buf[i + pos] = buf[i];
+    }
+    for (i = 0; i < pos; i++) {
+        buf[i] = ' ';
+    }
+    for (i = len + pos; i < 16; i++) {
+        buf[i] = ' ';
+    }
 }

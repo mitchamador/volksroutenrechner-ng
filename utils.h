@@ -22,6 +22,7 @@ unsigned char strcpy2(char *, char *, unsigned char);
 unsigned char ultoa2(char *, unsigned long);
 unsigned char utoa2(char *, unsigned short, unsigned char);
 void add_leading_symbols(char*, char, unsigned char, unsigned char);
+void str_center16(char *, unsigned char);
 
 #endif	/* UTILS_H */
 
