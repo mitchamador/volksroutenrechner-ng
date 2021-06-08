@@ -17,18 +17,18 @@ void LCD_Init(unsigned char I2C_Add)
   I2C_Master_Write((0x00 | 0x04) | LCD_BACKLIGHT);
   I2C_Master_Stop();
 
-  __delay_ms(50);
+  delay_ms(50);
   LCD_CMD(0x03);
-  __delay_us(4100);
+  delay_us(4100);
   LCD_CMD(0x03);
-  __delay_us(100);
+  delay_us(100);
   LCD_CMD(0x03);
   LCD_CMD(LCD_RETURN_HOME);
-  __delay_us(1520);
+  delay_us(1520);
   LCD_CMD(LCD_FUNCTION_SET | (LCD_TYPE << 2));
   LCD_CMD(LCD_TURN_ON);
   LCD_CMD(LCD_CLEAR);
-  __delay_us(1520);
+  delay_us(1520);
   LCD_CMD(LCD_ENTRY_MODE_SET | LCD_INCREMENT | LCD_NOSHIFT);
   
 //  __delay_ms(30);
@@ -61,13 +61,13 @@ void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode) {
     I2C_Master_Write(i2c_add);
     I2C_Master_Write((Nibble | EN) | mode | LCD_BACKLIGHT);
     I2C_Master_Stop();
-//    __delay_us(2);
+//    delay_us(2);
 
     I2C_Master_Start();
     I2C_Master_Write(i2c_add);
     I2C_Master_Write((Nibble & ~EN) | mode | LCD_BACKLIGHT);
     I2C_Master_Stop();
-//    __delay_us(50);
+//    delay_us(50);
 }
 
 void LCD_CMD(unsigned char CMD) 
@@ -183,5 +183,5 @@ void LCD_Clear(void)
   //LCD_CMD(0x01); 
   LCD_Write_4Bit(LCD_CLEAR & 0xF0, 0);
   LCD_Write_4Bit((LCD_CLEAR << 4) & 0xF0, 0);
-  __delay_ms(2);
+  delay_ms(2);
 }

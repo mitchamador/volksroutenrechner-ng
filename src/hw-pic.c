@@ -1,6 +1,8 @@
 #include "hw.h"
 #include "i2c.h"
 
+#if defined(__PIC_MIDRANGE)
+
 uint16_t HW_adc_read() {
 #if defined(_16F1936)
     // Right justified, A/D conversion clock Fosc/32, A/D Negative - Vss, A/D Positive - Vdd
@@ -13,10 +15,10 @@ uint16_t HW_adc_read() {
     
 #if defined(_16F1936)
     // use AN1
-    ADCON0 = (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION);
+    ADCON0 = (0 << _ADCON0_CHS3_POSITION) | POWER_SUPPLY_ADCON0;
 #elif defined(_16F876A)
     // use AN1, A/D conversion clock Fosc/32
-    ADCON0 = (1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION);
+    ADCON0 = (1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION) | POWER_SUPPLY_ADCON0;
 #endif
     
     ADON = 1;
@@ -90,12 +92,14 @@ void HW_write_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned cha
     if (INTCONbits.GIE) {
         int_state = 1;
     }
-    di();
+    disable_interrupts();
     unsigned char i;
     for (i = 0; i < length; i++) {
         eeprom_write(ee_addr + i, *p++);
     }
     if (int_state == 1) {
-        ei();
+        enable_interrupts();
     }
 }
+
+#endif

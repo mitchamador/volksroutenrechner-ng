@@ -7,22 +7,13 @@ void get_ds_time(ds_time* time) {
     I2C_Master_Write(0x00); // start reading from 0x01 - minutes
     I2C_Master_RepeatedStart();
     I2C_Master_Write(0xD1);
-    unsigned char seconds = I2C_Read_Byte();
-    if ((seconds & 0x80) == 0) {
-        I2C_ACK();
-        time->minute = I2C_Read_Byte();
-        I2C_ACK();
-        time->hour = I2C_Read_Byte();
-        I2C_ACK();
-        time->day_of_week = I2C_Read_Byte();
-        I2C_ACK();
-        time->day = I2C_Read_Byte();
-        I2C_ACK();
-        time->month = I2C_Read_Byte();
-        I2C_ACK();
-        time->year = I2C_Read_Byte();
-    }
-    I2C_NACK();
+    unsigned char seconds = I2C_Read_Byte_ACK();
+    time->minute = I2C_Read_Byte_ACK();
+    time->hour = I2C_Read_Byte_ACK();
+    time->day_of_week = I2C_Read_Byte_ACK();
+    time->day = I2C_Read_Byte_ACK();
+    time->month = I2C_Read_Byte_ACK();
+    time->year = I2C_Read_Byte_NACK();
     I2C_Master_Stop();
     if ((seconds & 0x80) != 0) {
         I2C_Master_Start();

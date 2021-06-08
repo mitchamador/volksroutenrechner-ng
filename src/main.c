@@ -14,10 +14,6 @@
 #include "ds18b20.h"
 #include "utils.h"
 
-#if !defined(_16F876A) && !defined(_16F1936)
-#error "only pic16f876a or pic16f1936 supported"
-#endif
-
 // use ds18b20 temperature sensors
 #define USE_DS18B20
 
@@ -83,8 +79,8 @@ typedef struct {
 } srv_mh_t;
 
 typedef union {
-  unsigned char byte;
   // a structure with 8 single bit bit-field objects, overlapping the union member "byte"
+  unsigned char byte;
   struct {
     unsigned b0:1;
     unsigned b1:1;
@@ -148,16 +144,17 @@ typedef struct {
 } ds18b20_sn_t;
 
 config_t config;
+trips_t trips;
+services_t services;
+
 __EEPROM_DATA(0x7F,0x9F,0x04,0x00,0x16,0x13,0x80,0x3E); /*config*/
 __EEPROM_DATA(0x6E,0xA6,0x80,0x01,0x00,0x00,0x00,0x00);
-trips_t trips;
 __EEPROM_DATA(0x0A,0x00,0x90,0x1B,0x1A,0x28,0x64,0x00); /*trips*/
 __EEPROM_DATA(0x02,0x02,0x00,0x00,0x22,0x01,0xDD,0x3A);
 __EEPROM_DATA(0x3D,0x64,0x11,0x0F,0xC8,0x4F,0x00,0x00);
 __EEPROM_DATA(0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
 __EEPROM_DATA(0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
 __EEPROM_DATA(0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
-services_t services;
 __EEPROM_DATA(0xBA,0x15,0x03,0x00,0x00,0x00,0x16,0x01); /*services*/
 __EEPROM_DATA(0x0A,0x22,0x01,0x21,0x99,0x13,0x0A,0xFF);
 __EEPROM_DATA(0xFF,0xFF,0x99,0x13,0x0A,0x21,0x03,0x20);
@@ -303,7 +300,7 @@ typedef struct screen_service_item_t screen_service_item_t;
 typedef void (*screen_service_func) (screen_service_item_t *);
 
 struct screen_service_item_t {
-    char* name;
+    const char* name;
     screen_service_func screen;
 };
 
@@ -316,15 +313,15 @@ void screen_service_service_counters(screen_service_item_t *);
 void screen_service_ua_const(screen_service_item_t *);
 
 const screen_service_item_t items_service[] = {
-    {(char*) &fuel_constant_str, (screen_service_func) &screen_service_fuel_constant},
-    {(char*) &vss_constant_str, (screen_service_func) &screen_service_vss_constant},
-    {(char*) &total_trip_str, (screen_service_func) &screen_service_total_trip},
-    {(char*) &voltage_adjust_str, (screen_service_func) &screen_service_ua_const},
-    {(char*) &settings_bits_str, (screen_service_func) &screen_service_settings_bits},
+    {(const char*) &fuel_constant_str, (screen_service_func) &screen_service_fuel_constant},
+    {(const char*) &vss_constant_str, (screen_service_func) &screen_service_vss_constant},
+    {(const char*) &total_trip_str, (screen_service_func) &screen_service_total_trip},
+    {(const char*) &voltage_adjust_str, (screen_service_func) &screen_service_ua_const},
+    {(const char*) &settings_bits_str, (screen_service_func) &screen_service_settings_bits},
 #ifdef USE_DS18B20
-    {(char*) &temp_sensor_str, (screen_service_func) &screen_service_temp_sensors},
+    {(const char*) &temp_sensor_str, (screen_service_func) &screen_service_temp_sensors},
 #endif    
-    {(char*) &service_counters_str, (screen_service_func) &screen_service_service_counters},
+    {(const char*) &service_counters_str, (screen_service_func) &screen_service_service_counters},
 };
 
 unsigned char c_item = 0, c_sub_item = 0;
@@ -1111,6 +1108,7 @@ unsigned char request_screen(unsigned char len) {
     unsigned char reset = 0;
     if (key2_longpress == 1) {
         key2_longpress = 0;
+        key2_press = 0;
         
         LCD_Clear();
         LCD_CMD(0x80 + ((16 - len) / 2U));
@@ -1501,7 +1499,7 @@ void screen_service_service_counters(screen_service_item_t* item) {
     }
 
     LCD_CMD(0x80);
-    LCD_Write_String16(buf, strcpy2(buf, item->name, 0), false);
+    LCD_Write_String16(buf, strcpy2(buf, (char *) item->name, 0), false);
     LCD_CMD(0xC0);
     LCD_Write_String16(buf, strcpy2(buf, (char *) &service_counters, c_sub_item + 1), false);
 
@@ -1537,7 +1535,7 @@ void screen_service_service_counters(screen_service_item_t* item) {
     }
 }
 
-void screen_service_ua_const() {
+void screen_service_ua_const(screen_service_item_t* item) {
 
     if (key1_press == 1 || key2_press == 1) {
         if (key2_press == 1) {
@@ -1732,7 +1730,7 @@ void service_screen(unsigned char c_item) {
 
     buf[0] = '1' + c_item;
     buf[1] = '.';
-    LCD_Write_String16(buf, strcpy2(&buf[2], item.name, 0) + 2, false);
+    LCD_Write_String16(buf, strcpy2(&buf[2], (char*) item.name, 0) + 2, false);
 
     if (key2_press == 1) {
         key2_press = 0;
@@ -1744,7 +1742,7 @@ void service_screen(unsigned char c_item) {
             screen_refresh = 0;
 
             LCD_CMD(0x80);
-            LCD_Write_String16(buf, strcpy2(buf, item.name, 0), false);
+            LCD_Write_String16(buf, strcpy2(buf, (char*) item.name, 0), false);
 
             item.screen(&item);
 
@@ -1770,14 +1768,14 @@ void handle_misc_values() {
     }
 }
 
-void main()
-{
+void main() {
+
     unsigned char service_mode = 0;
 
     power_on();
 
     if (KEY1_PRESSED) {
-        __delay_ms(40);
+        delay_ms(40);
         if (KEY1_PRESSED) {
             service_mode = 1;
         }
@@ -1806,7 +1804,7 @@ void main()
 
         // check power
         if (!POWER_SUPPLY_ACTIVE) {
-            __delay_us(40);
+            delay_us(40);
             if (!POWER_SUPPLY_ACTIVE) {
                 power_off();
             }

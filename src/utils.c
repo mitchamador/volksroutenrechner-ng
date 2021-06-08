@@ -31,7 +31,7 @@ signed char bcd_subtract(unsigned char a, unsigned char b) {
     return (signed char) bcd8_to_bin(a) - (signed char) bcd8_to_bin(b);
 }
 
-char * __ultoa(char * buf, unsigned long val, unsigned int b) {
+char * _ultoa(char * buf, unsigned long val, unsigned int b) {
 	unsigned	long	v;
 	char		c;
 
@@ -53,7 +53,7 @@ char * __ultoa(char * buf, unsigned long val, unsigned int b) {
 }
 
 unsigned char ultoa2(char * buf, unsigned long val, unsigned char b) {
-    __ultoa(buf, val, b);
+    _ultoa(buf, val, b);
     unsigned char _len = 0;
     while(buf[++_len] != 0);
     return _len;

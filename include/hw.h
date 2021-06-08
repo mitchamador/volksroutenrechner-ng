@@ -1,77 +1,53 @@
 #ifndef HW_H
 #define	HW_H
 
+#if defined(__XC8)
 #include <xc.h>
-#include <stdint.h>
+#if defined(_16F876A) || defined(_16F1936)
+#define __PIC_MIDRANGE
+#elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
+#define __AVR_ATMEGA
+#endif
+#elif defined(__AVR)
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
+#define __AVR_ATMEGA
+#endif
+#include <avr/io.h>
+#endif
 
-//#pragma warning disable 1090
+#if !defined(__PIC_MIDRANGE) && !defined(__AVR_ATMEGA)
+#error "device and compiler not supported"
+#endif
 
 // define cpu frequency
+#if (defined(__PIC_MIDRANGE))
+#define delay_ms(ms) __delay_ms(ms)
+#define delay_us(us) __delay_us(us)
 #define _XTAL_FREQ 20000000
-// define i2c bus frequency
-#define I2C_BaudRate 100000
 
-// PORTA definitions (analog input)
-#define POWER_SUPPLY PORTAbits.RA1
-#define POWER_SUPPLY_MASK (1 << _PORTA_RA1_POSITION)
-#define POWER_SUPPLY_TRIS (1 << _TRISA_TRISA1_POSITION)
-#define PWR PORTAbits.RA0
-#define ONEWIRE PORTAbits.RA5
+#define __START_EEPROM_DATA
+#define __END_EEPROM_DATA
 
-#define POWER_SUPPLY_ACTIVE (POWER_SUPPLY == 1)
-#define PWR_ON PWR = 1
-#define PWR_OFF PWR = 0
+#else
+#define F_CPU 16000000
+#include <util/delay.h>
+#include <avr/eeprom.h>
+#include <avr/interrupt.h>
+#include <avr/pgmspace.h>
+#define delay_ms(ms) _delay_ms(ms)
+#define delay_us(us) _delay_us(us)
 
-// PORTB definitions
-// key1 and key2 (active ground)
-#define KEY1 PORTBbits.RB2
-#define KEY2 PORTBbits.RB3
-#define KEY_TRIS (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
+#define CONCATE1(X,Y) X##Y
+#define CONCATE(X,Y) CONCATE1(X,Y)
 
-#define KEY1_PRESSED (KEY1 == 0)
-#define KEY2_PRESSED (KEY2 == 0)
+#define __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7) const EEMEM char CONCATE(a_,__COUNTER__)[8] = {a0,a1,a2,a3,a4,a5,a6,a7}
 
-// speed sensor and injector
-#define TX PORTBbits.RB6
-#define TX_TRIS (1 << _TRISB_TRISB6_POSITION)
-#define FUEL PORTBbits.RB7
-#define FUEL_TRIS (1 << _TRISB_TRISB7_POSITION)
+#endif
 
-#define TX_ACTIVE TX == 1
-#define FUEL_ACTIVE FUEL == 0
+#include <stdint.h>
 
-// DS18B20 data pin is connected to pin RA5
-#define DS18B20_PIN      RA5
-#define DS18B20_PIN_Dir  TRISA5
-
- // configure DS18B20_PIN pin as output
-#define DS18B20_OUTPUT (DS18B20_PIN_Dir = 0)
-  // configure DS18B20_PIN pin as input
-#define DS18B20_INPUT  (DS18B20_PIN_Dir = 1)
-
-#define DS18B20_CLEAR    (DS18B20_PIN = 0)
-#define DS18B20_SET      (DS18B20_PIN = 1)
-#define DS18B20_VALUE(v) (DS18B20_PIN = v)
-#define DS18B20_GET      (DS18B20_PIN)
-
-#define SND     RC0
-#define SND_TRIS (1 << _TRISC_TRISC0_POISITION)
-
-#define SND_ON SND = 1
-#define SND_OFF SND = 0
-
-#define SCL_TRIS   (1 << _TRISC_TRISC3_POSITION)
-#define SDA_TRIS   (1 << _TRISC_TRISC4_POSITION)
-
-// init values for port's data direction
-#define TRISA_INIT POWER_SUPPLY_TRIS
-#define TRISB_INIT KEY_TRIS | TX_TRIS | FUEL_TRIS
-#define TRISC_INIT SCL_TRIS | SDA_TRIS
-
-// init values for port's data
-#define PORTA_INIT POWER_SUPPLY_MASK
-#define PORTB_INIT 0
-#define PORTC_INIT 0
+#if defined(__PIC_MIDRANGE)
+//#pragma warning disable 1090
 
 #if defined(_16F1936)
 #define RBIF IOCIF
@@ -90,8 +66,53 @@
 #pragma config WRT = OFF        // Flash Program Memory Write Enable bits (Write protection off; all program memory may be written to by EECON control)
 #pragma config CP = OFF         // Flash Program Memory Code Protection bit (Code protection off)
 
+
+// PORTA definitions (analog input)
+#define POWER_SUPPLY PORTAbits.RA1
+#define POWER_SUPPLY_MASK (1 << _PORTA_RA1_POSITION)
+#define POWER_SUPPLY_TRIS (1 << _TRISA_TRISA1_POSITION)
+// A/D channel
+#define POWER_SUPPLY_ADCON0 ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+
+#define PWR PORTAbits.RA0
+#define PWR_MASK  (1 << _PORTA_RA0_POSITION)
+
+// PORTB definitions
+// key1 and key2 (active zero)
+#define KEY1 PORTBbits.RB2
+#define KEY2 PORTBbits.RB3
+#define KEY_TRIS (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
+
+// speed sensor and injector
+#define TX PORTBbits.RB6
+#define TX_TRIS (1 << _TRISB_TRISB6_POSITION)
+#define FUEL PORTBbits.RB7
+#define FUEL_TRIS (1 << _TRISB_TRISB7_POSITION)
+
+// DS18B20 data pin is connected to pin RA5
+#define ONEWIRE_PIN      RA5
+#define ONEWIRE_PIN_Dir  TRISA5
+
+#define SND     RC0
+#define SND_TRIS (1 << _TRISC_TRISC0_POISITION)
+
+#define SCL_TRIS   (1 << _TRISC_TRISC3_POSITION)
+#define SDA_TRIS   (1 << _TRISC_TRISC4_POSITION)
+
+// init values for port's data direction
+#define TRISA_INIT POWER_SUPPLY_TRIS
+#define TRISB_INIT KEY_TRIS | TX_TRIS | FUEL_TRIS
+#define TRISC_INIT SCL_TRIS | SDA_TRIS
+
+// init values for port's data
+#define PORTA_INIT PWR_MASK
+#define PORTB_INIT 0
+#define PORTC_INIT 0
+
 // timer1 overflow 10ms
 #define TIMER1_VALUE (65536 - 6250)
+
+/* ======================================= */
 
 #define start_timer_fuel() T0CS = 0
 #define stop_timer_fuel() T0CS = 1
@@ -146,6 +167,114 @@
         /* Reset the interrupt flag */                     \
         TMR2IF = 0;                                        \
     }                                                      \
+
+#define TX_ACTIVE   (TX == 1)
+#define FUEL_ACTIVE (FUEL == 0)
+
+#define KEY1_PRESSED (KEY1 == 0)
+#define KEY2_PRESSED (KEY2 == 0)
+
+#define POWER_SUPPLY_ACTIVE (POWER_SUPPLY == 1)
+#define PWR_ON  (PWR = 1)
+#define PWR_OFF (PWR = 0)
+
+#define SND_ON  (SND = 1)
+#define SND_OFF (SND = 0)
+
+// configure DS18B20_PIN pin as output
+#define ONEWIRE_OUTPUT   (ONEWIRE_PIN_Dir = 0)
+// configure DS18B20_PIN pin as input
+#define ONEWIRE_INPUT    (ONEWIRE_PIN_Dir = 1)
+
+#define ONEWIRE_CLEAR    (ONEWIRE_PIN = 0)
+#define ONEWIRE_SET      (ONEWIRE_PIN = 1)
+#define ONEWIRE_VALUE(v) (ONEWIRE_PIN = v)
+#define ONEWIRE_GET      (ONEWIRE_PIN)
+
+#elif defined(__AVR_ATMEGA)
+
+
+#define __bit unsigned char
+
+#define start_timer_fuel()
+
+#define stop_timer_fuel()
+
+#define start_timer_taho()
+
+#define stop_timer_taho()
+
+#ifdef __XC8
+#define enable_interrupts() ei();
+#define disable_interrupts() di();
+#else
+#define enable_interrupts() sei();
+#define disable_interrupts() cli();
+#endif
+
+#define TIMER0_INIT 0x9A
+#define TIMER1_INIT 0xC180
+#define TIMER2_INIT 0x60
+
+#define int_handler_GLOBAL_begin
+
+#define int_handler_GLOBAL_end
+
+#define int_handler_fuel_speed_begin ISR(PCINT0_vect) { \
+
+#define int_handler_fuel_speed_end }                        \
+
+#define int_handler_timer0_begin ISR(TIMER0_OVF_vect) {     \
+    TCNT0 = TIMER0_INIT;                                    \
+    
+#define int_handler_timer0_end }                            \
+
+#define int_handler_timer1_begin ISR(TIMER1_OVF_vect) {     \
+    TCNT1H = TIMER1_INIT >> 8;                              \
+    TCNT1L = TIMER1_INIT & 0xFF;                            \
+    
+#define int_handler_timer1_end }                            \
+
+#define int_handler_timer2_begin ISR(TIMER2_OVF_vect) {     \
+    TCNT2 = TIMER2_INIT;                                    \
+    
+#define int_handler_timer2_end }                            \
+
+// DDRx: 0 - input, 1 - output
+
+#define TX_ACTIVE   ((PINB &= ~_BV(PINB0)) != 0)
+#define FUEL_ACTIVE ((PINB &= ~_BV(PINB1)) == 0)
+
+#define KEY1_PRESSED ((PIND &= ~_BV(PIND6)) == 0)
+#define KEY2_PRESSED ((PIND &= ~_BV(PIND7)) == 0)
+
+#define POWER_SUPPLY_ACTIVE ((PINC &= ~_BV(PINC1)) != 0)
+#define PWR_ON  (PORTC |=  _BV(PORTC0))
+#define PWR_OFF (PORTC &= ~_BV(PORTC0))
+
+#define SND_ON  (PORTD |=  _BV(PORTD4))
+#define SND_OFF (PORTD &= ~_BV(PORTD4))
+
+// configure DS18B20_PIN pin as output
+#define ONEWIRE_OUTPUT   (DDRD |= _BV(DDD5))
+// configure DS18B20_PIN pin as input
+#define ONEWIRE_INPUT    (DDRD &= ~_BV(DDD5))
+#define ONEWIRE_CLEAR    (PORTD &= ~_BV(PORTD5))
+#define ONEWIRE_SET      (PORTD |= _BV(PORTD5))
+#define ONEWIRE_VALUE(v) (v != 0 ? ONEWIRE_SET : ONEWIRE_CLEAR)
+#define ONEWIRE_GET      ((PIND & ~_BV(PIND5)) != 0 ? 1 : 0)
+
+// init values for port's data direction
+#define DDRB_INIT 0
+#define DDRC_INIT _BV(DDC0)
+#define DDRD_INIT _BV(DDD4)
+
+// init values for port's data
+#define PORTB_INIT _BV(PORTB1) | _BV(PORTB0)
+#define PORTC_INIT _BV(PORTC0)
+#define PORTD_INIT _BV(PORTD7) | _BV(PORTD6)
+
+#endif
 
 uint16_t HW_adc_read(void);
 void HW_Init(void);
