@@ -20,7 +20,7 @@
 #endif
 
 // define cpu frequency
-#if (defined(__PIC_MIDRANGE))
+#if defined(__PIC_MIDRANGE)
 #define delay_ms(ms) __delay_ms(ms)
 #define delay_us(us) __delay_us(us)
 #define _XTAL_FREQ 20000000
@@ -29,7 +29,9 @@
 #define __END_EEPROM_DATA
 
 #else
+#ifndef F_CPU
 #define F_CPU 16000000
+#endif
 #include <util/delay.h>
 #include <avr/eeprom.h>
 #include <avr/interrupt.h>
@@ -40,7 +42,7 @@
 #define CONCATE1(X,Y) X##Y
 #define CONCATE(X,Y) CONCATE1(X,Y)
 
-#define __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7) const EEMEM char CONCATE(a_,__COUNTER__)[8] = {a0,a1,a2,a3,a4,a5,a6,a7}
+#define __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7) volatile const EEMEM char CONCATE(a_,__COUNTER__)[8] = {a0,a1,a2,a3,a4,a5,a6,a7}
 
 #endif
 
@@ -196,13 +198,13 @@
 
 #define __bit unsigned char
 
-#define start_timer_fuel()
+#define start_timer_fuel() TCCR0B = (0 << WGM02) | (0 << CS02) | (1 << CS01) | (0 << CS00);
 
-#define stop_timer_fuel()
+#define stop_timer_fuel()  TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
 
-#define start_timer_taho()
+#define start_timer_taho() TCCR2B = (0 << WGM22) | (0 << CS22) | (1 << CS21) | (0 << CS20);
 
-#define stop_timer_taho()
+#define stop_timer_taho()  TCCR2B = (0 << WGM22) | (0 << CS22) | (0 << CS21) | (0 << CS20);
 
 #ifdef __XC8
 #define enable_interrupts() ei();
@@ -212,57 +214,67 @@
 #define disable_interrupts() cli();
 #endif
 
+// 0x9A
 #define TIMER0_INIT 0x9A
-#define TIMER1_INIT 0xC180
+#define TIMER1_INIT 0xB1E0
+// 0x60
 #define TIMER2_INIT 0x60
 
 #define int_handler_GLOBAL_begin
 
 #define int_handler_GLOBAL_end
 
-#define int_handler_fuel_speed_begin ISR(PCINT0_vect) { \
+#define int_handler_fuel_speed_begin ISR(PCINT0_vect) {     \
 
 #define int_handler_fuel_speed_end }                        \
 
 #define int_handler_timer0_begin ISR(TIMER0_OVF_vect) {     \
-    TCNT0 = TIMER0_INIT;                                    \
+    TCNT0 += TIMER0_INIT;                                   \
     
 #define int_handler_timer0_end }                            \
 
 #define int_handler_timer1_begin ISR(TIMER1_OVF_vect) {     \
+    uint8_t _tmp = TCNT1L + (TIMER1_INIT & 0xFF);           \
     TCNT1H = TIMER1_INIT >> 8;                              \
-    TCNT1L = TIMER1_INIT & 0xFF;                            \
+    TCNT1L = _tmp;                                          \
     
 #define int_handler_timer1_end }                            \
 
 #define int_handler_timer2_begin ISR(TIMER2_OVF_vect) {     \
-    TCNT2 = TIMER2_INIT;                                    \
+    TCNT2 += TIMER2_INIT;                                   \
     
 #define int_handler_timer2_end }                            \
 
 // DDRx: 0 - input, 1 - output
 
-#define TX_ACTIVE   ((PINB &= ~_BV(PINB0)) != 0)
-#define FUEL_ACTIVE ((PINB &= ~_BV(PINB1)) == 0)
+#define TX_ACTIVE   ((PINB & _BV(PINB0)) != 0)
+#define FUEL_ACTIVE ((PINB & _BV(PINB1)) == 0)
 
-#define KEY1_PRESSED ((PIND &= ~_BV(PIND6)) == 0)
-#define KEY2_PRESSED ((PIND &= ~_BV(PIND7)) == 0)
+#define KEY1_PRESSED ((PIND & _BV(PIND6)) == 0)
+#define KEY2_PRESSED ((PIND & _BV(PIND7)) == 0)
 
-#define POWER_SUPPLY_ACTIVE ((PINC &= ~_BV(PINC1)) != 0)
+#define POWER_SUPPLY_ACTIVE ((PINC & ~_BV(PINC1)) != 0)
 #define PWR_ON  (PORTC |=  _BV(PORTC0))
 #define PWR_OFF (PORTC &= ~_BV(PORTC0))
 
 #define SND_ON  (PORTD |=  _BV(PORTD4))
 #define SND_OFF (PORTD &= ~_BV(PORTD4))
 
+#define ONEWIRE_CLEAR    (PORTD &= ~_BV(PORTD5))
+#define ONEWIRE_SET      (PORTD |= _BV(PORTD5))
+
+#define ONEWIRE_VALUE(v)                        \
+    if ((v & 0x01) != 0) {                      \
+        ONEWIRE_CLEAR; DDRD &= ~_BV(DDD5);      \
+    } else {                                    \
+        ONEWIRE_CLEAR;                          \
+    }                                           \
+
+#define ONEWIRE_GET      ((PIND & _BV(PIND5)) != 0 ? 1 : 0)
 // configure DS18B20_PIN pin as output
 #define ONEWIRE_OUTPUT   (DDRD |= _BV(DDD5))
 // configure DS18B20_PIN pin as input
-#define ONEWIRE_INPUT    (DDRD &= ~_BV(DDD5))
-#define ONEWIRE_CLEAR    (PORTD &= ~_BV(PORTD5))
-#define ONEWIRE_SET      (PORTD |= _BV(PORTD5))
-#define ONEWIRE_VALUE(v) (v != 0 ? ONEWIRE_SET : ONEWIRE_CLEAR)
-#define ONEWIRE_GET      ((PIND & ~_BV(PIND5)) != 0 ? 1 : 0)
+#define ONEWIRE_INPUT    ONEWIRE_CLEAR; DDRD &= ~_BV(DDD5)
 
 // init values for port's data direction
 #define DDRB_INIT 0

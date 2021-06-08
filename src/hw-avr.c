@@ -55,34 +55,33 @@ void HW_Init(void) {
     // OC0B output: Disconnected
     // Timer Period: 0,051 ms
     TCCR0A = (0 << COM0A1) | (0 << COM0A0) | (0 << COM0B1) | (0 << COM0B0) | (0 << WGM01) | (0 << WGM00);
-    TCCR0B = (0 << WGM02) | (0 << CS02) | (1 << CS01) | (0 << CS00);
+    TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
     TCNT0 = TIMER0_INIT;
     OCR0A = 0x00;
     OCR0B = 0x00;
 
     // Timer/Counter 1 initialization
     // Clock source: System Clock
-    // Clock value: 16000,000 kHz
+    // Clock value: 2000,000 kHz
     // Mode: Normal top=0xFFFF
     // OC1A output: Disconnected
     // OC1B output: Disconnected
     // Noise Canceler: Off
     // Input Capture on Falling Edge
-    // Timer Period: 1 ms
+    // Timer Period: 10 ms
     // Timer1 Overflow Interrupt: On
     // Input Capture Interrupt: Off
     // Compare A Match Interrupt: Off
     // Compare B Match Interrupt: Off
-    TCCR1A = (0 << COM1A1) | (0 << COM1A0) | (0 << COM1B1) | (0 << COM1B0) | (0 << WGM11) | (0 << WGM10);
-    TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (0 << WGM12) | (0 << CS12) | (0 << CS11) | (1 << CS10);
-    TCNT1H = TIMER1_INIT >> 8;
-    TCNT1L = TIMER1_INIT & 0xFF;
-    ICR1H = 0x00;
-    ICR1L = 0x00;
-    OCR1AH = 0x00;
-    OCR1AL = 0x00;
-    OCR1BH = 0x00;
-    OCR1BL = 0x00;
+    TCCR1A=(0<<COM1A1) | (0<<COM1A0) | (0<<COM1B1) | (0<<COM1B0) | (0<<WGM11) | (0<<WGM10);
+    TCCR1B=(0<<ICNC1) | (0<<ICES1) | (0<<WGM13) | (0<<WGM12) | (0<<CS12) | (1<<CS11) | (0<<CS10);
+    TCNT1=TIMER1_INIT;
+    ICR1H=0x00;
+    ICR1L=0x00;
+    OCR1AH=0x00;
+    OCR1AL=0x00;
+    OCR1BH=0x00;
+    OCR1BL=0x00;
 
     // Timer/Counter 2 initialization
     // Clock source: System Clock
@@ -93,10 +92,19 @@ void HW_Init(void) {
     // Timer Period: 0,08 ms
     ASSR = (0 << EXCLK) | (0 << AS2);
     TCCR2A = (0 << COM2A1) | (0 << COM2A0) | (0 << COM2B1) | (0 << COM2B0) | (0 << WGM21) | (0 << WGM20);
-    TCCR2B = (0 << WGM22) | (0 << CS22) | (1 << CS21) | (0 << CS20);
+    TCCR2B = (0 << WGM22) | (0 << CS22) | (0 << CS21) | (0 << CS20);
     TCNT2 = TIMER2_INIT;
     OCR2A = 0x00;
     OCR2B = 0x00;
+
+    // Timer/Counter 0 Interrupt(s) initialization
+    TIMSK0=(0<<OCIE0B) | (0<<OCIE0A) | (1<<TOIE0);
+
+    // Timer/Counter 1 Interrupt(s) initialization
+    TIMSK1=(0<<ICIE1) | (0<<OCIE1B) | (0<<OCIE1A) | (1<<TOIE1);
+
+    // Timer/Counter 2 Interrupt(s) initialization
+    TIMSK2=(0<<OCIE2B) | (0<<OCIE2A) | (1<<TOIE2);
 
     // External Interrupt(s) initialization
     // INT0: Off
@@ -146,10 +154,10 @@ void HW_Init(void) {
 void HW_read_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length) {
     unsigned char i;
     for (i = 0; i < length; i++) {
-#ifdef __PIC_MIDRANGE
+#ifdef __XC8
         *p++ = eeprom_read(ee_addr + i);
 #else
-        *p++ = eeprom_read_byte(&ee_addr + i);
+        *p++ = eeprom_read_byte((uint8_t *) (ee_addr + i));
 #endif
     }
 }
@@ -159,10 +167,10 @@ void HW_write_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned cha
     disable_interrupts();
     unsigned char i;
     for (i = 0; i < length; i++) {
-#ifdef __PIC_MIDRANGE
+#ifdef __XC8
         eeprom_write(ee_addr + i, *p++);
 #else
-        eeprom_write_byte(&ee_addr + i, *p++);
+        eeprom_write_byte((uint8_t *) (ee_addr + i), *p++);
 #endif
     }
     SREG = int_state;

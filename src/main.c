@@ -4,7 +4,6 @@
 * LCD 16x2 with 4 bits
 *********************************************************************************************/
 
-#include <xc.h>
 #include "hw.h"
 #include "locale.h"
 #include <stdbool.h>
@@ -171,12 +170,12 @@ unsigned char key1_counter, key2_counter;
 volatile __bit key1_press, key1_longpress, key2_press, key2_longpress;
 
 // 0.1s flag and counter
-volatile __bit counter_01sec_fl;
 unsigned char counter_01sec;
+volatile __bit counter_01sec_fl;
 
 // main interval
 unsigned char main_interval_counter;
-__bit screen_refresh;
+volatile __bit screen_refresh;
 
 // timeout
 volatile unsigned int timeout_timer;
@@ -213,7 +212,7 @@ unsigned char data_ee_addr;
 
 #ifdef USE_SOUND
 __bit buzzer_fl, buzzer_init_fl, buzzer_snd_fl;
-unsigned char buzzer_counter_r, counter_01sec;
+unsigned char buzzer_counter_r;
 unsigned char buzzer_counter;
 
 typedef struct {

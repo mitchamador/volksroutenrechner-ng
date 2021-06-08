@@ -6,3 +6,6 @@ build/*
 dist/*
 proteus/*.pdsbak
 proteus/*.workspace
+.pio/*
+.history/*
+.vscode/*
