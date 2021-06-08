@@ -3,7 +3,7 @@
     <type>com.microchip.mplab.nbide.embedded.makeproject</type>
     <configuration>
         <data xmlns="http://www.netbeans.org/ns/make-project/1">
-            <name>pic16f876a-xc8</name>
+            <name>volksroutenrechner-ng</name>
             <creation-uuid>45f8b258-3456-45d9-b51d-bb95ff15308e</creation-uuid>
             <make-project-type>0</make-project-type>
             <c-extensions>c</c-extensions>
