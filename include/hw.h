@@ -202,7 +202,7 @@
 
 #define stop_timer_fuel()  TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
 
-#define start_timer_taho() TCCR2B = (0 << WGM22) | (0 << CS22) | (1 << CS21) | (0 << CS20);
+#define start_timer_taho() TCNT2 = 0; TCCR2B = (0 << WGM22) | (0 << CS22) | (1 << CS21) | (0 << CS20);
 
 #define stop_timer_taho()  TCCR2B = (0 << WGM22) | (0 << CS22) | (0 << CS21) | (0 << CS20);
 
@@ -214,12 +214,6 @@
 #define disable_interrupts() cli();
 #endif
 
-// 0x9A
-#define TIMER0_INIT 0x9A
-#define TIMER1_INIT 0xB1E0
-// 0x60
-#define TIMER2_INIT 0x60
-
 #define int_handler_GLOBAL_begin
 
 #define int_handler_GLOBAL_end
@@ -228,20 +222,15 @@
 
 #define int_handler_fuel_speed_end }                        \
 
-#define int_handler_timer0_begin ISR(TIMER0_OVF_vect) {     \
-    TCNT0 += TIMER0_INIT;                                   \
+#define int_handler_timer0_begin ISR(TIMER0_COMPA_vect) {     \
     
 #define int_handler_timer0_end }                            \
 
-#define int_handler_timer1_begin ISR(TIMER1_OVF_vect) {     \
-    uint8_t _tmp = TCNT1L + (TIMER1_INIT & 0xFF);           \
-    TCNT1H = TIMER1_INIT >> 8;                              \
-    TCNT1L = _tmp;                                          \
+#define int_handler_timer1_begin ISR(TIMER1_COMPA_vect) {     \
     
 #define int_handler_timer1_end }                            \
 
-#define int_handler_timer2_begin ISR(TIMER2_OVF_vect) {     \
-    TCNT2 += TIMER2_INIT;                                   \
+#define int_handler_timer2_begin ISR(TIMER2_COMPA_vect) {     \
     
 #define int_handler_timer2_end }                            \
 
