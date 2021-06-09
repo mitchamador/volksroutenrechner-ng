@@ -866,7 +866,7 @@ void print_taho(bool right_align) {
         motor_fl = 0;
     }
 
-    if (taho == 0) {
+    if (taho == 0 || motor_fl == 0) {
         memcpy(buf, &empty_string, 4);
         len = 4;
     } else {
