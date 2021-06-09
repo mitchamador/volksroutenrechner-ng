@@ -4,6 +4,7 @@ nbproject/*.bash
 nbproject/private/*
 build/*
 dist/*
+proteus/*/*
 proteus/*.pdsbak
 proteus/*.workspace
 .pio/*
