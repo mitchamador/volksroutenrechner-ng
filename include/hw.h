@@ -70,14 +70,20 @@
 
 
 // PORTA definitions (analog input)
-#define POWER_SUPPLY PORTAbits.RA1
-#define POWER_SUPPLY_MASK (1 << _PORTA_RA1_POSITION)
-#define POWER_SUPPLY_TRIS (1 << _TRISA_TRISA1_POSITION)
-// A/D channel
-#define POWER_SUPPLY_ADCON0 ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#define POWER_SUPPLY PORTAbits.RA0
+#define POWER_SUPPLY_TRIS (1 << _TRISA_TRISA0_POSITION)
+#if defined(_16F876A)
+#define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
+#define power_supply_read_digital() ADCON1 = (0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION)
+#define power_supply_read_analog() ADCON1 = (1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (0 << _ADCON1_PCFG2_POSITION) | (0 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION)
+#else
+#define ADCON0_INIT ((0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
+#define power_supply_read_digital() ANSELA = 0
+#define power_supply_read_analog() ANSELA = (1 << _ANSELA_ANSA0_POSITION)
+#endif
 
-#define PWR PORTAbits.RA0
-#define PWR_MASK  (1 << _PORTA_RA0_POSITION)
+#define PWR PORTAbits.RA4
+#define PWR_MASK  (1 << _PORTA_RA4_POSITION)
 
 // PORTB definitions
 // key1 and key2 (active zero)
@@ -111,10 +117,13 @@
 #define PORTB_INIT 0
 #define PORTC_INIT 0
 
-// timer1 overflow 10ms
-#define TIMER1_VALUE (65536 - 6250)
+// timer1 compare 10ms
+#define TIMER1_VALUE 6250
 
 /* ======================================= */
+
+#define adc_read_value() ((uint16_t) (ADRESH << 8) | ADRESL)
+#define adc_start()      GO_DONE = 1
 
 #define start_timer_fuel() T0CS = 0
 #define stop_timer_fuel() T0CS = 1
@@ -153,12 +162,11 @@
 
 #define int_handler_timer1_begin                           \
     /* Timer1 interrupt */                                 \
-    if (/*TMR1IE && */TMR1IF) {                            \
-        TMR1 = TIMER1_VALUE;                               \
+    if (/*CCP1IE && */CCP1IF) {                            \
         
 #define int_handler_timer1_end                             \
         /* Reset the interrupt flag */                     \
-        TMR1IF = 0;                                        \
+        CCP1IF = 0;                                        \
     }                                                      \
 
 #define int_handler_timer2_begin                           \
@@ -168,6 +176,15 @@
 #define int_handler_timer2_end                             \
         /* Reset the interrupt flag */                     \
         TMR2IF = 0;                                        \
+    }                                                      \
+
+#define int_handler_adc_begin                              \
+    /* ADC interrupt */                                    \
+    if (/*ADIE && */ADIF) {                                \
+    
+#define int_handler_adc_end                                \
+        /* Reset the interrupt flag */                     \
+        ADIF = 0;                                          \
     }                                                      \
 
 #define TX_ACTIVE   (TX == 1)
@@ -195,8 +212,17 @@
 
 #elif defined(__AVR_ATMEGA)
 
-
 #define __bit unsigned char
+#define __bank0
+#define __bank1
+#define __bank2
+#define __bank3
+
+#define adc_read_value() (ADCW)
+#define adc_start()      (ADCSRA|=(1<<ADSC))
+
+#define power_supply_read_digital()
+#define power_supply_read_analog()
 
 #define start_timer_fuel() TCCR0B = (0 << WGM02) | (0 << CS02) | (1 << CS01) | (0 << CS00);
 
@@ -222,17 +248,21 @@
 
 #define int_handler_fuel_speed_end }                        \
 
-#define int_handler_timer0_begin ISR(TIMER0_COMPA_vect) {     \
+#define int_handler_timer0_begin ISR(TIMER0_COMPA_vect) {   \
     
 #define int_handler_timer0_end }                            \
 
-#define int_handler_timer1_begin ISR(TIMER1_COMPA_vect) {     \
+#define int_handler_timer1_begin ISR(TIMER1_COMPA_vect) {   \
     
 #define int_handler_timer1_end }                            \
 
-#define int_handler_timer2_begin ISR(TIMER2_COMPA_vect) {     \
+#define int_handler_timer2_begin ISR(TIMER2_COMPA_vect) {   \
     
 #define int_handler_timer2_end }                            \
+
+#define int_handler_adc_begin ISR(ADC_vect) {               \
+    
+#define int_handler_adc_end }                               \
 
 // DDRx: 0 - input, 1 - output
 
@@ -277,7 +307,6 @@
 
 #endif
 
-uint16_t HW_adc_read(void);
 void HW_Init(void);
 void HW_read_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length);
 void HW_write_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length);

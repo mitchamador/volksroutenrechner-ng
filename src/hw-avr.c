@@ -3,21 +3,9 @@
 
 #if defined(__AVR_ATMEGA)
 #include <avr/eeprom.h>
+
 // Voltage Reference: AVCC pin
 #define ADC_VREF_TYPE ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR))
-
-uint16_t HW_adc_read() {
-    // MUX3..MUX0 = 0001 // ADC1 channel
-    ADMUX=1 | ADC_VREF_TYPE;
-    // Delay needed for the stabilization of the ADC input voltage
-    delay_us(10);
-    // Start the AD conversion
-    ADCSRA|=(1<<ADSC);
-    // Wait for the AD conversion to complete
-    while ((ADCSRA & (1<<ADIF))==0);
-    ADCSRA|=(1<<ADIF);
-    return ADCW;
-}
 
 void HW_Init(void) {
 
@@ -138,11 +126,11 @@ void HW_Init(void) {
     // ADC Clock frequency: 1000,000 kHz
     // ADC Voltage Reference: AVCC pin
     // ADC Auto Trigger Source: ADC Stopped
-    // Digital input buffers on ADC0: On, ADC1: On, ADC2: On, ADC3: On
-    // ADC4: On, ADC5: On
+    // Digital input buffers on ADC0: On, ADC1: On, ADC2: On, ADC3: On, ADC4: On, ADC5: On
+    // ADC interrupt on
     DIDR0 = (0 << ADC5D) | (0 << ADC4D) | (0 << ADC3D) | (0 << ADC2D) | (0 << ADC1D) | (0 << ADC0D);
-    ADMUX = ADC_VREF_TYPE;
-    ADCSRA = (1 << ADEN) | (0 << ADSC) | (0 << ADATE) | (0 << ADIF) | (0 << ADIE) | (1 << ADPS2) | (0 << ADPS1) | (0 << ADPS0);
+    ADMUX = ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR) | (0 << MUX3) | (0 << MUX2) | (0 << MUX1) | (1 << MUX0));
+    ADCSRA = (1 << ADEN) | (0 << ADSC) | (0 << ADATE) | (0 << ADIF) | (1 << ADIE) | (1 << ADPS2) | (0 << ADPS1) | (0 << ADPS0);
     ADCSRB = (0 << ADTS2) | (0 << ADTS1) | (0 << ADTS0);
 
     // SPI initialization

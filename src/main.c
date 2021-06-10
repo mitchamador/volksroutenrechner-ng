@@ -166,8 +166,9 @@ __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
 //========================================================================================
 
 // key variables and flags
-unsigned char key1_counter, key2_counter;
+unsigned char key1_counter, key2_counter, shutdown_counter;
 volatile __bit key1_press, key1_longpress, key2_press, key2_longpress;
+//unsigned char adc_counter;
 
 // 0.1s flag and counter
 unsigned char counter_01sec;
@@ -187,17 +188,17 @@ volatile __bit temperature_fl, temperature_conv_fl;
 #endif
 
 // misc flags
-volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl;
+volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, shutdown_fl;
 
 // speed100 flags and variables
 volatile __bit speed100_fl, speed100_ok_fl, speed100_timer_fl;
 volatile unsigned short speed100_const, speed100_timer;
 
-volatile unsigned short kmh_temp, kmh;
-volatile unsigned short fuel_tmp, fuel;
-volatile unsigned short taho_tmp, taho;
+unsigned short kmh_tmp, fuel_tmp, taho_tmp/*, adc_tmp*/;
+volatile unsigned short kmh, fuel, taho, adc;
 
-unsigned short speed;
+// xc8 handmade optimization
+__bank3 unsigned short speed;
 
 #ifdef USE_DS18B20
 // ds18b20 temperatures and eeprom pointer
@@ -211,7 +212,7 @@ unsigned char data_ee_addr;
 #endif
 
 #ifdef USE_SOUND
-__bit buzzer_fl, buzzer_init_fl, buzzer_snd_fl;
+__bit buzzer_fl, buzzer_init_fl, buzzer_snd_fl, buzzer_repeat_fl;
 unsigned char buzzer_counter_r;
 unsigned char buzzer_counter;
 
@@ -381,16 +382,16 @@ int_handler_GLOBAL_begin
                         }
                     }
                     if (speed100_fl == 0) {
-                        // start timer2
-                        taho_tmp = 0;
+                        // start timer2 
+                       taho_tmp = 0;
                         start_timer_taho();
                         speed100_fl = 1;
                     }
                 }
 
-                kmh_temp++;
+                kmh_tmp++;
 
-                // handmade xc8 optimizing
+                // xc8 handmade optimization
                 unsigned short config_odo_const = config.odo_const;
                 
                 // main odometer
@@ -431,7 +432,7 @@ int_handler_GLOBAL_begin
             
         fuel_tmp++;
         
-        // handmade xc8 optimizing
+        // xc8 handmade optimization
         unsigned char fuel1_const_b3 = fuel1_const;
         unsigned char config_fuel_const = config.fuel_const;
         
@@ -462,6 +463,19 @@ int_handler_GLOBAL_begin
     int_handler_timer0_end
 
     int_handler_timer1_begin
+
+        // read power supply status
+        power_supply_read_digital();
+        if (POWER_SUPPLY_ACTIVE) {
+            shutdown_counter = 0;
+        } else {
+            if (++shutdown_counter == 8) {
+                shutdown_fl = 1;
+            }
+        }
+        power_supply_read_analog();
+        adc_start();
+            
         if (KEY1_PRESSED) // key pressed
         {
             if (key1_counter <= LONGKEY) {
@@ -523,8 +537,8 @@ int_handler_GLOBAL_begin
              // copy temp interval variables to main
              fuel = fuel_tmp;
              fuel_tmp = 0;
-             kmh = kmh_temp;
-             kmh_temp = 0;
+             kmh = kmh_tmp;
+             kmh_tmp = 0;
              
              // increase time counters
              if (motor_fl == 1 || drive_fl == 1) {
@@ -560,33 +574,33 @@ int_handler_GLOBAL_begin
             if (buzzer_fl == 1) {
                 if (buzzer_init_fl == 0) {
                     buzzer_init_fl = 1;
-                    buzzer_counter_r = buzzer_mode->counter;
-                    buzzer_snd_fl = 1;
-                    buzzer_counter = buzzer_mode->sound;
+                    buzzer_repeat_fl = 1;
+                    buzzer_counter_r = buzzer_mode->counter + 1;
+                }
+                
+                if (buzzer_repeat_fl == 1) {
+                    buzzer_repeat_fl = 0;
+                    if (--buzzer_counter_r > 0) {
+                        buzzer_snd_fl = 1;
+                        buzzer_counter = buzzer_mode->sound;
+                    } else {
+                        buzzer_fl = 0;
+                        buzzer_init_fl = 0;
+                    }
                 }
         
                 if (buzzer_snd_fl == 1) {
                     if (buzzer_counter == 0) {
                         buzzer_snd_fl = 0;
-                        buzzer_counter = buzzer_mode->pause;
-                    } else {
-                        SND_ON;
-                    }
+                        buzzer_counter = buzzer_mode->pause - 1;
+                    } 
+                    SND_ON;
                 }  
                 if (buzzer_snd_fl == 0) {
                     if (buzzer_counter == 0) {
-                        if (--buzzer_counter_r > 0) {
-                            buzzer_snd_fl = 1;
-                            buzzer_counter = buzzer_mode->sound;
-                            SND_ON;
-                        } else {
-                            buzzer_init_fl = 0;
-                            buzzer_fl = 0;
-                        }
+                        buzzer_repeat_fl = 1;
                     }
-                    if (buzzer_snd_fl == 0) {
-                        SND_OFF;
-                    }
+                    SND_OFF;
                 }
                 buzzer_counter--;
             }
@@ -611,6 +625,16 @@ int_handler_GLOBAL_begin
         }
     int_handler_timer2_end    
 
+    int_handler_adc_begin
+//        adc_tmp += adc_read_value();
+//        if (--adc_counter == 0) {
+//            adc_counter = 8;
+//            adc = adc_tmp;
+//            adc_tmp = 0;
+//        }
+        adc = adc_read_value();
+    int_handler_adc_end
+    
 int_handler_GLOBAL_end
 
 void _LCD_Init(void) {
@@ -934,8 +958,7 @@ void print_temp(unsigned char index, bool header, bool right_align) {
 #endif
 
 void print_voltage(bool right_align) {
-    uint16_t adc_voltage = HW_adc_read();
-    len = get_fractional_string(buf, (unsigned short) adc_voltage * 30UL / config.vcc_const);
+    len = get_fractional_string(buf, (unsigned short) (adc << 5) / config.vcc_const);
     buf[len++] = VOLT_SYMBOL;
     LCD_Write_String8(buf, len, right_align);
 }
@@ -1059,8 +1082,16 @@ void screen_main(void) {
 
         speed100_fl = 0; speed100_ok_fl = 0; speed100_timer = 0;
 
+        unsigned char _speed100_skip_pulses = 8; // skip some pulses from speed sensor before start acceleration measurement
+        
         while (timeout == 0 && speed100_ok_fl == 0 && key1_press == 0 && key2_press == 0) {
-            if (drive_fl == 1) {
+            if (_speed100_skip_pulses != 0) {
+                if (drive_fl == 1) {
+                    drive_fl = 0;
+                    _speed100_skip_pulses--;
+                }
+            } else {
+                
                 if (speed100_timer_fl == 0) {
                     speed100_timer_fl = 1;
                     LCD_CMD(0xC0);
@@ -1069,8 +1100,7 @@ void screen_main(void) {
 
                 print_speed100();
 
-                counter_01sec_fl = 0;
-                while (counter_01sec_fl == 0);
+                counter_01sec_fl = 0; while (counter_01sec_fl == 0);
             }
         }
         speed100_timer_fl = 0;
@@ -1802,11 +1832,8 @@ void main() {
         screen_refresh = 0;
 
         // check power
-        if (!POWER_SUPPLY_ACTIVE) {
-            delay_us(40);
-            if (!POWER_SUPPLY_ACTIVE) {
-                power_off();
-            }
+        if (shutdown_fl) {
+            power_off();
         }
 
         if (service_mode == 0) {

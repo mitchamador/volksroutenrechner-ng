@@ -3,41 +3,6 @@
 
 #if defined(__PIC_MIDRANGE)
 
-uint16_t HW_adc_read() {
-#if defined(_16F1936)
-    // Right justified, A/D conversion clock Fosc/32, A/D Negative - Vss, A/D Positive - Vdd
-	ADCON1 = (1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADCS1_POSITION) | (0 << _ADCON1_ADCS0_POSITION) |
-            (0 << _ADCON1_ADNREF_POSITION) | (0 << _ADCON1_ADPREF1_POSITION) | (0 << _ADCON1_ADPREF0_POSITION);
-#elif defined(_16F876A)
-    // ADC set all ports to analog, right justified
-	ADCON1 = (1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (0 << _ADCON1_PCFG2_POSITION) | (0 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION);
-#endif
-    
-#if defined(_16F1936)
-    // use AN1
-    ADCON0 = (0 << _ADCON0_CHS3_POSITION) | POWER_SUPPLY_ADCON0;
-#elif defined(_16F876A)
-    // use AN1, A/D conversion clock Fosc/32
-    ADCON0 = (1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION) | POWER_SUPPLY_ADCON0;
-#endif
-    
-    ADON = 1;
-    __delay_us(20);
-    
-    GO_DONE = 1;
-    while (GO_DONE == 1);
-    
-    ADON = 0;
-
-#if defined(_16F876A)    
-    // ADC set all ports to digital
-	ADCON1 = (0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION);
-#endif
-    
-    return (uint16_t) (ADRESH << 8) | ADRESL;
-}
-
-
 void HW_Init(void) {
 
     // set port's data directions and init values
@@ -51,31 +16,30 @@ void HW_Init(void) {
     TRISC = TRISC_INIT;
     PORTC = PORTC_INIT;
     
-#if defined(_16F876A)
-    // ADC set all ports to digital
-	ADCON1 = (0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION);
-#endif
-    // timer 0 init
-    TMR0 = 0;
+    TMR0 = 0; TMR1 = 0; CCP1CON = 0; PIE1 = 0; PIR1 = 0;
 
+    // timer 0 init
     OPTION_REG = (1 << _OPTION_REG_nRBPU_POSITION) | (1 << _OPTION_REG_T0CS_POSITION) | (1 << _OPTION_REG_T0SE_POSITION) | (1 << _OPTION_REG_PSA_POSITION) \
                  | (0 << _OPTION_REG_PS2_POSITION) | (0 << _OPTION_REG_PS1_POSITION) | (0 << _OPTION_REG_PS0_POSITION);
 
-    // timer 1 init (prescaler 1:8, timer on), overflow interrupt 10ms
+    // timer 1 init (prescaler 1:8, timer on), ccp1 init (compare special event trigger 10ms)
+    CCP1CON = (1 << _CCP1CON_CCP1M3_POSITION) | (0 << _CCP1CON_CCP1M2_POSITION) | (1 << _CCP1CON_CCP1M1_POSITION) | (1 << _CCP1CON_CCP1M0_POSITION);
+    CCPR1 = TIMER1_VALUE;
     T1CON = (1 << _T1CON_T1CKPS1_POSITION) | (1 << _T1CON_T1CKPS0_POSITION) | (1 << _T1CON_TMR1ON_POSITION);
-    TMR1 = TIMER1_VALUE;
     
     // timer 2 init (prescaler 1:4), overflow interrupt 80us
     T2CON = ((0 << _T2CON_TMR2ON_POSITION) | (0 << _T2CON_T2CKPS1_POSITION) | (1 << _T2CON_T2CKPS0_POSITION));
     PR2 = 100 - 1;
     
-    // timer 1,2 interrupt enable
-    PIE1 = (1 << _PIE1_TMR2IE_POSITION) | (1 << _PIE1_TMR1IE_POSITION);
- 
-    PIR1 = 0;
+    // timer 2 overflow interrupt enable, ccp1 interrupt enable, adc interrupt
+    PIE1 = (1 << _PIE1_ADIE_POSITION)| (1 << _PIE1_CCP1IE_POSITION) | (1 << _PIE1_TMR2IE_POSITION);
     
-    // enable tmr0 interrupt, peripheral interrupt, pinb change interrupt
+    // enable timer0 overflow interrupt, peripheral interrupt, pinb change interrupt
     INTCON = (1 << _INTCON_T0IE_POSITION) | (1 << _INTCON_PEIE_POSITION) | (1 << _INTCON_RBIE_POSITION);
+    
+    // init ADC
+    ADCON0 = ADCON0_INIT;
+    ADON = 1;
     
     I2C_Master_Init();
 }
