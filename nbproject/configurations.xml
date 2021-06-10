@@ -46,7 +46,7 @@
         <targetDevice>PIC16F876A</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>noID</platformTool>
+        <platformTool>VSMViewerPlatformTool</platformTool>
         <languageToolchain>XC8</languageToolchain>
         <languageToolchainVersion>2.32</languageToolchainVersion>
         <platform>3</platform>
@@ -110,7 +110,7 @@
         <property key="use-iar" value="false"/>
         <property key="verbose" value="false"/>
         <property key="warning-level" value="-3"/>
-        <property key="what-to-do" value="ignore"/>
+        <property key="what-to-do" value="require"/>
       </HI-TECH-COMP>
       <HI-TECH-LINK>
         <property key="additional-options-checksum" value=""/>
