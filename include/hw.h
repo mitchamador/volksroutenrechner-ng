@@ -123,7 +123,6 @@
 /* ======================================= */
 
 #define adc_read_value() ((uint16_t) (ADRESH << 8) | ADRESL)
-#define adc_start()      GO_DONE = 1
 
 #define start_timer_fuel() T0CS = 0
 #define stop_timer_fuel() T0CS = 1
@@ -132,6 +131,8 @@
                            TMR2ON = 1
 
 #define stop_timer_taho() TMR2ON = 0
+
+#define start_timer1() TMR1ON = 1
 
 #define enable_interrupts() ei();
 #define disable_interrupts() di();
@@ -162,11 +163,11 @@
 
 #define int_handler_timer1_begin                           \
     /* Timer1 interrupt */                                 \
-    if (/*CCP1IE && */CCP1IF) {                            \
+    if (/*CCP1IE && */CCP2IF) {                            \
         
 #define int_handler_timer1_end                             \
         /* Reset the interrupt flag */                     \
-        CCP1IF = 0;                                        \
+        CCP2IF = 0;                                        \
     }                                                      \
 
 #define int_handler_timer2_begin                           \
@@ -219,7 +220,6 @@
 #define __bank3
 
 #define adc_read_value() (ADCW)
-#define adc_start()      (ADCSRA|=(1<<ADSC))
 
 #define power_supply_read_digital()
 #define power_supply_read_analog()
@@ -231,6 +231,8 @@
 #define start_timer_taho() TCNT2 = 0; TCCR2B = (0 << WGM22) | (0 << CS22) | (1 << CS21) | (0 << CS20);
 
 #define stop_timer_taho()  TCCR2B = (0 << WGM22) | (0 << CS22) | (0 << CS21) | (0 << CS20);
+
+#define start_timer1() TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (1 << CS11) | (0 << CS10);
 
 #ifdef __XC8
 #define enable_interrupts() ei();

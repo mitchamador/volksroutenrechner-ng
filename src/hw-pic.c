@@ -16,23 +16,25 @@ void HW_Init(void) {
     TRISC = TRISC_INIT;
     PORTC = PORTC_INIT;
     
-    TMR0 = 0; TMR1 = 0; CCP1CON = 0; PIE1 = 0; PIR1 = 0;
+    TMR0 = 0; TMR1 = 0; CCP1CON = 0; PIE1 = 0; PIR1 = 0; PIR2 = 0;
 
     // timer 0 init
     OPTION_REG = (1 << _OPTION_REG_nRBPU_POSITION) | (1 << _OPTION_REG_T0CS_POSITION) | (1 << _OPTION_REG_T0SE_POSITION) | (1 << _OPTION_REG_PSA_POSITION) \
                  | (0 << _OPTION_REG_PS2_POSITION) | (0 << _OPTION_REG_PS1_POSITION) | (0 << _OPTION_REG_PS0_POSITION);
 
-    // timer 1 init (prescaler 1:8, timer on), ccp1 init (compare special event trigger 10ms)
-    CCP1CON = (1 << _CCP1CON_CCP1M3_POSITION) | (0 << _CCP1CON_CCP1M2_POSITION) | (1 << _CCP1CON_CCP1M1_POSITION) | (1 << _CCP1CON_CCP1M0_POSITION);
-    CCPR1 = TIMER1_VALUE;
+    // timer 1 init (prescaler 1:8, timer on), ccp2 init (compare special event trigger 10ms + start adc)
+    CCP2CON = (1 << _CCP2CON_CCP2M3_POSITION) | (0 << _CCP2CON_CCP2M2_POSITION) | (1 << _CCP2CON_CCP2M1_POSITION) | (1 << _CCP2CON_CCP2M0_POSITION);
+    CCPR2 = TIMER1_VALUE;
     T1CON = (1 << _T1CON_T1CKPS1_POSITION) | (1 << _T1CON_T1CKPS0_POSITION) | (1 << _T1CON_TMR1ON_POSITION);
     
     // timer 2 init (prescaler 1:4), overflow interrupt 80us
     T2CON = ((0 << _T2CON_TMR2ON_POSITION) | (0 << _T2CON_T2CKPS1_POSITION) | (1 << _T2CON_T2CKPS0_POSITION));
     PR2 = 100 - 1;
     
-    // timer 2 overflow interrupt enable, ccp1 interrupt enable, adc interrupt
-    PIE1 = (1 << _PIE1_ADIE_POSITION)| (1 << _PIE1_CCP1IE_POSITION) | (1 << _PIE1_TMR2IE_POSITION);
+    // timer 2 overflow interrupt enable, adc interrupt
+    PIE1 = (1 << _PIE1_ADIE_POSITION)| (1 << _PIE1_TMR2IE_POSITION);
+    // ccp2 compare interrupt enable
+    PIE2 = (1 << _PIE2_CCP2IE_POSITION);
     
     // enable timer0 overflow interrupt, peripheral interrupt, pinb change interrupt
     INTCON = (1 << _INTCON_T0IE_POSITION) | (1 << _INTCON_PEIE_POSITION) | (1 << _INTCON_RBIE_POSITION);

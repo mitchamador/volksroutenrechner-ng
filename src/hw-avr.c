@@ -7,6 +7,10 @@
 // Voltage Reference: AVCC pin
 #define ADC_VREF_TYPE ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR))
 
+ISR(TIMER1_COMPB_vect) {
+    // clear OCF1B for ADC Auto Trigger
+}
+
 void HW_Init(void) {
 
     // Input/Output Ports initialization
@@ -60,17 +64,17 @@ void HW_Init(void) {
     // Timer1 Overflow Interrupt: Off
     // Input Capture Interrupt: Off
     // Compare A Match Interrupt: On
-    // Compare B Match Interrupt: Off
+    // Compare B Match Interrupt: On
     TCCR1A = (0 << COM1A1) | (0 << COM1A0) | (0 << COM1B1) | (0 << COM1B0) | (0 << WGM11) | (0 << WGM10);
-    TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (1 << CS11) | (0 << CS10);
+    TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (0 << CS11) | (0 << CS10);
     TCNT1H = 0x00;
     TCNT1L = 0x00;
     ICR1H = 0x00;
     ICR1L = 0x00;
     OCR1AH = 0x4E;
     OCR1AL = 0x1F;
-    OCR1BH = 0x00;
-    OCR1BL = 0x00;
+    OCR1BH = 0x4E;
+    OCR1BL = 0x1F;
 
     // Timer/Counter 2 initialization
     // Clock source: System Clock
@@ -90,7 +94,7 @@ void HW_Init(void) {
     TIMSK0 = (0 << OCIE0B) | (1 << OCIE0A) | (0 << TOIE0);
 
     // Timer/Counter 1 Interrupt(s) initialization
-    TIMSK1 = (0 << ICIE1) | (0 << OCIE1B) | (1 << OCIE1A) | (0 << TOIE1);
+    TIMSK1 = (0 << ICIE1) | (1 << OCIE1B) | (1 << OCIE1A) | (0 << TOIE1);
 
     // Timer/Counter 2 Interrupt(s) initialization
     TIMSK2 = (0 << OCIE2B) | (1 << OCIE2A) | (0 << TOIE2);
@@ -125,13 +129,13 @@ void HW_Init(void) {
     // ADC initialization
     // ADC Clock frequency: 1000,000 kHz
     // ADC Voltage Reference: AVCC pin
-    // ADC Auto Trigger Source: ADC Stopped
+    // ADC Auto Trigger Source: Timer/Counter1 compare match B
     // Digital input buffers on ADC0: On, ADC1: On, ADC2: On, ADC3: On, ADC4: On, ADC5: On
     // ADC interrupt on
     DIDR0 = (0 << ADC5D) | (0 << ADC4D) | (0 << ADC3D) | (0 << ADC2D) | (0 << ADC1D) | (0 << ADC0D);
     ADMUX = ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR) | (0 << MUX3) | (0 << MUX2) | (0 << MUX1) | (1 << MUX0));
-    ADCSRA = (1 << ADEN) | (0 << ADSC) | (0 << ADATE) | (0 << ADIF) | (1 << ADIE) | (1 << ADPS2) | (0 << ADPS1) | (0 << ADPS0);
-    ADCSRB = (0 << ADTS2) | (0 << ADTS1) | (0 << ADTS0);
+    ADCSRA = (1 << ADEN) | (1 << ADSC) | (1 << ADATE) | (0 << ADIF) | (1 << ADIE) | (1 << ADPS2) | (0 << ADPS1) | (0 << ADPS0);
+    ADCSRB = (1 << ADTS2) | (0 << ADTS1) | (1 << ADTS0);
 
     // SPI initialization
     // SPI disabled

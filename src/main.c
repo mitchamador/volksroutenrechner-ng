@@ -464,18 +464,6 @@ int_handler_GLOBAL_begin
 
     int_handler_timer1_begin
 
-        // read power supply status
-        power_supply_read_digital();
-        if (POWER_SUPPLY_ACTIVE) {
-            shutdown_counter = 0;
-        } else {
-            if (++shutdown_counter == 8) {
-                shutdown_fl = 1;
-            }
-        }
-        power_supply_read_analog();
-        adc_start();
-            
         if (KEY1_PRESSED) // key pressed
         {
             if (key1_counter <= LONGKEY) {
@@ -633,6 +621,18 @@ int_handler_GLOBAL_begin
 //            adc_tmp = 0;
 //        }
         adc = adc_read_value();
+    
+        // read power supply status
+        power_supply_read_digital();
+        if (POWER_SUPPLY_ACTIVE) {
+            shutdown_counter = 0;
+        } else {
+            if (++shutdown_counter == 8) {
+                shutdown_fl = 1;
+            }
+        }
+        power_supply_read_analog();
+        
     int_handler_adc_end
     
 int_handler_GLOBAL_end
@@ -1820,7 +1820,8 @@ void main() {
         LCD_Write_String8(buf, strcpy2(buf, (char *) &service_menu_title, 0), false);
         while (KEY1_PRESSED);
     }
-    
+
+    start_timer1();
     enable_interrupts();
     
     if (service_mode == 0) {
