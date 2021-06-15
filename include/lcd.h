@@ -1,7 +1,8 @@
 #ifndef _LCD_H
 #define _LCD_H
 
-#include <stdbool.h>
+#include "hw.h"
+
 
 #pragma warning disable 520
 
@@ -34,9 +35,22 @@
 #define LCD_FUNCTION_SET       0x20
 #define LCD_TYPE               2       // 0 -> 5x7 | 1 -> 5x10 | 2 -> 2 lines
 
+typedef enum {
+    LCD_ALIGN_NONE = 0,
+    LCD_ALIGN_LEFT = 0,
+    LCD_ALIGN_RIGHT,
+    LCD_ALIGN_CENTER
+} align_t;
+
 //-----------[ Functions' Prototypes ]--------------
 
 //---[ LCD Routines ]---
+
+// eliminate possible stack overflow for PIC_MIDRANGE (+ ~50 bytes)
+#ifdef __PIC_MIDRANGE
+#define LCD_Write_String8(Str, len, align) __LCD_Write_String(Str, len, 8, align)
+#define LCD_Write_String16(Str, len, align) __LCD_Write_String(Str, len, 16, align)
+#endif
 
 void LCD_Init(unsigned char I2C_Add);
 void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode);
@@ -45,11 +59,15 @@ void LCD_Set_Cursor(unsigned char ROW, unsigned char COL);
 void LCD_Write_Char(char);
 void LCD_Write_String(char*);
 void LCD_Write_String_Len(char* Str, unsigned char len);
-void __LCD_Write_String(char*, unsigned char, unsigned char, bool);
-void LCD_Write_String8(char*, unsigned char, bool);
-void LCD_Write_String16(char*, unsigned char, bool);
-void LCD_Write_String0_8(char*, bool);
-void LCD_Write_String0_16(char*, bool);
+void __LCD_Write_String(char*, unsigned char, unsigned char, align_t);
+#ifndef LCD_Write_String8
+void LCD_Write_String8(char*, unsigned char, align_t);
+#endif
+#ifndef LCD_Write_String16
+void LCD_Write_String16(char*, unsigned char, align_t);
+#endif
+void LCD_Write_String0_8(char*, align_t);
+void LCD_Write_String0_16(char*, align_t);
 void Backlight(void);
 void noBacklight(void);
 void LCD_SR(void);

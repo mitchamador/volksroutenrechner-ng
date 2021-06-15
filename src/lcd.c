@@ -98,24 +98,28 @@ void LCD_Write_String_Len(char* Str, unsigned char len) {
     }
 }
 
-void __LCD_Write_String(char* Str, unsigned char len, unsigned char max, bool right_align) {
+void __LCD_Write_String(char* Str, unsigned char len, unsigned char max, align_t align) {
     unsigned char i;
-    if (right_align) {
-        for (i = len; i < max; i++) {
-            //LCD_Write_Char(' ');
+    unsigned char p = 0;
+    if (align == LCD_ALIGN_RIGHT || align == LCD_ALIGN_CENTER) {
+        p = (max - len);
+        if (align == LCD_ALIGN_CENTER) {
+            p = p >> 1;
+        }
+        for (i = 0; i < p; i++) {
             LCD_Write_4Bit(' ' & 0xF0, RS);
             LCD_Write_4Bit((' ' << 4) & 0xF0, RS);
         }
     }
 
     for (i = 0; i < len; i++) {
-        //LCD_Write_Char(Str[i]);
         LCD_Write_4Bit(Str[i] & 0xF0, RS);
         LCD_Write_4Bit((Str[i] << 4) & 0xF0, RS);
     }
 
-    if (!right_align) {
-        while (++len <= max) {
+    if (align == LCD_ALIGN_LEFT || align == LCD_ALIGN_CENTER) {
+        p += len;
+        while (++p <= max) {
             //LCD_Write_Char(' ');
             LCD_Write_4Bit(' ' & 0xF0, RS);
             LCD_Write_4Bit((' ' << 4) & 0xF0, RS);
@@ -123,30 +127,34 @@ void __LCD_Write_String(char* Str, unsigned char len, unsigned char max, bool ri
     }
 }
 
-void LCD_Write_String8(char* Str, unsigned char len, bool right_align) {
-    __LCD_Write_String(Str, len, 8, right_align);
+#ifndef LCD_Write_String8
+void LCD_Write_String8(char* Str, unsigned char len, align_t align) {
+    __LCD_Write_String(Str, len, 8, align);
 }
+#endif
 
-void LCD_Write_String16(char* Str, unsigned char len, bool right_align) {
-    __LCD_Write_String(Str, len, 16, right_align);
+#ifndef LCD_Write_String16
+void LCD_Write_String16(char* Str, unsigned char len, align_t align) {
+    __LCD_Write_String(Str, len, 16, align);
 }
+#endif
 
-void LCD_Write_String0_8(char* Str, bool right_align) {
+void LCD_Write_String0_8(char* Str, align_t align) {
     unsigned char len = 0;
 
     char* p = Str;
     while (*p++ != '\0') len++;
     
-    __LCD_Write_String(Str, len, 8, right_align);
+    __LCD_Write_String(Str, len, 8, align);
 }
 
-void LCD_Write_String0_16(char* Str, bool right_align) {
+void LCD_Write_String0_16(char* Str, align_t align) {
     unsigned char len = 0;
 
     char* p = Str;
     while (*p++ != '\0') len++;
     
-    __LCD_Write_String(Str, len, 16, right_align);
+    __LCD_Write_String(Str, len, 16, align);
 }
 
 void LCD_Set_Cursor(unsigned char ROW, unsigned char COL) 

@@ -22,6 +22,9 @@
 // place custom chars data in eeprom
 #define EEPROM_CUSTOM_CHARS
 
+// number of averaging ADC readings
+//#define ADC_AVERAGE_SAMPLES 8
+
 // * timer1 resolution * 0,01ms
 #define MAIN_INTERVAL 200
 #define DEBOUNCE 4
@@ -168,7 +171,6 @@ __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
 // key variables and flags
 unsigned char key1_counter, key2_counter, shutdown_counter;
 volatile __bit key1_press, key1_longpress, key2_press, key2_longpress;
-//unsigned char adc_counter;
 
 // 0.1s flag and counter
 unsigned char counter_01sec;
@@ -194,8 +196,13 @@ volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, s
 volatile __bit speed100_fl, speed100_ok_fl, speed100_timer_fl;
 volatile unsigned short speed100_const, speed100_timer;
 
-unsigned short kmh_tmp, fuel_tmp, taho_tmp/*, adc_tmp*/;
+unsigned short kmh_tmp, fuel_tmp, taho_tmp;
 volatile unsigned short kmh, fuel, taho, adc;
+
+#ifdef ADC_AVERAGE_SAMPLES
+unsigned short adc_tmp;
+unsigned char adc_counter = 1; // init value for first reading
+#endif             
 
 // xc8 handmade optimization
 __bank3 unsigned short speed;
@@ -326,7 +333,7 @@ const screen_service_item_t items_service[] = {
 
 unsigned char c_item = 0, c_sub_item = 0;
 
-unsigned char request_screen(unsigned char);
+unsigned char request_screen(char *);
 
 int_handler_GLOBAL_begin
 
@@ -614,16 +621,18 @@ int_handler_GLOBAL_begin
     int_handler_timer2_end    
 
     int_handler_adc_begin
-//        adc_tmp += adc_read_value();
-//        if (--adc_counter == 0) {
-//            adc_counter = 8;
-//            adc = adc_tmp;
-//            adc_tmp = 0;
-//        }
+#ifdef ADC_AVERAGE_SAMPLES
+        adc_tmp += adc_read_value();
+        if (--adc_counter == 0) {
+            adc_counter = ADC_AVERAGE_SAMPLES;
+            adc = adc_tmp;
+            adc_tmp = 0;
+        }
+#else
         adc = adc_read_value();
-    
-        // read power supply status
+#endif    
         power_supply_read_digital();
+        // read power supply status
         if (POWER_SUPPLY_ACTIVE) {
             shutdown_counter = 0;
         } else {
@@ -666,41 +675,42 @@ void _LCD_Init(void) {
 #endif
 }
 
-void print_current_time_hm(unsigned char hour, unsigned char minute, bool right_align) {
+void print_current_time_hm(unsigned char hour, unsigned char minute, align_t align) {
     bcd8_to_str(buf, hour);
     buf[2] = ':';
     bcd8_to_str(&buf[3], minute);
-    LCD_Write_String8(buf, 5, right_align);
+    LCD_Write_String8(buf, 5, align);
 }
 
 void print_current_time_dmy(unsigned char day, unsigned char month, unsigned char year) {
     if (day == 0x00 || day == 0xFF) {
-        memcpy(buf, &no_time_string, 8);
+        strcpy2(buf, (char*) &no_time_string, 0);
     } else {
         bcd8_to_str(buf, day);
         strcpy2(&buf[2], (char *) &month_str, bcd8_to_bin(month));
         buf[5] = '\'';
         bcd8_to_str(&buf[6], year);
     }
-    LCD_Write_String8(buf, 8, false);
+    LCD_Write_String8(buf, 8, LCD_ALIGN_LEFT);
 
 }
+
 void print_current_time(ds_time* time) {
 
     LCD_CMD(0x80);
-    print_current_time_hm(time->hour, time->minute, false);
+    print_current_time_hm(time->hour, time->minute, LCD_ALIGN_LEFT);
 
     LCD_CMD(0x88);
     print_current_time_dmy(time->day, time->month, time->year);
 
     LCD_CMD(0xc0);
-    LCD_Write_String16(buf, strcpy2((char *)buf, (char*) day_of_week_str, time->day_of_week), false);
+    LCD_Write_String16(buf, strcpy2((char *)buf, (char*) day_of_week_str, time->day_of_week), LCD_ALIGN_LEFT);
 }
 
 void screen_time(void) {
 
     get_ds_time(&time);
-    if (request_screen(strcpy2(buf,(char *) &time_correction, 0)) == 1) {
+    if (request_screen((char *) &time_correction) == 1) {
 
         unsigned char c = 0;
         const char cursor_position[] = {0x81, 0x84, 0x89, 0x8c, 0x8f, 0xc0};
@@ -774,9 +784,9 @@ unsigned char get_fractional_string(char * buf, unsigned short num) {
 /**
  * show trip time
  * @param t
- * @param right_align
+ * @param align
  */
-void print_trip_time(trip_t* t, bool right_align) {
+void print_trip_time(trip_t* t, align_t align) {
     
     unsigned short time = (unsigned short) (t->time / 30);
     
@@ -786,15 +796,15 @@ void print_trip_time(trip_t* t, bool right_align) {
     bcd8_to_str(&buf[len], time % 60);
     len += 2;
 
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 }
 
 /**
  * show trip average speed
  * @param t
- * @param right_align
+ * @param align
  */
-void print_trip_average_speed(trip_t* t, bool right_align) {
+void print_trip_average_speed(trip_t* t, align_t align) {
     
     unsigned short speed = 0;
     if (t->time > 0) {
@@ -802,24 +812,23 @@ void print_trip_average_speed(trip_t* t, bool right_align) {
     }
     
     if (speed == 0) {
-        memcpy(buf, &empty_string, 4);
-        len = 4;
+        len = strcpy2(buf, (char *) &empty_string, 4);
     } else {
         len = get_fractional_string(buf, speed);
         buf[len++] = _kmh0;
         buf[len++] = _kmh1;
     }
 
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 
 }
 
 /**
  * show trip odometer (km)
  * @param t
- * @param right_align
+ * @param align
  */
-void print_trip_odometer(trip_t* t, bool right_align) {
+void print_trip_odometer(trip_t* t, align_t align) {
     
     unsigned short odo = (unsigned short) ((unsigned long) (t->odo * 10UL) + (t->odo_temp * 10UL / config.odo_const));
     
@@ -827,46 +836,45 @@ void print_trip_odometer(trip_t* t, bool right_align) {
     buf[len++] = KM1_SYMBOL;
     buf[len++] = KM2_SYMBOL;
    
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 
 }
 
 /**
  * show trip total fuel consumption (l)
  * @param t
- * @param right_align
+ * @param align
  */
-void print_trip_total_fuel(trip_t* t, bool right_align) {
+void print_trip_total_fuel(trip_t* t, align_t align) {
     len = get_fractional_string(buf, t->fuel / 10);
     buf[len++] = LITRE_SYMBOL;
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 }
 
 /**
  * show trip average fuel consumption (l/100km)
  * @param t
- * @param right_align
+ * @param align
  */
-void print_trip_average_fuel(trip_t* t, bool right_align) {
+void print_trip_average_fuel(trip_t* t, align_t align) {
     
     if (t->fuel < AVERAGE_MIN_FUEL) {
-        memcpy(buf, &empty_string, 4);
+        len = strcpy2(buf, (char *) &empty_string, 0);
         len = 4;
     } else {
         unsigned short odo = (unsigned short) ((unsigned long) (t->odo * 10UL) + (t->odo_temp * 10UL / config.odo_const));
         if (odo < AVERAGE_MIN_DIST) {
-            memcpy(buf, &empty_string, 4);
-            len = 4;
+            len = strcpy2(buf, (char *) &empty_string, 0);
         } else {
             len = get_fractional_string(buf, (unsigned short) (t->fuel * 100UL / odo));
             buf[len++] = _lkm0;
             buf[len++] = _lkm1;
         }
     }
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 }
 
-void print_speed(unsigned short speed, bool right_align) {
+void print_speed(unsigned short speed, align_t align) {
     if (speed > 1000) {
         // more than 100 km/h, skip fractional
         len = ultoa2(buf, (unsigned int) speed, 10) - 1;
@@ -878,10 +886,10 @@ void print_speed(unsigned short speed, bool right_align) {
     buf[len++] = _kmh0;
     buf[len++] = _kmh1;
 
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 }
 
-void print_taho(bool right_align) {
+void print_taho(align_t align) {
     taho_measure_fl = 1;
     timeout = 0; timeout_timer = TAHO_TIMEOUT_TIMER;
     while (motor_fl == 1 && taho_measure_fl == 1 && timeout == 0)
@@ -891,8 +899,7 @@ void print_taho(bool right_align) {
     }
 
     if (taho == 0 || motor_fl == 0) {
-        memcpy(buf, &empty_string, 4);
-        len = 4;
+        len = strcpy2(buf, (char *) &empty_string, 0);
     } else {
         unsigned short res = (unsigned short) ((TAHO_CONST / taho));
 #ifdef TAHO_ROUND
@@ -902,34 +909,34 @@ void print_taho(bool right_align) {
         buf[len++] = _omin0;
         buf[len++] = _omin1;
     }
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 }
 
-void print_current_fuel_km(bool right_align) {
+void print_current_fuel_km(align_t align) {
     unsigned short odo_con4 = config.odo_const * 2 / (config.settings.dual_injection ? 26 : 13);
     unsigned short t = (unsigned short) ((((unsigned long) fuel * (unsigned long) odo_con4) / (unsigned long) kmh) / (unsigned char) config.fuel_const);
     len = get_fractional_string(buf, t);
     buf[len++] = _lkm0;
     buf[len++] = _lkm1;
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 }
 
-void print_current_fuel_lh(bool right_align) {
+void print_current_fuel_lh(align_t align) {
     len = get_fractional_string(buf, fuel * (config.settings.dual_injection ? 14UL : 28UL) / config.fuel_const / 10);
     buf[len++] = _lh0;
     buf[len++] = _lh1;
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 }
 
-void print_main_odo(bool right_align) {
+void print_main_odo(align_t align) {
     len = ultoa2(buf, (unsigned long) config.odo, 10);
     buf[len++] = KM1_SYMBOL;
     buf[len++] = KM2_SYMBOL;
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 }
 
 #ifdef USE_DS18B20
-void print_temp(unsigned char index, bool header, bool right_align) {
+void print_temp(unsigned char index, bool header, align_t align) {
     uint16_t _t = temps[index];
     if (_t & 0x8000) // if the temperature is negative
     {
@@ -943,7 +950,7 @@ void print_temp(unsigned char index, bool header, bool right_align) {
     if (index == 2) {
         len = ultoa2(buf, _t / 10, 10);
         buf[len++] = CELSIUS_SYMBOL;
-        LCD_Write_String8(buf, len, right_align);
+        LCD_Write_String8(buf, len, align);
     } else {
         len = get_fractional_string(&buf[1], _t) + 1;
         if (header) {
@@ -952,15 +959,15 @@ void print_temp(unsigned char index, bool header, bool right_align) {
             len = 8;
         }
         
-        LCD_Write_String8(buf, len, right_align);
+        LCD_Write_String8(buf, len, align);
     }
 }
 #endif
 
-void print_voltage(bool right_align) {
+void print_voltage(align_t align) {
     len = get_fractional_string(buf, (unsigned short) (adc << 5) / config.vcc_const);
     buf[len++] = VOLT_SYMBOL;
-    LCD_Write_String8(buf, len, right_align);
+    LCD_Write_String8(buf, len, align);
 }
 
 unsigned char select_param(unsigned char* param, unsigned char total) {
@@ -974,22 +981,22 @@ unsigned char select_param(unsigned char* param, unsigned char total) {
     return *param;
 }
 
-void print_selected_param2(bool right_align) {
+void print_selected_param2(align_t align) {
     switch (select_param(&config.selected_param2, 4)) {
         case 0:
-            print_trip_total_fuel(&trips.tripC, true);
+            print_trip_total_fuel(&trips.tripC, align);
             break;
         case 1:
-            print_trip_time(&trips.tripC, right_align);
+            print_trip_time(&trips.tripC, align);
             break;
         case 2:
-            print_trip_average_speed(&trips.tripC, right_align);
+            print_trip_average_speed(&trips.tripC, align);
             break;
         case 3:
-            print_trip_average_fuel(&trips.tripC, right_align);
+            print_trip_average_fuel(&trips.tripC, align);
             break;
         case 4:
-            print_speed(trips.tripC_max_speed, right_align);
+            print_speed(trips.tripC_max_speed, align);
             break;
     }
 }
@@ -1000,21 +1007,21 @@ void print_selected_param2(bool right_align) {
 #define COUNT_SELECTED_PARAM1 3
 #endif
 
-void print_selected_param1(bool right_align) {
+void print_selected_param1(align_t align) {
     switch (select_param(&config.selected_param1, COUNT_SELECTED_PARAM1)) {
 #ifdef USE_DS18B20
         case COUNT_SELECTED_PARAM1 - 4:
-            print_temp(TEMP_OUT, false, right_align);
+            print_temp(TEMP_OUT, false, align);
             break;
 #endif
         case COUNT_SELECTED_PARAM1 - 3:
-            print_voltage(right_align);
+            print_voltage(align);
             break;
         case COUNT_SELECTED_PARAM1 - 2:
-            print_trip_odometer(&trips.tripC, right_align);
+            print_trip_odometer(&trips.tripC, align);
             break;
         case COUNT_SELECTED_PARAM1 - 1:
-            print_trip_average_fuel(&trips.tripC, right_align);
+            print_trip_average_fuel(&trips.tripC, align);
             break;
     }
 }
@@ -1023,7 +1030,7 @@ void print_speed100(void) {
     len = get_fractional_string((char*) tbuf, speed100_timer / 10U);
     tbuf[len++] = SECONDS_SYMBOL;
     LCD_CMD(0xC4);
-    LCD_Write_String8((char*) tbuf, len, true);
+    LCD_Write_String8((char*) tbuf, len, LCD_ALIGN_RIGHT);
 }
 
 void screen_main(void) {
@@ -1035,43 +1042,42 @@ void screen_main(void) {
 //; время текущее       общий пробег (км)
 //; нар.темп./пробег C  вольтметр
         get_ds_time(&time);
-        print_current_time_hm(time.hour, time.minute, false);
+        print_current_time_hm(time.hour, time.minute, LCD_ALIGN_LEFT);
 
         if (motor_fl == 0) {
-            print_main_odo(true);
+            print_main_odo(LCD_ALIGN_RIGHT);
 
             LCD_CMD(0xC0);
 #ifdef USE_DS18B20            
-            print_temp(TEMP_OUT, false, false);
+            print_temp(TEMP_OUT, false, LCD_ALIGN_LEFT);
 #else
-            print_trip_odometer(&trips.tripC, false);
+            print_trip_odometer(&trips.tripC, LCD_ALIGN_LEFT);
 #endif            
-            print_voltage(true);
+            print_voltage(LCD_ALIGN_RIGHT);
         } else {
 //; 2) на месте с работающим двигателем
 //; время текущее       тахометр (об/мин)
 //; selected_param1 	мгновенный расход (л/ч)
-            print_taho(true);
+            print_taho(LCD_ALIGN_RIGHT);
             LCD_CMD(0xC0);
-            print_selected_param1(false);
-            print_current_fuel_lh(true);
+            print_selected_param1(LCD_ALIGN_LEFT);
+            print_current_fuel_lh(LCD_ALIGN_RIGHT);
         }
     } else {
 //; 3) в движении
 //; скорость (км/ч)     тахометр (об/мин)
 //; selected_param1 	мгновенный расход (л/100км)
-        print_speed(speed, false);
-        print_taho(true);
+        print_speed(speed, LCD_ALIGN_LEFT);
+        print_taho(LCD_ALIGN_RIGHT);
 
         LCD_CMD(0xC0);
-        print_selected_param1(false);
-        print_current_fuel_km(true);
+        print_selected_param1(LCD_ALIGN_LEFT);
+        print_current_fuel_km(LCD_ALIGN_RIGHT);
     }
 
-    if (drive_fl == 0 && motor_fl == 1 && request_screen(strcpy2(buf, (char *) &speed100_string, 0)) == 1) {
-        len = strcpy2(buf, (char *) &speed100_wait_string, 0);
-        LCD_CMD(0xC0 + (16 - len) / 2U);
-        __LCD_Write_String(buf, len, len, false);
+    if (drive_fl == 0 && motor_fl == 1 && request_screen((char *) &speed100_string) == 1) {
+        LCD_CMD(0xC0);
+        LCD_Write_String16(buf, strcpy2(buf, (char *) &speed100_wait_string, 0), LCD_ALIGN_CENTER);
 
         memset(buf, ' ', 16);
         
@@ -1095,7 +1101,7 @@ void screen_main(void) {
                 if (speed100_timer_fl == 0) {
                     speed100_timer_fl = 1;
                     LCD_CMD(0xC0);
-                    LCD_Write_String16(buf, 16, false);
+                    LCD_Write_String16(buf, 16, LCD_ALIGN_LEFT);
                 }
 
                 print_speed100();
@@ -1111,12 +1117,10 @@ void screen_main(void) {
                 print_speed100();
             } else {
                 // timeout
-                //LCD_CMD(0xC0);
-                //LCD_Write_String16(buf, 16, false);
                 LCD_Clear();
-                len = strcpy2(buf, (char *) &timeout_string, 0);
-                LCD_CMD(0xC0 + (16 - len) / 2U);
-                __LCD_Write_String(buf, len, len, false);
+                LCD_CMD(0xC0);
+                LCD_Write_String16(buf, strcpy2(buf, (char *) &timeout_string, 0), LCD_ALIGN_CENTER);
+
             }
 #ifdef USE_SOUND    
             buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[BUZZER_WARN];
@@ -1133,15 +1137,15 @@ void screen_main(void) {
  * @param _len
  * @return 
  */
-unsigned char request_screen(unsigned char len) {
+unsigned char request_screen(char* request_str) {
     unsigned char reset = 0;
     if (key2_longpress == 1) {
         key2_longpress = 0;
         key2_press = 0;
         
         LCD_Clear();
-        LCD_CMD(0x80 + ((16 - len) / 2U));
-        __LCD_Write_String(buf, len, len, false);
+        LCD_CMD(0x80);
+        LCD_Write_String16(buf, strcpy2(buf, request_str, 0), LCD_ALIGN_CENTER);
 
         timeout = 0; timeout_timer = 500;
         while (timeout == 0 && key2_press == 0);
@@ -1158,7 +1162,7 @@ unsigned char request_screen(unsigned char len) {
 
 
 void clear_trip(trip_t* trip) {
-    if (request_screen(strcpy2(buf, (char *) &reset_string, 0)) == 1) {
+    if (request_screen((char *) &reset_string) == 1) {
         memset(trip, 0, sizeof(trip_t));
     }
 }
@@ -1167,29 +1171,29 @@ void screen_tripC(void) {
 //; второй экран
     LCD_CMD(0x80);
     if (drive_fl == 0 || speed < MIN_SPEED) {
-        print_trip_average_fuel(&trips.tripC, false);
+        print_trip_average_fuel(&trips.tripC, LCD_ALIGN_LEFT);
         if (motor_fl == 0) {
 //; 1) на месте с заглушенным двигателем
 //; средний расход C (л/100км)  общий пробег
 //; пробег C (км)               selected_param2
-            print_main_odo(true);
+            print_main_odo(LCD_ALIGN_RIGHT);
         } else {
 //; 2) на месте с работающим двигателем
 //; средний расход C (л/100км)  тахометр (об/мин)	
 //; пробег C (км)               selected_param2
-            print_taho(true);
+            print_taho(LCD_ALIGN_RIGHT);
         }
     } else {
 //; 3) в движении
 //; скорость (км/ч)             тахометр (об/мин)
 //; пробег C (км)               selected_param2
-        print_speed(speed, false);
-        print_taho(true);
+        print_speed(speed, LCD_ALIGN_LEFT);
+        print_taho(LCD_ALIGN_RIGHT);
     }
 
     LCD_CMD(0xC0);
-    print_trip_odometer(&trips.tripC, false);
-    print_selected_param2(true);
+    print_trip_odometer(&trips.tripC, LCD_ALIGN_LEFT);
+    print_selected_param2(LCD_ALIGN_RIGHT);
     
     clear_trip(&trips.tripC);
 }
@@ -1199,19 +1203,19 @@ void screen_tripAB(trip_t* trip, unsigned char ch) {
 
     len = strcpy2(buf, (char *) &trip_string, 0);
     buf[len++] = ch;
-    LCD_Write_String8(buf, len, false);
+    LCD_Write_String8(buf, len, LCD_ALIGN_LEFT);
 
-    print_trip_odometer(trip, true);
+    print_trip_odometer(trip, LCD_ALIGN_RIGHT);
     
     LCD_CMD(0xC0);
     switch (select_param(&tmp_param, 2)) {
         case 0:
-            print_trip_average_fuel(trip, false);
-            print_trip_average_speed(trip, true);
+            print_trip_average_fuel(trip, LCD_ALIGN_LEFT);
+            print_trip_average_speed(trip, LCD_ALIGN_RIGHT);
             break;
         case 1:
-            print_trip_time(trip, false);
-            print_trip_total_fuel(trip, true);
+            print_trip_time(trip, LCD_ALIGN_LEFT);
+            print_trip_total_fuel(trip, LCD_ALIGN_RIGHT);
             break;
     }
     clear_trip(trip);
@@ -1234,11 +1238,11 @@ void screen_temp() {
         screen_refresh = 1;
     } else {
         LCD_CMD(0x80);
-        print_temp(TEMP_OUT, true, true);
+        print_temp(TEMP_OUT, true, LCD_ALIGN_RIGHT);
         LCD_CMD(0xC0);
-        print_temp(TEMP_IN, true, true);
+        print_temp(TEMP_IN, true, LCD_ALIGN_RIGHT);
         LCD_CMD(0xC8);
-        print_temp(TEMP_ENGINE, false, true);
+        print_temp(TEMP_ENGINE, false, LCD_ALIGN_RIGHT);
     }
 }
 #endif
@@ -1266,7 +1270,7 @@ void screen_service_counters() {
     }
 
     LCD_CMD(0x80);
-    LCD_Write_String16(buf, strcpy2((char*)buf, (char *) &service_counters, tmp_param + 1), false);
+    LCD_Write_String16(buf, strcpy2((char*)buf, (char *) &service_counters, tmp_param + 1), LCD_ALIGN_LEFT);
 
     LCD_CMD(0xC0);
     if (tmp_param == 0) {
@@ -1283,12 +1287,13 @@ void screen_service_counters() {
         buf[len++] = KM1_SYMBOL;
         buf[len++] = KM2_SYMBOL;
     }
-    __LCD_Write_String(buf, len, 7, true);
+    buf[len++] = ' ';
+    LCD_Write_String8(buf, len, LCD_ALIGN_RIGHT);
     
     LCD_CMD(0xC8);
     print_current_time_dmy(s_time.day, s_time.month, s_time.year);
     
-    if (request_screen(strcpy2(buf, (char *) &reset_string, 0)) == 1) {
+    if (request_screen((char *) &reset_string) == 1) {
 //    if (reset_screen() == 1) {
         get_ds_time(&time);
         if (tmp_param == 0 || tmp_param == 1) {
@@ -1325,7 +1330,7 @@ unsigned char edit_value_char(unsigned char v, bool thousands) {
         len = ultoa2(buf, thousands ? (unsigned short) (v * 1000) : v , 10);
         
         LCD_CMD(0xC4);
-        LCD_Write_String8(buf, len, true);
+        LCD_Write_String8(buf, len, LCD_ALIGN_RIGHT);
 
         while (screen_refresh == 0 && timeout == 0);
     }
@@ -1384,7 +1389,7 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
         LCD_CMD(LCD_CURSOR_OFF);
 
         LCD_CMD(cursor_pos);
-        LCD_Write_String8(buf, max_len, false);
+        LCD_Write_String8(buf, max_len, LCD_ALIGN_LEFT);
         LCD_CMD(cursor_pos + pos);
 
         LCD_CMD(LCD_UNDERLINE_ON);
@@ -1424,11 +1429,8 @@ unsigned char edit_value_bits(unsigned char v, char* str) {
             key2_press = 0;
             
             v ^= (1 << (7 - pos));
-            if (tbuf[pos] == '0') {
-                tbuf[pos] = '1';
-            } else {
-                tbuf[pos] = '0';
-            }
+            // invert bit
+            tbuf[pos] = ('1' - tbuf[pos]) + '0';
             
             timeout = 0; timeout_timer = 300;
         }
@@ -1437,16 +1439,13 @@ unsigned char edit_value_bits(unsigned char v, char* str) {
 
         memset(buf, ' ', 16);
         strcpy2((char*) buf, (char *)str, pos + 1);
-        unsigned char _onoff_index = 0;
-        if (tbuf[pos] == '1') {
-            _onoff_index++;
-        }
-        strcpy2((char*) &buf[12], (char *) &onoff_string, _onoff_index + 1);
+        // print on/off
+        strcpy2((char*) &buf[12], (char *) &onoff_string, (tbuf[pos] - '0') + 1);
         LCD_CMD(0x80);
-        LCD_Write_String16(buf, 16, false);
+        LCD_Write_String16(buf, 16, LCD_ALIGN_LEFT);
         
         LCD_CMD(cursor_pos);
-        LCD_Write_String8((char*) tbuf, 8, false);
+        LCD_Write_String8((char*) tbuf, 8, LCD_ALIGN_LEFT);
 
         LCD_CMD(cursor_pos + pos);
         LCD_CMD(LCD_UNDERLINE_ON);
@@ -1502,7 +1501,7 @@ void screen_service_temp_sensors(screen_service_item_t* item) {
         add_leading_symbols(&buf[12], ' ', len, 4);
         
         LCD_CMD(0xC0);
-        LCD_Write_String16(buf, 16, false);
+        LCD_Write_String16(buf, 16, LCD_ALIGN_LEFT);
         
         while (screen_refresh == 0 && timeout == 0);
     }
@@ -1528,18 +1527,18 @@ void screen_service_service_counters(screen_service_item_t* item) {
     }
 
     LCD_CMD(0x80);
-    LCD_Write_String16(buf, strcpy2(buf, (char *) item->name, 0), false);
+    LCD_Write_String16(buf, strcpy2(buf, (char *) item->name, 0), LCD_ALIGN_LEFT);
     LCD_CMD(0xC0);
-    LCD_Write_String16(buf, strcpy2(buf, (char *) &service_counters, c_sub_item + 1), false);
+    LCD_Write_String16(buf, strcpy2(buf, (char *) &service_counters, c_sub_item + 1), LCD_ALIGN_LEFT);
 
     if (key2_press == 1) {
         key2_press = 0;
 
         LCD_CMD(0x80);
-        LCD_Write_String16(buf, strcpy2(buf, (char *) &service_counters, c_sub_item + 1), false);
+        LCD_Write_String16(buf, strcpy2(buf, (char *) &service_counters, c_sub_item + 1), LCD_ALIGN_LEFT);
         LCD_CMD(0xC0);
         memset(buf, ' ', 16);
-        LCD_Write_String16(buf, 16, false);
+        LCD_Write_String16(buf, 16, LCD_ALIGN_LEFT);
 
         switch (c_sub_item) {
             case 0:
@@ -1582,7 +1581,7 @@ void screen_service_ua_const(screen_service_item_t* item) {
     }
 
     LCD_CMD(0xC4);
-    print_voltage(true);
+    print_voltage(LCD_ALIGN_RIGHT);
     
 }
 
@@ -1706,24 +1705,14 @@ void check_service_counters() {
             }
         }
         if (warn == 1) {
-//            str_center16(buf, strcpy2(buf, (char*) &warning_str, 0));
-//            LCD_CMD(0x80);
-//            LCD_Write_String16(buf, 16, false);
-//
-//            str_center16(buf, strcpy2(buf, (char*) &service_counters, i + 1));
-//            LCD_CMD(0xC0);
-//            LCD_Write_String16(buf, 16, false);
 #ifdef USE_SOUND            
             buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[BUZZER_WARN];
 #endif            
-            LCD_Clear();
-            len = strcpy2(buf, (char*) &warning_str, 0);
-            LCD_CMD(0x80 + ((16 - len) >> 1));
-            __LCD_Write_String(buf, len, len, false);
+            LCD_CMD(0x80);
+            LCD_Write_String16(buf, strcpy2(buf, (char*) &warning_str, 0), LCD_ALIGN_CENTER);
 
-            len = strcpy2(buf, (char*) &service_counters, i + 1);
-            LCD_CMD(0xC0 + ((16 - len) >> 1));
-            __LCD_Write_String(buf, len, len, false);
+            LCD_CMD(0xC0);
+            LCD_Write_String16(buf, strcpy2(buf, (char*) &service_counters, i + 1), LCD_ALIGN_CENTER);
 
             timeout = 0; timeout_timer = 300;
             while (timeout == 0 && key1_press == 0 && key2_press == 0);
@@ -1732,6 +1721,7 @@ void check_service_counters() {
     }
 }
 
+#ifdef USE_DS18B20
 void handle_temp() {
     temperature_fl = 0;
     if (temperature_conv_fl == 1) {
@@ -1749,17 +1739,18 @@ void handle_temp() {
         ds18b20_start_conversion();
     }
 }
+#endif
 
 void service_screen(unsigned char c_item) {
     screen_service_item_t item = items_service[c_item];
     
     LCD_CMD(0x80);
-    LCD_Write_String16(buf, strcpy2(buf, (char *) &service_menu_title, 0), false);
+    LCD_Write_String16(buf, strcpy2(buf, (char *) &service_menu_title, 0), LCD_ALIGN_LEFT);
     LCD_CMD(0xC0);
 
     buf[0] = '1' + c_item;
     buf[1] = '.';
-    LCD_Write_String16(buf, strcpy2(&buf[2], (char*) item.name, 0) + 2, false);
+    LCD_Write_String16(buf, strcpy2(&buf[2], (char*) item.name, 0) + 2, LCD_ALIGN_LEFT);
 
     if (key2_press == 1) {
         key2_press = 0;
@@ -1771,7 +1762,7 @@ void service_screen(unsigned char c_item) {
             screen_refresh = 0;
 
             LCD_CMD(0x80);
-            LCD_Write_String16(buf, strcpy2(buf, (char*) item.name, 0), false);
+            LCD_Write_String16(buf, strcpy2(buf, (char*) item.name, 0), LCD_ALIGN_LEFT);
 
             item.screen(&item);
 
@@ -1817,7 +1808,7 @@ void main() {
 #endif        
     } else {
         LCD_CMD(0x80);
-        LCD_Write_String8(buf, strcpy2(buf, (char *) &service_menu_title, 0), false);
+        LCD_Write_String8(buf, strcpy2(buf, (char *) &service_menu_title, 0), LCD_ALIGN_LEFT);
         while (KEY1_PRESSED);
     }
 
