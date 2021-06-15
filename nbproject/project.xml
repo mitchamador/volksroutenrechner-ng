@@ -17,7 +17,15 @@
             </sourceRootList>
             <confList>
                 <confElem>
-                    <name>default</name>
+                    <name>PIC16F876A</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>PIC16F1936</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
+                    <name>ATMega328P</name>
                     <type>2</type>
                 </confElem>
             </confList>

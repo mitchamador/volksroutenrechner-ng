@@ -10,3 +10,5 @@ proteus/*.workspace
 .pio/*
 .history/*
 .vscode/*
+.generated_files/*
+*.code-workspace
