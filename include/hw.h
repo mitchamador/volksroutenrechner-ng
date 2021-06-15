@@ -51,14 +51,6 @@
 #if defined(__PIC_MIDRANGE)
 //#pragma warning disable 1090
 
-#if defined(_16F1936)
-#define RBIF IOCIF
-#define RBIE IOCIE
-#define GO_DONE GO_nDONE
-#define _INTCON_RBIE_POSITION _INTCON_IOCIE_POSITION
-#define _OPTION_REG_nRBPU_POSITION _OPTION_REG_nWPUEN_POSITION
-#endif
-
 #pragma config FOSC = HS        // Oscillator Selection bits (HS oscillator)
 #pragma config WDTE = OFF       // Watchdog Timer Enable bit (WDT disabled)
 #pragma config PWRTE = ON       // Power-up Timer Enable bit (PWRT enabled)
@@ -74,10 +66,12 @@
 #define POWER_SUPPLY_TRIS (1 << _TRISA_TRISA0_POSITION)
 #if defined(_16F876A)
 #define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
-#define power_supply_read_digital() ADCON1 = (0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION)
-#define power_supply_read_analog() ADCON1 = (1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (0 << _ADCON1_PCFG2_POSITION) | (0 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION)
+#define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (1 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
+#define power_supply_read_digital() ADCON1 = ((0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
+#define power_supply_read_analog() ADCON1 = ADCON1_INIT
 #else
-#define ADCON0_INIT ((0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
+#define ADCON0_INIT ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
+#define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADCS1_POSITION) | (0 << _ADCON1_ADCS0_POSITION))
 #define power_supply_read_digital() ANSELA = 0
 #define power_supply_read_analog() ANSELA = (1 << _ANSELA_ANSA0_POSITION)
 #endif
@@ -141,6 +135,7 @@
 
 #define int_handler_GLOBAL_end }
                                                     \
+#if defined(_16F876A)
 
 #define int_handler_fuel_speed_begin                       \
     /* Was it the port B interrupt on change?*/            \
@@ -153,6 +148,19 @@
         RBIF = 0;                                          \
     }                                                      \
 
+#elif defined(_16F1936)
+
+#define int_handler_fuel_speed_begin                       \
+    /* Was it interrupt on change?*/            \
+    if (/*IOCIE && */IOCIF) {                                \
+
+#define int_handler_fuel_speed_end                         \
+        /* Reset the interrupt flag */                     \
+        IOCIF = 0;                                          \
+    }                                                      \
+
+#endif
+
 #define int_handler_timer0_begin                           \
     /* Timer0 interrupt */                                 \
     if (/*T0IE && */T0IF) {                                \
@@ -161,14 +169,29 @@
         T0IF = 0;                                          \
     }                                                      \
 
+#if defined(_16F876A)
+
 #define int_handler_timer1_begin                           \
     /* Timer1 interrupt */                                 \
-    if (/*CCP1IE && */CCP2IF) {                            \
+    if (/*CCP2IE && */CCP2IF) {                            \
         
 #define int_handler_timer1_end                             \
         /* Reset the interrupt flag */                     \
         CCP2IF = 0;                                        \
     }                                                      \
+
+#elif defined(_16F1936)
+
+#define int_handler_timer1_begin                           \
+    /* Timer1 interrupt */                                 \
+    if (/*CCP5IE && */CCP5IF) {                            \
+        
+#define int_handler_timer1_end                             \
+        /* Reset the interrupt flag */                     \
+        CCP5IF = 0;                                        \
+    }                                                      \
+
+#endif
 
 #define int_handler_timer2_begin                           \
     /* Timer2 interrupt */                                 \

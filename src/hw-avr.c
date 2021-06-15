@@ -147,11 +147,7 @@ void HW_Init(void) {
 void HW_read_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length) {
     unsigned char i;
     for (i = 0; i < length; i++) {
-#ifdef __XC8
-        *p++ = eeprom_read(ee_addr + i);
-#else
         *p++ = eeprom_read_byte((uint8_t *) (ee_addr + i));
-#endif
     }
 }
 
@@ -160,11 +156,7 @@ void HW_write_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned cha
     disable_interrupts();
     unsigned char i;
     for (i = 0; i < length; i++) {
-#ifdef __XC8
-        eeprom_write(ee_addr + i, *p++);
-#else
         eeprom_write_byte((uint8_t *) (ee_addr + i), *p++);
-#endif
     }
     SREG = int_state;
 }
