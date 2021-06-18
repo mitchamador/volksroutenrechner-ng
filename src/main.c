@@ -647,7 +647,7 @@ int_handler_GLOBAL_begin
 int_handler_GLOBAL_end
 
 void _LCD_Init(void) {
-    LCD_Init(0x40);    // Initialize LCD module with I2C address = 0x40 ((0x20<<1) for PCF8574) or 0x70 ((0x38<<1) for PCF8574A)
+    LCD_Init(0x4E);    // Initialize LCD module with I2C address = 0x40 ((0x20<<1) for PCF8574) or 0x70 ((0x38<<1) for PCF8574A)
     
     // LCD set custom characters
     unsigned char i = 0;
@@ -812,12 +812,13 @@ void print_trip_average_speed(trip_t* t, align_t align) {
     }
     
     if (speed == 0) {
-        len = strcpy2(buf, (char *) &empty_string, 4);
+        len = strcpy2(buf, (char *) &empty_string, 0);
     } else {
         len = get_fractional_string(buf, speed);
-        buf[len++] = _kmh0;
-        buf[len++] = _kmh1;
     }
+
+    buf[len++] = _kmh0;
+    buf[len++] = _kmh1;
 
     LCD_Write_String8(buf, len, align);
 
@@ -860,17 +861,18 @@ void print_trip_average_fuel(trip_t* t, align_t align) {
     
     if (t->fuel < AVERAGE_MIN_FUEL) {
         len = strcpy2(buf, (char *) &empty_string, 0);
-        len = 4;
     } else {
         unsigned short odo = (unsigned short) ((unsigned long) (t->odo * 10UL) + (t->odo_temp * 10UL / config.odo_const));
         if (odo < AVERAGE_MIN_DIST) {
             len = strcpy2(buf, (char *) &empty_string, 0);
         } else {
             len = get_fractional_string(buf, (unsigned short) (t->fuel * 100UL / odo));
-            buf[len++] = _lkm0;
-            buf[len++] = _lkm1;
         }
     }
+
+    buf[len++] = _lkm0;
+    buf[len++] = _lkm1;
+
     LCD_Write_String8(buf, len, align);
 }
 
