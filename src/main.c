@@ -986,16 +986,16 @@ unsigned char select_param(unsigned char* param, unsigned char total) {
 void print_selected_param2(align_t align) {
     switch (select_param(&config.selected_param2, 4)) {
         case 0:
-            print_trip_total_fuel(&trips.tripC, align);
+            print_trip_average_fuel(&trips.tripC, align);
             break;
         case 1:
-            print_trip_time(&trips.tripC, align);
+            print_trip_total_fuel(&trips.tripC, align);
             break;
         case 2:
             print_trip_average_speed(&trips.tripC, align);
             break;
         case 3:
-            print_trip_average_fuel(&trips.tripC, align);
+            print_trip_time(&trips.tripC, align);
             break;
         case 4:
             print_speed(trips.tripC_max_speed, align);
@@ -1130,7 +1130,6 @@ void screen_main(void) {
             timeout = 0; timeout_timer = 600; while (timeout == 0);
         }
         key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0;
-
     }
 }
 
@@ -1173,15 +1172,15 @@ void screen_tripC(void) {
 //; второй экран
     LCD_CMD(0x80);
     if (drive_fl == 0 || speed < MIN_SPEED) {
-        print_trip_average_fuel(&trips.tripC, LCD_ALIGN_LEFT);
+        print_trip_time(&trips.tripC, LCD_ALIGN_LEFT);
         if (motor_fl == 0) {
 //; 1) на месте с заглушенным двигателем
-//; средний расход C (л/100км)  общий пробег
+//; время поездки C             общий пробег
 //; пробег C (км)               selected_param2
             print_main_odo(LCD_ALIGN_RIGHT);
         } else {
 //; 2) на месте с работающим двигателем
-//; средний расход C (л/100км)  тахометр (об/мин)	
+//; время поездки C             тахометр (об/мин)	
 //; пробег C (км)               selected_param2
             print_taho(LCD_ALIGN_RIGHT);
         }
