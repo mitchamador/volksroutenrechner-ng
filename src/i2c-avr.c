@@ -45,18 +45,14 @@ void I2C_Master_Stop()
 	while(TWCR & (1<<TWSTO));
 }
 
-unsigned char I2C_Read_Byte_ACK(void)
+unsigned char I2C_Read_Byte(unsigned char ack)
 {
-    TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWEA);
+    if (ack == ACK) {
+        TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWEA);
+    } else {
+        TWCR = (1<<TWINT) | (1<<TWEN);
+    }
 	while(!(TWCR & (1<<TWINT)));
-    return TWDR;
-}
-
-unsigned char I2C_Read_Byte_NACK(void)
-{
-    TWCR = (1<<TWINT) | (1<<TWEN);
-	while(!(TWCR & (1<<TWINT)));
-	
     return TWDR;
 }
 

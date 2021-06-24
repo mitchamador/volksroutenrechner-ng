@@ -63,7 +63,7 @@
 
 // PORTA definitions (analog input)
 #define POWER_SUPPLY PORTAbits.RA0
-#define POWER_SUPPLY_TRIS (1 << _TRISA_TRISA0_POSITION)
+#define POWER_SUPPLY_TRIS_MASK (1 << _TRISA_TRISA0_POSITION)
 #if defined(_16F876A)
 #define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
 #define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (1 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
@@ -83,13 +83,13 @@
 // key1 and key2 (active zero)
 #define KEY1 PORTBbits.RB2
 #define KEY2 PORTBbits.RB3
-#define KEY_TRIS (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
+#define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
 
 // speed sensor and injector
 #define TX PORTBbits.RB6
-#define TX_TRIS (1 << _TRISB_TRISB6_POSITION)
+#define TX_TRIS_MASK (1 << _TRISB_TRISB6_POSITION)
 #define FUEL PORTBbits.RB7
-#define FUEL_TRIS (1 << _TRISB_TRISB7_POSITION)
+#define FUEL_TRIS_MASK (1 << _TRISB_TRISB7_POSITION)
 
 // DS18B20 data pin is connected to pin RA5
 #define ONEWIRE_PIN      RA5
@@ -98,13 +98,27 @@
 #define SND     RC0
 #define SND_TRIS (1 << _TRISC_TRISC0_POISITION)
 
-#define SCL_TRIS   (1 << _TRISC_TRISC3_POSITION)
-#define SDA_TRIS   (1 << _TRISC_TRISC4_POSITION)
+#define I2C_BITBANG
+
+#ifndef I2C_BITBANG
+#define SCL_TRIS_MASK   (1 << _TRISC_TRISC3_POSITION)
+#define SDA_TRIS_MASK   (1 << _TRISC_TRISC4_POSITION)
+#else
+
+#define SDA       PORTCbits.RC4
+#define SDA_TRIS  TRISCbits.TRISC4
+#define SDA_TRIS_MASK   (0 << _TRISC_TRISC4_POSITION)
+
+#define SCL       PORTCbits.RC3
+#define SCL_TRIS  TRISCbits.TRISC3
+#define SCL_TRIS_MASK   (0 << _TRISC_TRISC3_POSITION)
+
+#endif
 
 // init values for port's data direction
-#define TRISA_INIT POWER_SUPPLY_TRIS
-#define TRISB_INIT KEY_TRIS | TX_TRIS | FUEL_TRIS
-#define TRISC_INIT SCL_TRIS | SDA_TRIS
+#define TRISA_INIT POWER_SUPPLY_TRIS_MASK
+#define TRISB_INIT KEY_TRIS_MASK | TX_TRIS_MASK | FUEL_TRIS_MASK
+#define TRISC_INIT SCL_TRIS_MASK | SDA_TRIS_MASK
 
 // init values for port's data
 #define PORTA_INIT PWR_MASK
