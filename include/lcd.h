@@ -46,10 +46,11 @@ typedef enum {
 
 //---[ LCD Routines ]---
 
-// eliminate possible stack overflow for PIC_MIDRANGE (+ ~50 bytes)
-#ifdef __PIC_MIDRANGE
+// eliminate possible stack overflow for pic midrange (+ ~50 bytes)
+#ifdef _PIC14
 #define LCD_Write_String8(Str, len, align) __LCD_Write_String(Str, len, 8, align)
 #define LCD_Write_String16(Str, len, align) __LCD_Write_String(Str, len, 16, align)
+#define _LCD_INLINE_WRITE_
 #endif
 
 void LCD_Init(unsigned char I2C_Add);
@@ -68,10 +69,6 @@ void LCD_Write_String16(char*, unsigned char, align_t);
 #endif
 void LCD_Write_String0_8(char*, align_t);
 void LCD_Write_String0_16(char*, align_t);
-void Backlight(void);
-void noBacklight(void);
-void LCD_SR(void);
-void LCD_SL(void);
 void LCD_Clear(void);
 
 #endif
