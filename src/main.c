@@ -289,18 +289,19 @@ void screen_service_counters(void);
 
 typedef struct {
     screen_func screen;
+    unsigned char drive_mode; // show screen id drive mode
 } screen_item_t;
 
 const screen_item_t items_main[] = {
-    {screen_main},
-    {screen_tripC},
+    {screen_main, 1},
+    {screen_tripC, 1},
 #ifdef USE_DS18B20
-    {screen_temp},
+    {screen_temp, 1},
 #endif
-    {screen_tripA},
-    {screen_tripB},
-    {screen_time},
-    {screen_service_counters},
+    {screen_tripA, 0},
+    {screen_tripB, 0},
+    {screen_time, 0},
+    {screen_service_counters, 0},
 };
 
 typedef struct screen_service_item_t screen_service_item_t;
@@ -1845,11 +1846,13 @@ void main() {
             key1_longpress = 0;
             key2_longpress = 0;
             tmp_param = 0;
-            c_item++;
-            if ((service_mode == 0 && c_item >= sizeof(items_main) / sizeof(screen_item_t)) 
+            do {
+                c_item++;
+                if ((service_mode == 0 && c_item >= sizeof(items_main) / sizeof(screen_item_t)) 
                     || (service_mode == 1 && c_item >= sizeof(items_service) / sizeof(screen_service_item_t))) {
-                c_item = 0;
-            }
+                    c_item = 0;
+                }
+            } while (service_mode == 0 && drive_fl == 1 && items_main[c_item].drive_mode == 0);
             LCD_Clear();
         }
         
