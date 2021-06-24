@@ -390,7 +390,7 @@ int_handler_GLOBAL_begin
                     }
                     if (speed100_fl == 0) {
                         // start timer2 
-                       taho_tmp = 0;
+                        taho_tmp = 0;
                         start_timer_taho();
                         speed100_fl = 1;
                     }
