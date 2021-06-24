@@ -22,6 +22,9 @@
 // place custom chars data in eeprom
 #define EEPROM_CUSTOM_CHARS
 
+// simple checking time difference (decrease memory usage)
+//#define SIMPLE_TRIPC_TIME_CHECK
+
 // number of averaging ADC readings
 //#define ADC_AVERAGE_SAMPLES 8
 

@@ -98,8 +98,6 @@
 #define SND     RC0
 #define SND_TRIS (1 << _TRISC_TRISC0_POISITION)
 
-#define I2C_BITBANG
-
 #ifndef I2C_BITBANG
 #define SCL_TRIS_MASK   (1 << _TRISC_TRISC3_POSITION)
 #define SDA_TRIS_MASK   (1 << _TRISC_TRISC4_POSITION)
