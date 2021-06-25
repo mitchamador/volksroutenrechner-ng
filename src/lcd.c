@@ -3,20 +3,27 @@
 #include "i2c.h"
 #include <stdbool.h>
 
+#ifndef LCD_LEGACY
 unsigned char i2c_add;
-
+#endif
 //---------------[ LCD Routines ]----------------
 //------------------------------------------------------
 
+#ifndef LCD_LEGACY
 void LCD_Init(unsigned char I2C_Add) 
 {
   i2c_add = I2C_Add;
+  
 
   I2C_Master_Start();
   I2C_Master_Write(i2c_add);
-  I2C_Master_Write((0x00 | 0x04) | LCD_BACKLIGHT);
+  I2C_Master_Write((RS | EN) | LCD_BACKLIGHT);
   I2C_Master_Stop();
-
+#else
+void LCD_Init() {  
+  LCD_PORT = (LCD_PORT & ~LCD_PORT_MASK) | (RS | EN);
+#endif
+    
   delay_ms(50);
   LCD_CMD(0x03);
   delay_us(4100);
@@ -34,7 +41,7 @@ void LCD_Init(unsigned char I2C_Add)
 }
 
 void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode) {
-
+#ifndef LCD_LEGACY
     I2C_Master_Start();
     I2C_Master_Write(i2c_add);
     I2C_Master_Write((Nibble | EN) | mode | LCD_BACKLIGHT);
@@ -46,6 +53,13 @@ void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode) {
     I2C_Master_Write((Nibble & ~EN) | mode | LCD_BACKLIGHT);
     I2C_Master_Stop();
 //    delay_us(50);
+#else
+  LCD_PORT = (LCD_PORT & ~LCD_PORT_MASK) | ((Nibble | EN)  | mode);
+  delay_us(2);
+  LCD_PORT = (LCD_PORT & ~LCD_PORT_MASK) | ((Nibble & ~EN) | mode);
+  delay_us(50);
+#endif
+    
 }
 
 void LCD_CMD(unsigned char CMD) 

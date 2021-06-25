@@ -49,6 +49,18 @@
 #include <stdint.h>
 
 #if defined(__PIC_MIDRANGE)
+
+#ifdef HW_LEGACY
+
+#if !defined(_16F876A)
+#error ("hw legacy support only with pic16f876a")
+#endif
+// i2c software bit bang
+#define I2C_BITBANG
+// lcd parallel interface
+#define LCD_LEGACY
+
+#endif
 //#pragma warning disable 1090
 
 #pragma config FOSC = HS        // Oscillator Selection bits (HS oscillator)
@@ -102,15 +114,23 @@
 #define SCL_TRIS_MASK   (1 << _TRISC_TRISC3_POSITION)
 #define SDA_TRIS_MASK   (1 << _TRISC_TRISC4_POSITION)
 #else
+#define SDA       PORTBbits.RB0
+#define SDA_TRIS  TRISBbits.TRISB0
+#define SDA_TRIS_MASK   0
 
-#define SDA       PORTCbits.RC4
-#define SDA_TRIS  TRISCbits.TRISC4
-#define SDA_TRIS_MASK   (0 << _TRISC_TRISC4_POSITION)
+#define SCL       PORTBbits.RB1
+#define SCL_TRIS  TRISBbits.TRISB1
+#define SCL_TRIS_MASK   0
+#endif
 
-#define SCL       PORTCbits.RC3
-#define SCL_TRIS  TRISCbits.TRISC3
-#define SCL_TRIS_MASK   (0 << _TRISC_TRISC3_POSITION)
-
+#ifdef LCD_LEGACY
+// RS - RC1
+// EN - RC3
+// data - RC4..RC7
+#define LCD_PORT    PORTC
+#define RS (1 << 1)
+#define EN (1 << 3)
+#define LCD_PORT_MASK (0xF0 | RS | EN )
 #endif
 
 // init values for port's data direction

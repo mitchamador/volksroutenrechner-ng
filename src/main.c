@@ -216,10 +216,9 @@ __bank3 unsigned short speed;
 #define TEMP_IN 1
 #define TEMP_ENGINE 2
 uint16_t temps[3] = {0, 0, 0};
-unsigned char temps_ee_addr;
-#else
-unsigned char data_ee_addr;
 #endif
+
+unsigned char temps_ee_addr;
 
 #ifdef USE_SOUND
 __bit buzzer_fl, buzzer_init_fl, buzzer_snd_fl, buzzer_repeat_fl;
@@ -658,11 +657,7 @@ void _LCD_Init(void) {
 #ifdef EEPROM_CUSTOM_CHARS
     for (i = 0; i < 64; i = i + 8) {
         LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
-#ifdef USE_DS18B20
         HW_read_eeprom_block((unsigned char*) buf, temps_ee_addr + 24 + i, 8);
-#else        
-        HW_read_eeprom_block((unsigned char*) buf, data_ee_addr + i, 8);
-#endif
         unsigned char j;
         for (j = 0; j < 8; j++) {
             LCD_Write_Char(buf[j]);
@@ -1600,11 +1595,7 @@ void read_eeprom() {
     ee_addr += (sizeof(trips_t) / 8 + 1) * 8;
     
     HW_read_eeprom_block((unsigned char*) &services, ee_addr, sizeof(services_t));
-#ifdef USE_DS18B20
     temps_ee_addr = ee_addr + (sizeof(services_t) / 8 + 1) * 8;
-#else
-    data_ee_addr = ee_addr + (sizeof(services_t) / 8 + 1) * 8;
-#endif
     
 }
 
@@ -1731,6 +1722,7 @@ void handle_temp() {
     temperature_fl = 0;
     if (temperature_conv_fl == 1) {
         // read temperature for ds18b20
+        timeout_temperature = TIMEOUT_TEMPERATURE;
         temperature_conv_fl = 0;
         unsigned char i;
         for (i = 0; i < 3; i++) {

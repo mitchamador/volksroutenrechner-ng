@@ -3,11 +3,10 @@
 
 #include "hw.h"
 
-
-#pragma warning disable 520
-
+#ifndef LCD_LEGACY
 #define RS (1 << 0)
 #define EN (1 << 2)
+#endif
 
 #define LCD_BACKLIGHT          0x08
 #define LCD_NOBACKLIGHT        0x00
@@ -50,10 +49,17 @@ typedef enum {
 #ifdef _PIC14
 #define LCD_Write_String8(Str, len, align) __LCD_Write_String(Str, len, 8, align)
 #define LCD_Write_String16(Str, len, align) __LCD_Write_String(Str, len, 16, align)
+#ifndef HW_LEGACY
 #define _LCD_INLINE_WRITE_
 #endif
+#endif
 
+#ifdef LCD_LEGACY
+void LCD_Init(void);
+#define LCD_Init(a) LCD_Init()
+#else
 void LCD_Init(unsigned char I2C_Add);
+#endif
 void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode);
 void LCD_CMD(unsigned char CMD);
 void LCD_Set_Cursor(unsigned char ROW, unsigned char COL);

@@ -69,6 +69,10 @@ OBJECTFILES=${OBJECTDIR}/src/ds18b20.o ${OBJECTDIR}/src/ds1307.o ${OBJECTDIR}/sr
 # Source Files
 SOURCEFILES=src/ds18b20.c src/ds1307.c src/hw-pic.c src/i2c-pic.c src/lcd.c src/main.c src/utils.c src/hw-avr.c src/i2c-avr.c
 
+# Pack Options 
+PACK_COMPILER_OPTIONS=-I "${DFP_DIR}/include"
+PACK_COMMON_OPTIONS=-B "${DFP_DIR}/gcc/dev/atmega328p"
+
 
 
 CFLAGS=
@@ -92,120 +96,6 @@ endif
 
 MP_PROCESSOR_OPTION=ATmega328P
 # ------------------------------------------------------------------------------------
-# Rules for buildStep: compile
-ifeq ($(TYPE_IMAGE), DEBUG_RUN)
-${OBJECTDIR}/src/ds18b20.o: src/ds18b20.c  .generated_files/flags/ATMega328P/3d70246683cccc557395eea7331658ebf4245326 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/ds18b20.o.d 
-	@${RM} ${OBJECTDIR}/src/ds18b20.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1 -g -DDEBUG  -gdwarf-2  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/ds18b20.o.d" -MT "${OBJECTDIR}/src/ds18b20.o.d" -MT ${OBJECTDIR}/src/ds18b20.o -o ${OBJECTDIR}/src/ds18b20.o src/ds18b20.c 
-	
-${OBJECTDIR}/src/ds1307.o: src/ds1307.c  .generated_files/flags/ATMega328P/3c6a667c14cae33361f612178cc0b30b5cc948ad .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/ds1307.o.d 
-	@${RM} ${OBJECTDIR}/src/ds1307.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1 -g -DDEBUG  -gdwarf-2  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/ds1307.o.d" -MT "${OBJECTDIR}/src/ds1307.o.d" -MT ${OBJECTDIR}/src/ds1307.o -o ${OBJECTDIR}/src/ds1307.o src/ds1307.c 
-	
-${OBJECTDIR}/src/hw-pic.o: src/hw-pic.c  .generated_files/flags/ATMega328P/edf299ec7f3fa0ac5861d82d6e2f1fbae9305cf2 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/hw-pic.o.d 
-	@${RM} ${OBJECTDIR}/src/hw-pic.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1 -g -DDEBUG  -gdwarf-2  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/hw-pic.o.d" -MT "${OBJECTDIR}/src/hw-pic.o.d" -MT ${OBJECTDIR}/src/hw-pic.o -o ${OBJECTDIR}/src/hw-pic.o src/hw-pic.c 
-	
-${OBJECTDIR}/src/i2c-pic.o: src/i2c-pic.c  .generated_files/flags/ATMega328P/87cc0fe4793a756e859d8e767682f7163b839d55 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/i2c-pic.o.d 
-	@${RM} ${OBJECTDIR}/src/i2c-pic.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1 -g -DDEBUG  -gdwarf-2  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/i2c-pic.o.d" -MT "${OBJECTDIR}/src/i2c-pic.o.d" -MT ${OBJECTDIR}/src/i2c-pic.o -o ${OBJECTDIR}/src/i2c-pic.o src/i2c-pic.c 
-	
-${OBJECTDIR}/src/lcd.o: src/lcd.c  .generated_files/flags/ATMega328P/4afb049ac1e86671bf8458b69fb4503170f23529 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/lcd.o.d 
-	@${RM} ${OBJECTDIR}/src/lcd.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1 -g -DDEBUG  -gdwarf-2  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/lcd.o.d" -MT "${OBJECTDIR}/src/lcd.o.d" -MT ${OBJECTDIR}/src/lcd.o -o ${OBJECTDIR}/src/lcd.o src/lcd.c 
-	
-${OBJECTDIR}/src/main.o: src/main.c  .generated_files/flags/ATMega328P/fad1f5b1d59182531a92aa595f956114835c4351 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/main.o.d 
-	@${RM} ${OBJECTDIR}/src/main.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1 -g -DDEBUG  -gdwarf-2  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/main.o.d" -MT "${OBJECTDIR}/src/main.o.d" -MT ${OBJECTDIR}/src/main.o -o ${OBJECTDIR}/src/main.o src/main.c 
-	
-${OBJECTDIR}/src/utils.o: src/utils.c  .generated_files/flags/ATMega328P/978bb2f7f8f3a634dc0b6eb529b142f840c4f3d9 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/utils.o.d 
-	@${RM} ${OBJECTDIR}/src/utils.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1 -g -DDEBUG  -gdwarf-2  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/utils.o.d" -MT "${OBJECTDIR}/src/utils.o.d" -MT ${OBJECTDIR}/src/utils.o -o ${OBJECTDIR}/src/utils.o src/utils.c 
-	
-${OBJECTDIR}/src/hw-avr.o: src/hw-avr.c  .generated_files/flags/ATMega328P/ad70ae4393638ce8dc8539cde23ebd4d98b2c58f .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/hw-avr.o.d 
-	@${RM} ${OBJECTDIR}/src/hw-avr.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1 -g -DDEBUG  -gdwarf-2  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/hw-avr.o.d" -MT "${OBJECTDIR}/src/hw-avr.o.d" -MT ${OBJECTDIR}/src/hw-avr.o -o ${OBJECTDIR}/src/hw-avr.o src/hw-avr.c 
-	
-${OBJECTDIR}/src/i2c-avr.o: src/i2c-avr.c  .generated_files/flags/ATMega328P/39fedb002de1c4d41d73d52a13f1dec51f514f59 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/i2c-avr.o.d 
-	@${RM} ${OBJECTDIR}/src/i2c-avr.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1 -g -DDEBUG  -gdwarf-2  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/i2c-avr.o.d" -MT "${OBJECTDIR}/src/i2c-avr.o.d" -MT ${OBJECTDIR}/src/i2c-avr.o -o ${OBJECTDIR}/src/i2c-avr.o src/i2c-avr.c 
-	
-else
-${OBJECTDIR}/src/ds18b20.o: src/ds18b20.c  .generated_files/flags/ATMega328P/9c00c04b7f58ddbb294a14a141ff485fdcf8378d .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/ds18b20.o.d 
-	@${RM} ${OBJECTDIR}/src/ds18b20.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/ds18b20.o.d" -MT "${OBJECTDIR}/src/ds18b20.o.d" -MT ${OBJECTDIR}/src/ds18b20.o -o ${OBJECTDIR}/src/ds18b20.o src/ds18b20.c 
-	
-${OBJECTDIR}/src/ds1307.o: src/ds1307.c  .generated_files/flags/ATMega328P/b89422a573d3785cc93a73b7dccc0ad081cd9c26 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/ds1307.o.d 
-	@${RM} ${OBJECTDIR}/src/ds1307.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/ds1307.o.d" -MT "${OBJECTDIR}/src/ds1307.o.d" -MT ${OBJECTDIR}/src/ds1307.o -o ${OBJECTDIR}/src/ds1307.o src/ds1307.c 
-	
-${OBJECTDIR}/src/hw-pic.o: src/hw-pic.c  .generated_files/flags/ATMega328P/fc8e9c29e718ed304e78066f3bd3967af9e8ffa3 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/hw-pic.o.d 
-	@${RM} ${OBJECTDIR}/src/hw-pic.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/hw-pic.o.d" -MT "${OBJECTDIR}/src/hw-pic.o.d" -MT ${OBJECTDIR}/src/hw-pic.o -o ${OBJECTDIR}/src/hw-pic.o src/hw-pic.c 
-	
-${OBJECTDIR}/src/i2c-pic.o: src/i2c-pic.c  .generated_files/flags/ATMega328P/9c64dde93bc441c21e9c54551faf3d0e99338f5d .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/i2c-pic.o.d 
-	@${RM} ${OBJECTDIR}/src/i2c-pic.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/i2c-pic.o.d" -MT "${OBJECTDIR}/src/i2c-pic.o.d" -MT ${OBJECTDIR}/src/i2c-pic.o -o ${OBJECTDIR}/src/i2c-pic.o src/i2c-pic.c 
-	
-${OBJECTDIR}/src/lcd.o: src/lcd.c  .generated_files/flags/ATMega328P/74abbcc00985ac94dbd8283ca8e22769bcf60313 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/lcd.o.d 
-	@${RM} ${OBJECTDIR}/src/lcd.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/lcd.o.d" -MT "${OBJECTDIR}/src/lcd.o.d" -MT ${OBJECTDIR}/src/lcd.o -o ${OBJECTDIR}/src/lcd.o src/lcd.c 
-	
-${OBJECTDIR}/src/main.o: src/main.c  .generated_files/flags/ATMega328P/f51ac17ced7436b8124dce1787bf8e7b0c2f8020 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/main.o.d 
-	@${RM} ${OBJECTDIR}/src/main.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/main.o.d" -MT "${OBJECTDIR}/src/main.o.d" -MT ${OBJECTDIR}/src/main.o -o ${OBJECTDIR}/src/main.o src/main.c 
-	
-${OBJECTDIR}/src/utils.o: src/utils.c  .generated_files/flags/ATMega328P/b346d35afdeab12d000c9e34b21a4f151622d9f5 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/utils.o.d 
-	@${RM} ${OBJECTDIR}/src/utils.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/utils.o.d" -MT "${OBJECTDIR}/src/utils.o.d" -MT ${OBJECTDIR}/src/utils.o -o ${OBJECTDIR}/src/utils.o src/utils.c 
-	
-${OBJECTDIR}/src/hw-avr.o: src/hw-avr.c  .generated_files/flags/ATMega328P/ff017a8e8d9523f2cced41ec59a428f021d73ae9 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/hw-avr.o.d 
-	@${RM} ${OBJECTDIR}/src/hw-avr.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/hw-avr.o.d" -MT "${OBJECTDIR}/src/hw-avr.o.d" -MT ${OBJECTDIR}/src/hw-avr.o -o ${OBJECTDIR}/src/hw-avr.o src/hw-avr.c 
-	
-${OBJECTDIR}/src/i2c-avr.o: src/i2c-avr.c  .generated_files/flags/ATMega328P/416799ec774460757d3e1ef889be30d90c4210b4 .generated_files/flags/ATMega328P/95dcf237f9529e21c59a51a986c56bf395bae4f3
-	@${MKDIR} "${OBJECTDIR}/src" 
-	@${RM} ${OBJECTDIR}/src/i2c-avr.o.d 
-	@${RM} ${OBJECTDIR}/src/i2c-avr.o 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -x c -D__$(MP_PROCESSOR_OPTION)__   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -gdwarf-3     -MD -MP -MF "${OBJECTDIR}/src/i2c-avr.o.d" -MT "${OBJECTDIR}/src/i2c-avr.o.d" -MT ${OBJECTDIR}/src/i2c-avr.o -o ${OBJECTDIR}/src/i2c-avr.o src/i2c-avr.c 
-	
-endif
-
-# ------------------------------------------------------------------------------------
 # Rules for buildStep: assemble
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
 else
@@ -218,18 +108,147 @@ else
 endif
 
 # ------------------------------------------------------------------------------------
+# Rules for buildStep: compile
+ifeq ($(TYPE_IMAGE), DEBUG_RUN)
+${OBJECTDIR}/src/ds18b20.o: src/ds18b20.c  .generated_files/flags/ATMega328P/a5c02c14329f6a707c39c14fd9b30f18bb73a281 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/ds18b20.o.d 
+	@${RM} ${OBJECTDIR}/src/ds18b20.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/ds18b20.o.d" -MT "${OBJECTDIR}/src/ds18b20.o.d" -MT ${OBJECTDIR}/src/ds18b20.o  -o ${OBJECTDIR}/src/ds18b20.o src/ds18b20.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/ds1307.o: src/ds1307.c  .generated_files/flags/ATMega328P/485c9fc4ee66021a25e2661c9a9252bd9f97e6b9 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/ds1307.o.d 
+	@${RM} ${OBJECTDIR}/src/ds1307.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/ds1307.o.d" -MT "${OBJECTDIR}/src/ds1307.o.d" -MT ${OBJECTDIR}/src/ds1307.o  -o ${OBJECTDIR}/src/ds1307.o src/ds1307.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/hw-pic.o: src/hw-pic.c  .generated_files/flags/ATMega328P/14ef8e5884e96f5a80e4437229966756ad1302f7 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/hw-pic.o.d 
+	@${RM} ${OBJECTDIR}/src/hw-pic.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/hw-pic.o.d" -MT "${OBJECTDIR}/src/hw-pic.o.d" -MT ${OBJECTDIR}/src/hw-pic.o  -o ${OBJECTDIR}/src/hw-pic.o src/hw-pic.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/i2c-pic.o: src/i2c-pic.c  .generated_files/flags/ATMega328P/56fd00ceae19378c847df7c818a736b0086837ef .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/i2c-pic.o.d 
+	@${RM} ${OBJECTDIR}/src/i2c-pic.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/i2c-pic.o.d" -MT "${OBJECTDIR}/src/i2c-pic.o.d" -MT ${OBJECTDIR}/src/i2c-pic.o  -o ${OBJECTDIR}/src/i2c-pic.o src/i2c-pic.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/lcd.o: src/lcd.c  .generated_files/flags/ATMega328P/18ad6cb94e81e8055b2e29a05daf3659bcf5092a .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/lcd.o.d 
+	@${RM} ${OBJECTDIR}/src/lcd.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/lcd.o.d" -MT "${OBJECTDIR}/src/lcd.o.d" -MT ${OBJECTDIR}/src/lcd.o  -o ${OBJECTDIR}/src/lcd.o src/lcd.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/main.o: src/main.c  .generated_files/flags/ATMega328P/1ff0fef13268de1066a9419c4a83f07b8bbf6cb8 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/main.o.d 
+	@${RM} ${OBJECTDIR}/src/main.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/main.o.d" -MT "${OBJECTDIR}/src/main.o.d" -MT ${OBJECTDIR}/src/main.o  -o ${OBJECTDIR}/src/main.o src/main.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/utils.o: src/utils.c  .generated_files/flags/ATMega328P/f5fb6cbd2cc8a89e0935c2827f6da1d7c2aa61c4 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/utils.o.d 
+	@${RM} ${OBJECTDIR}/src/utils.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/utils.o.d" -MT "${OBJECTDIR}/src/utils.o.d" -MT ${OBJECTDIR}/src/utils.o  -o ${OBJECTDIR}/src/utils.o src/utils.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/hw-avr.o: src/hw-avr.c  .generated_files/flags/ATMega328P/c2e33d982b695bb54cda881b0670b9e95fd7f0b9 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/hw-avr.o.d 
+	@${RM} ${OBJECTDIR}/src/hw-avr.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/hw-avr.o.d" -MT "${OBJECTDIR}/src/hw-avr.o.d" -MT ${OBJECTDIR}/src/hw-avr.o  -o ${OBJECTDIR}/src/hw-avr.o src/hw-avr.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/i2c-avr.o: src/i2c-avr.c  .generated_files/flags/ATMega328P/4e850b51a05349f136fbc35e0f64f1254fbe312e .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/i2c-avr.o.d 
+	@${RM} ${OBJECTDIR}/src/i2c-avr.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/i2c-avr.o.d" -MT "${OBJECTDIR}/src/i2c-avr.o.d" -MT ${OBJECTDIR}/src/i2c-avr.o  -o ${OBJECTDIR}/src/i2c-avr.o src/i2c-avr.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+else
+${OBJECTDIR}/src/ds18b20.o: src/ds18b20.c  .generated_files/flags/ATMega328P/b6bdef661f0d1bfd838d19d1050c31b7f6ec319e .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/ds18b20.o.d 
+	@${RM} ${OBJECTDIR}/src/ds18b20.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/ds18b20.o.d" -MT "${OBJECTDIR}/src/ds18b20.o.d" -MT ${OBJECTDIR}/src/ds18b20.o  -o ${OBJECTDIR}/src/ds18b20.o src/ds18b20.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/ds1307.o: src/ds1307.c  .generated_files/flags/ATMega328P/4b8fb898862efe8dbf0bce9a4a5bb436b517a782 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/ds1307.o.d 
+	@${RM} ${OBJECTDIR}/src/ds1307.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/ds1307.o.d" -MT "${OBJECTDIR}/src/ds1307.o.d" -MT ${OBJECTDIR}/src/ds1307.o  -o ${OBJECTDIR}/src/ds1307.o src/ds1307.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/hw-pic.o: src/hw-pic.c  .generated_files/flags/ATMega328P/41c2b36bfcd4c2257ba89b900b70c966c6ea65df .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/hw-pic.o.d 
+	@${RM} ${OBJECTDIR}/src/hw-pic.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/hw-pic.o.d" -MT "${OBJECTDIR}/src/hw-pic.o.d" -MT ${OBJECTDIR}/src/hw-pic.o  -o ${OBJECTDIR}/src/hw-pic.o src/hw-pic.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/i2c-pic.o: src/i2c-pic.c  .generated_files/flags/ATMega328P/2a0a3fe3947c7ff55c1249b4cb164906892f9e3a .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/i2c-pic.o.d 
+	@${RM} ${OBJECTDIR}/src/i2c-pic.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/i2c-pic.o.d" -MT "${OBJECTDIR}/src/i2c-pic.o.d" -MT ${OBJECTDIR}/src/i2c-pic.o  -o ${OBJECTDIR}/src/i2c-pic.o src/i2c-pic.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/lcd.o: src/lcd.c  .generated_files/flags/ATMega328P/b533db5a07d2e567cc3e7c72cffc11b887d04114 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/lcd.o.d 
+	@${RM} ${OBJECTDIR}/src/lcd.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/lcd.o.d" -MT "${OBJECTDIR}/src/lcd.o.d" -MT ${OBJECTDIR}/src/lcd.o  -o ${OBJECTDIR}/src/lcd.o src/lcd.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/main.o: src/main.c  .generated_files/flags/ATMega328P/4e4a1f4d2c0b07964200a464474c874d1fa1e034 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/main.o.d 
+	@${RM} ${OBJECTDIR}/src/main.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/main.o.d" -MT "${OBJECTDIR}/src/main.o.d" -MT ${OBJECTDIR}/src/main.o  -o ${OBJECTDIR}/src/main.o src/main.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/utils.o: src/utils.c  .generated_files/flags/ATMega328P/18c0bf91514dd92452e4b4b81e54045d22d40b00 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/utils.o.d 
+	@${RM} ${OBJECTDIR}/src/utils.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/utils.o.d" -MT "${OBJECTDIR}/src/utils.o.d" -MT ${OBJECTDIR}/src/utils.o  -o ${OBJECTDIR}/src/utils.o src/utils.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/hw-avr.o: src/hw-avr.c  .generated_files/flags/ATMega328P/7b6b6e017a8634b1027c56ce16746ee66d6c2c02 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/hw-avr.o.d 
+	@${RM} ${OBJECTDIR}/src/hw-avr.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/hw-avr.o.d" -MT "${OBJECTDIR}/src/hw-avr.o.d" -MT ${OBJECTDIR}/src/hw-avr.o  -o ${OBJECTDIR}/src/hw-avr.o src/hw-avr.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/i2c-avr.o: src/i2c-avr.c  .generated_files/flags/ATMega328P/5804a8e0e2120dc5aba2c55bc04e65d12e02d931 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/i2c-avr.o.d 
+	@${RM} ${OBJECTDIR}/src/i2c-avr.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/i2c-avr.o.d" -MT "${OBJECTDIR}/src/i2c-avr.o.d" -MT ${OBJECTDIR}/src/i2c-avr.o  -o ${OBJECTDIR}/src/i2c-avr.o src/i2c-avr.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+endif
+
+# ------------------------------------------------------------------------------------
+# Rules for buildStep: compileCPP
+ifeq ($(TYPE_IMAGE), DEBUG_RUN)
+else
+endif
+
+# ------------------------------------------------------------------------------------
 # Rules for buildStep: link
 ifeq ($(TYPE_IMAGE), DEBUG_RUN)
 dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk    
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
-	${MP_CC} $(MP_EXTRA_LD_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -Wl,-Map=dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.map  -D__DEBUG=1  -DXPRJ_ATMega328P=$(CND_CONF)  -Wl,--defsym=__MPLAB_BUILD=1   -mdfp="${DFP_DIR}/xc8"   -gdwarf-2 -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -gdwarf-3     $(COMPARISON_BUILD) -Wl,--memorysummary,dist/${CND_CONF}/${IMAGE_TYPE}/memoryfile.xml -o dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  -o dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}      -Wl,--start-group  -Wl,-lm -Wl,--end-group  -Wl,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1
-	@${RM} dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.hex 
+	${MP_CC} $(MP_EXTRA_LD_PRE) -mmcu=atmega328p ${PACK_COMMON_OPTIONS}   -gdwarf-2 -D__$(MP_PROCESSOR_OPTION)__  -Wl,-Map="dist\${CND_CONF}\${IMAGE_TYPE}\volksroutenrechner-ng.${IMAGE_TYPE}.map"    -o dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX} ${OBJECTFILES_QUOTED_IF_SPACED}      -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -Wl,--defsym=__MPLAB_BUILD=1$(MP_EXTRA_LD_POST)$(MP_LINKER_FILE_OPTION),--defsym=__ICD2RAM=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1 -Wl,--gc-sections -Wl,--start-group  -Wl,-lm -Wl,--end-group 
+	
+	
+	
+	
+	
 	
 else
 dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX}: ${OBJECTFILES}  nbproject/Makefile-${CND_CONF}.mk   
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
-	${MP_CC} $(MP_EXTRA_LD_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -Wl,-Map=dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.map  -DXPRJ_ATMega328P=$(CND_CONF)  -Wl,--defsym=__MPLAB_BUILD=1   -mdfp="${DFP_DIR}/xc8"  -Wl,--gc-sections -O1 -Og -ffunction-sections -fdata-sections -fshort-enums -funsigned-char -funsigned-bitfields -I"include" -gdwarf-3     $(COMPARISON_BUILD) -Wl,--memorysummary,dist/${CND_CONF}/${IMAGE_TYPE}/memoryfile.xml -o dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  -o dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}  ${OBJECTFILES_QUOTED_IF_SPACED}      -Wl,--start-group  -Wl,-lm -Wl,--end-group 
+	${MP_CC} $(MP_EXTRA_LD_PRE) -mmcu=atmega328p ${PACK_COMMON_OPTIONS}  -D__$(MP_PROCESSOR_OPTION)__  -Wl,-Map="dist\${CND_CONF}\${IMAGE_TYPE}\volksroutenrechner-ng.${IMAGE_TYPE}.map"    -o dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX} ${OBJECTFILES_QUOTED_IF_SPACED}      -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -Wl,--defsym=__MPLAB_BUILD=1$(MP_EXTRA_LD_POST)$(MP_LINKER_FILE_OPTION) -Wl,--gc-sections -Wl,--start-group  -Wl,-lm -Wl,--end-group 
 	${MP_CC_DIR}\\avr-objcopy -O ihex "dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}" "dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.hex"
+	
+	
+	
+	
+	
 endif
 
 
