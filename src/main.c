@@ -90,8 +90,8 @@ typedef union {
     unsigned b0:1;
     unsigned b1:1;
     unsigned b2:1;
+    unsigned b3:1;
     unsigned service_alarm:1;
-    unsigned engine_alarm:1;
     unsigned key_sound:1;
     unsigned skip_temp_screen:1;
     unsigned dual_injection:1;
@@ -484,7 +484,9 @@ int_handler_GLOBAL_begin
                 key1_longpress = 1;
                 screen_refresh = 1;
 #ifdef USE_SOUND
-                buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_LONGKEY];
+                if (config.settings.key_sound) {
+                    buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_LONGKEY];
+                }
 #endif
             }
         } else // key released
@@ -494,7 +496,9 @@ int_handler_GLOBAL_begin
                 key1_press = 1;
                 screen_refresh = 1;
 #ifdef USE_SOUND
-                buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_KEY];
+                if (config.settings.key_sound) {
+                    buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_KEY];
+                }
 #endif
             }
             key1_counter = 0;
@@ -510,7 +514,9 @@ int_handler_GLOBAL_begin
                 key2_longpress = 1;
                 screen_refresh = 1;
 #ifdef USE_SOUND
-                buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_LONGKEY];
+                if (config.settings.key_sound) {
+                    buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_LONGKEY];
+                }
 #endif
             }
         } else // key released
@@ -520,7 +526,9 @@ int_handler_GLOBAL_begin
                 key2_press = 1;
                 screen_refresh = 1;
 #ifdef USE_SOUND
-                buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_KEY];
+                if (config.settings.key_sound) {
+                    buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_KEY];
+                }
 #endif
             }
             key2_counter = 0;
@@ -1812,7 +1820,7 @@ void main() {
     start_timer1();
     enable_interrupts();
     
-    if (service_mode == 0) {
+    if (service_mode == 0 && config.settings.service_alarm) {
         check_service_counters();
         key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0;
     }
