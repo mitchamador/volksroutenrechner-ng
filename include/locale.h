@@ -32,7 +32,7 @@ const char warning_str[] = "WARNING";
 
 const char service_menu_title[] = "SERVICE MENU";
 const char service_counters[] = "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
-const char settings_bits[] = "\0dual inj\0skip temp\0key sound\0t'engn alarm\0serv alarm\0\0\0";
+const char settings_bits[] = "\0dual inj\0skip temp\0key sound\0serv alarm\0\0\0\0";
 const char temp_sensors[] = "\0---\0out\0in\0eng";
 
 const char fuel_constant_str[] = "FUEL constant";
