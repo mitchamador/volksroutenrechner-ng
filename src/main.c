@@ -974,7 +974,11 @@ void print_temp(unsigned char index, bool header, align_t align) {
 #endif
 
 void print_voltage(align_t align) {
+#ifdef ADC_AVERAGE_SAMPLES
+    len = get_fractional_string(buf, (unsigned short) ((adc / ADC_AVERAGE_SAMPLES) << 5) / config.vcc_const);
+#else
     len = get_fractional_string(buf, (unsigned short) (adc << 5) / config.vcc_const);
+#endif    
     buf[len++] = VOLT_SYMBOL;
     LCD_Write_String8(buf, len, align);
 }
