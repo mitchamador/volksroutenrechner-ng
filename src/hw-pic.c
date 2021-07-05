@@ -48,7 +48,7 @@ void HW_Init(void) {
     // ccp2 compare interrupt enable
     PIE2 = (1 << _PIE2_CCP2IE_POSITION);
 #elif defined(_16F1936)
-    // ccp2 compare interrupt enable
+    // ccp5 compare interrupt enable
     PIE3 = (1 << _PIE3_CCP5IE_POSITION);
 #endif    
     
@@ -67,9 +67,9 @@ void HW_Init(void) {
     
     // init ADC (set POWER_SUPPLY pin as analog)
 #if defined(_16F1936)
-    ANSELA = (1 << _ANSELA_ANSA0_POSITION); ANSELB = 0;
+    ANSELA = (1 << _ANSELA_ANSA1_POSITION) | (1 << _ANSELA_ANSA0_POSITION); ANSELB = 0;
 #endif    
-    ADCON0 = ADCON0_INIT;
+    ADCON0 = ADCON0_INIT | ADC_CHANNEL_POWER_SUPPLY;
     ADCON1 = ADCON1_INIT;
     ADON = 1;
     

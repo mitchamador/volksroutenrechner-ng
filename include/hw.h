@@ -51,7 +51,6 @@
 #if defined(__PIC_MIDRANGE)
 
 #ifdef HW_LEGACY
-
 #if !defined(_16F876A)
 #error ("hw legacy support only with pic16f876a")
 #endif
@@ -59,8 +58,8 @@
 #define I2C_BITBANG
 // lcd parallel interface
 #define LCD_LEGACY
-
 #endif
+
 //#pragma warning disable 1090
 
 #pragma config FOSC = HS        // Oscillator Selection bits (HS oscillator)
@@ -76,26 +75,36 @@
 // PORTA definitions (analog input)
 #define POWER_SUPPLY PORTAbits.RA0
 #define POWER_SUPPLY_TRIS_MASK (1 << _TRISA_TRISA0_POSITION)
+#define ADC_BUTTONS PORTAbits.RA1
+#define ADC_BUTTONS_TRIS_MASK (1 << _TRISA_TRISA1_POSITION)
 #if defined(_16F876A)
-#define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
+#define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
+#define ADC_CHANNEL_BUTTONS ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION))
 #define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (1 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
-#define power_supply_read_digital() ADCON1 = ((0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
-#define power_supply_read_analog() ADCON1 = ADCON1_INIT
 #else
-#define ADCON0_INIT ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
+#define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS4_POSITION) | (1 << _ADCON0_CHS3_POSITION) | (1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
+#define ADC_CHANNEL_BUTTONS ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#define ADCON0_INIT 0
 #define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADCS1_POSITION) | (0 << _ADCON1_ADCS0_POSITION))
-#define power_supply_read_digital() ANSELA = 0
-#define power_supply_read_analog() ANSELA = (1 << _ANSELA_ANSA0_POSITION)
 #endif
+
+#define set_adc_channel(ch) ADCON0 = (ADCON0 & ~ADC_CHANNEL_MASK) | ch
 
 #define PWR PORTAbits.RA4
 #define PWR_MASK  (1 << _PORTA_RA4_POSITION)
 
 // PORTB definitions
-// key1 and key2 (active zero)
+// key1 and key2 (active zero) (legacy hardware)
+#ifdef HW_LEGACY
 #define KEY1 PORTBbits.RB2
 #define KEY2 PORTBbits.RB3
 #define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
+#else
+#define KEY_TRIS_MASK 0
+#endif
 
 // speed sensor and injector
 #define TX PORTBbits.RB6
@@ -134,7 +143,7 @@
 #endif
 
 // init values for port's data direction
-#define TRISA_INIT POWER_SUPPLY_TRIS_MASK
+#define TRISA_INIT POWER_SUPPLY_TRIS_MASK | ADC_BUTTONS_TRIS_MASK
 #define TRISB_INIT KEY_TRIS_MASK | TX_TRIS_MASK | FUEL_TRIS_MASK
 #define TRISC_INIT SCL_TRIS_MASK | SDA_TRIS_MASK
 
@@ -246,10 +255,11 @@
 #define TX_ACTIVE   (TX == 1)
 #define FUEL_ACTIVE (FUEL == 0)
 
+#ifdef HW_LEGACY
 #define KEY1_PRESSED (KEY1 == 0)
 #define KEY2_PRESSED (KEY2 == 0)
+#endif
 
-#define POWER_SUPPLY_ACTIVE (POWER_SUPPLY == 1)
 #define PWR_ON  (PWR = 1)
 #define PWR_OFF (PWR = 0)
 
@@ -273,11 +283,6 @@
 #define __bank1
 #define __bank2
 #define __bank3
-
-#define adc_read_value() (ADCW)
-
-#define power_supply_read_digital()
-#define power_supply_read_analog()
 
 #define start_timer_fuel() TCCR0B = (0 << WGM02) | (0 << CS02) | (1 << CS01) | (0 << CS00);
 
@@ -326,12 +331,21 @@
 #define TX_ACTIVE   ((PINB & _BV(PINB0)) != 0)
 #define FUEL_ACTIVE ((PINB & _BV(PINB1)) == 0)
 
-#define KEY1_PRESSED ((PIND & _BV(PIND6)) == 0)
-#define KEY2_PRESSED ((PIND & _BV(PIND7)) == 0)
+#define set_adc_channel(ch) ADMUX = ADC_VREF_TYPE | ch
 
-#define POWER_SUPPLY_ACTIVE ((PINC & ~_BV(PINC1)) != 0)
-#define PWR_ON  (PORTC |=  _BV(PORTC0))
-#define PWR_OFF (PORTC &= ~_BV(PORTC0))
+#define adc_read_value() (ADCW)
+
+// Voltage Reference: AVCC pin, right aligned
+#define ADC_VREF_TYPE ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR))
+// clear OCF1B for ADC Auto Trigger
+#define restart_adc_event() TIFR1 = (1 << OCF1B)
+// mux for power supply pin (PC1/ADC1)
+#define ADC_CHANNEL_POWER_SUPPLY ((0 << MUX3) | (0 << MUX2) | (0 << MUX1) | (1 << MUX0))
+// mux for buttons pin (PC0/ADC0)
+#define ADC_CHANNEL_BUTTONS ((0 << MUX3) | (0 << MUX2) | (0 << MUX1) | (0 << MUX0))
+
+#define PWR_ON  (PORTC |=  _BV(PORTD3))
+#define PWR_OFF (PORTC &= ~_BV(PORTD3))
 
 #define SND_ON  (PORTD |=  _BV(PORTD4))
 #define SND_OFF (PORTD &= ~_BV(PORTD4))
@@ -354,13 +368,13 @@
 
 // init values for port's data direction
 #define DDRB_INIT 0
-#define DDRC_INIT _BV(DDC0)
-#define DDRD_INIT _BV(DDD4)
+#define DDRC_INIT 0
+#define DDRD_INIT _BV(DDD3) | _BV(DDD4)
 
-// init values for port's data
+// init values for port's data 
 #define PORTB_INIT _BV(PORTB1) | _BV(PORTB0)
-#define PORTC_INIT _BV(PORTC0)
-#define PORTD_INIT _BV(PORTD7) | _BV(PORTD6)
+#define PORTC_INIT _BV(PORTC0) | _BV(PORTC1)
+#define PORTD_INIT 0
 
 #endif
 

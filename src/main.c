@@ -22,11 +22,25 @@
 // place custom chars data in eeprom
 #define EEPROM_CUSTOM_CHARS
 
+// use ADC buttons (three buttons with resistor dividers, voltage while pressed ~ 0V, 1V, 2V)
+#define USE_ADC_BUTTONS
+
 // simple checking time difference (decrease memory usage)
 //#define SIMPLE_TRIPC_TIME_CHECK
 
 // number of averaging ADC readings
-//#define ADC_AVERAGE_SAMPLES 8
+#define ADC_AVERAGE_SAMPLES 8
+
+// undef for legacy hardware
+#if defined(HW_LEGACY) 
+#if defined(USE_ADC_BUTTONS)
+#undef USE_ADC_BUTTONS
+#endif
+// not enough program memory in pic16f876a
+#if defined(ADC_AVERAGE_SAMPLES)
+#undef ADC_AVERAGE_SAMPLES
+#endif
+#endif
 
 // * timer1 resolution * 0,01ms
 #define MAIN_INTERVAL 200
@@ -46,7 +60,7 @@
 // show average fuel consumption after total consumption of AVERAGE_MIN_FUEL * 0,01 litres
 #define AVERAGE_MIN_FUEL 5
 
-// min speed (* 0.1 km/h))
+// min speed (* 0.1 km/h)
 #define MIN_SPEED 50
 
 // max value of trip A odometer
@@ -173,7 +187,7 @@ __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
 
 // key variables and flags
 unsigned char key1_counter, key2_counter, shutdown_counter;
-volatile __bit key1_press, key1_longpress, key2_press, key2_longpress;
+volatile __bit key1_press, /*key1_longpress, */key2_press, key2_longpress;
 
 // 0.1s flag and counter
 unsigned char counter_01sec;
@@ -201,6 +215,16 @@ volatile unsigned short speed100_const, speed100_timer;
 
 unsigned short kmh_tmp, fuel_tmp, taho_tmp;
 volatile unsigned short kmh, fuel, taho, adc;
+
+#ifdef USE_ADC_BUTTONS
+unsigned char _adc_ch;
+unsigned short _adc;
+unsigned char adc_key;
+
+#define KEY1_PRESSED (adc_key == 1)
+#define KEY2_PRESSED (adc_key == 2)
+#define KEY3_PRESSED (adc_key == 3)
+#endif
 
 #ifdef ADC_AVERAGE_SAMPLES
 unsigned short adc_tmp;
@@ -476,6 +500,10 @@ int_handler_GLOBAL_begin
 
         if (KEY1_PRESSED) // key pressed
         {
+            if (key1_counter <= SHORTKEY) {
+                key1_counter++;
+            }
+/*            
             if (key1_counter <= LONGKEY) {
                 key1_counter++;
             }
@@ -489,9 +517,10 @@ int_handler_GLOBAL_begin
                 }
 #endif
             }
+*/
         } else // key released
         {
-            if (key1_counter > DEBOUNCE && key1_counter < SHORTKEY) {
+            if (key1_counter > DEBOUNCE && key1_counter <= SHORTKEY) {
                 // key press
                 key1_press = 1;
                 screen_refresh = 1;
@@ -521,7 +550,7 @@ int_handler_GLOBAL_begin
             }
         } else // key released
         {
-            if (key2_counter > DEBOUNCE && key2_counter < SHORTKEY) {
+            if (key2_counter > DEBOUNCE && key2_counter <= SHORTKEY) {
                 // key press
                 key2_press = 1;
                 screen_refresh = 1;
@@ -632,26 +661,60 @@ int_handler_GLOBAL_begin
     int_handler_timer2_end    
 
     int_handler_adc_begin
-#ifdef ADC_AVERAGE_SAMPLES
-        adc_tmp += adc_read_value();
-        if (--adc_counter == 0) {
-            adc_counter = ADC_AVERAGE_SAMPLES;
-            adc = adc_tmp;
-            adc_tmp = 0;
-        }
-#else
-        adc = adc_read_value();
+#ifdef USE_ADC_BUTTONS
+        if (_adc_ch == 0) {
 #endif    
-        power_supply_read_digital();
-        // read power supply status
-        if (POWER_SUPPLY_ACTIVE) {
-            shutdown_counter = 0;
-        } else {
-            if (++shutdown_counter == 8) {
-                shutdown_fl = 1;
+#ifdef ADC_AVERAGE_SAMPLES
+            adc_tmp += adc_read_value();
+            if (--adc_counter == 0) {
+                adc_counter = ADC_AVERAGE_SAMPLES;
+                adc = adc_tmp;
+                adc_tmp = 0;
             }
+#else
+            adc = adc_read_value();
+#endif    
+// power supply threshold 
+// with default divider resistor's (8,2k + 3,6k) values
+// THRESHOLD_VOLTAGE * (3,6 / (3,6 + 8,2)) * (1024 / 5) = THRESHOLD_VOLTAGE_ADC_VALUE
+// 2,048V ~ 128
+#define THRESHOLD_VOLTAGE_ADC_VALUE 128
+            // read power supply status
+            if (adc > THRESHOLD_VOLTAGE_ADC_VALUE) {
+                shutdown_counter = 0;
+            } else {
+                if (shutdown_counter == 8) {
+                    shutdown_fl = 1;
+                } else {
+                    shutdown_counter++;
+                }
+            }
+
+#ifdef USE_ADC_BUTTONS
+            _adc_ch = 1;
+            set_adc_channel(ADC_CHANNEL_BUTTONS);
+        } else {
+// threshold for buttons +-0,1v
+#define ADC_BUTTONS_THRESHOLD 100
+#define ADC_BUTTONS_1V (1024/5)            
+            _adc = adc_read_value();
+            if (/*   _adc >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */_adc <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
+                adc_key = 1;
+            } else if (_adc >= (ADC_BUTTONS_1V * 1 - ADC_BUTTONS_THRESHOLD) && _adc <= (ADC_BUTTONS_1V * 1 + ADC_BUTTONS_THRESHOLD)) {
+                adc_key = 2;
+            } else if (_adc >= (ADC_BUTTONS_1V * 2 - ADC_BUTTONS_THRESHOLD) && _adc <= (ADC_BUTTONS_1V * 2 + ADC_BUTTONS_THRESHOLD)) {
+                adc_key = 3;
+            } else {
+                adc_key = 0;
+            }
+            _adc_ch = 0;
+            set_adc_channel(ADC_CHANNEL_POWER_SUPPLY);
         }
-        power_supply_read_analog();
+#endif    
+
+#if defined(restart_adc_event)
+        restart_adc_event();
+#endif        
         
     int_handler_adc_end
     
@@ -765,7 +828,7 @@ void screen_time(void) {
         LCD_CMD(LCD_CURSOR_OFF);
         // save time
         set_ds_time(&time);
-        key1_longpress = 0;
+        //key1_longpress = 0;
         key2_longpress = 0;
 
     } else {
@@ -1140,7 +1203,7 @@ void screen_main(void) {
 #endif
             timeout = 0; timeout_timer = 600; while (timeout == 0);
         }
-        key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0;
+        key1_press = 0; key2_press = 0; /*key1_longpress = 0;*/ key2_longpress = 0;
     }
 }
 
@@ -1826,7 +1889,7 @@ void main() {
     
     if (service_mode == 0 && config.settings.service_alarm) {
         check_service_counters();
-        key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0;
+        key1_press = 0; key2_press = 0; /*key1_longpress = 0;*/ key2_longpress = 0;
     }
     
     while (1) {
@@ -1850,7 +1913,7 @@ void main() {
         if (key1_press) {
             key1_press = 0;
             key2_press = 0;
-            key1_longpress = 0;
+            /*key1_longpress = 0;*/
             key2_longpress = 0;
             tmp_param = 0;
             do {
