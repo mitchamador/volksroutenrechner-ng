@@ -185,9 +185,33 @@ __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
 
 //========================================================================================
 
+#ifdef USE_ADC_BUTTONS
+unsigned char _adc_ch;
+unsigned short _adc;
+unsigned char adc_key;
+
+#define KEY1_PRESSED (adc_key == 1)
+#define KEY2_PRESSED (adc_key == 2)
+//#define KEY3_PRESSED (adc_key == 3)
+#endif
+
+#ifndef KEY3_PRESSED
+#define KEY_SERVICE_PRESSED KEY1_PRESSED
+#define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0)
+#else
+#define KEY_SERVICE_PRESSED KEY2_PRESSED
+#define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0 && key3_press == 0)
+#endif
+
 // key variables and flags
 unsigned char key1_counter, key2_counter, shutdown_counter;
-volatile __bit key1_press, /*key1_longpress, */key2_press, key2_longpress;
+volatile __bit key1_press, key2_press, key2_longpress;
+
+#ifdef KEY3_PRESSED
+unsigned char key3_counter;
+volatile __bit key3_press;
+signed char c_item_dir;
+#endif
 
 // 0.1s flag and counter
 unsigned char counter_01sec;
@@ -215,16 +239,6 @@ volatile unsigned short speed100_const, speed100_timer;
 
 unsigned short kmh_tmp, fuel_tmp, taho_tmp;
 volatile unsigned short kmh, fuel, taho, adc;
-
-#ifdef USE_ADC_BUTTONS
-unsigned char _adc_ch;
-unsigned short _adc;
-unsigned char adc_key;
-
-#define KEY1_PRESSED (adc_key == 1)
-#define KEY2_PRESSED (adc_key == 2)
-#define KEY3_PRESSED (adc_key == 3)
-#endif
 
 #ifdef ADC_AVERAGE_SAMPLES
 unsigned short adc_tmp;
@@ -503,21 +517,6 @@ int_handler_GLOBAL_begin
             if (key1_counter <= SHORTKEY) {
                 key1_counter++;
             }
-/*            
-            if (key1_counter <= LONGKEY) {
-                key1_counter++;
-            }
-            if (key1_counter == LONGKEY) {
-                // long keypress
-                key1_longpress = 1;
-                screen_refresh = 1;
-#ifdef USE_SOUND
-                if (config.settings.key_sound) {
-                    buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_LONGKEY];
-                }
-#endif
-            }
-*/
         } else // key released
         {
             if (key1_counter > DEBOUNCE && key1_counter <= SHORTKEY) {
@@ -562,6 +561,28 @@ int_handler_GLOBAL_begin
             }
             key2_counter = 0;
         }
+    
+#ifdef KEY3_PRESSED
+        if (KEY3_PRESSED) // key pressed
+        {
+            if (key3_counter <= SHORTKEY) {
+                key3_counter++;
+            }
+        } else // key released
+        {
+            if (key3_counter > DEBOUNCE && key3_counter <= SHORTKEY) {
+                // key press
+                key3_press = 1;
+                screen_refresh = 1;
+#ifdef USE_SOUND
+                if (config.settings.key_sound) {
+                    buzzer_fl = 1; buzzer_mode = &buzzer[BUZZER_KEY];
+                }
+#endif
+            }
+            key3_counter = 0;
+        }
+#endif    
 
         if (++main_interval_counter >= MAIN_INTERVAL) {
              main_interval_counter = 0;
@@ -702,8 +723,10 @@ int_handler_GLOBAL_begin
                 adc_key = 1;
             } else if (_adc >= (ADC_BUTTONS_1V * 1 - ADC_BUTTONS_THRESHOLD) && _adc <= (ADC_BUTTONS_1V * 1 + ADC_BUTTONS_THRESHOLD)) {
                 adc_key = 2;
+#ifdef KEY3_PRESSED
             } else if (_adc >= (ADC_BUTTONS_1V * 2 - ADC_BUTTONS_THRESHOLD) && _adc <= (ADC_BUTTONS_1V * 2 + ADC_BUTTONS_THRESHOLD)) {
                 adc_key = 3;
+#endif
             } else {
                 adc_key = 0;
             }
@@ -786,16 +809,32 @@ void screen_time(void) {
         const char cursor_position[] = {0x81, 0x84, 0x89, 0x8c, 0x8f, 0xc0};
 
         LCD_Clear();
-        while (c < 6) {
-            LCD_CMD(LCD_CURSOR_OFF);
-            print_current_time(&time);
-            LCD_CMD(cursor_position[c]);
-            LCD_CMD(LCD_UNDERLINE_ON);
-            while (key1_press == 0 && key2_press == 0);
-            if (key1_press != 0) {
+        timeout = 0; timeout_timer = 500;
+        while (timeout == 0) {
+            screen_refresh = 0;
+            if (key1_press == 1) {
+                key1_press = 0;
                 // key1 press - edit next element
                 c++;
-            } else {
+                if (c == 6) {
+                    c = 0;
+                }
+                timeout = 0; timeout_timer = 500;
+            }
+#ifdef KEY3_PRESSED
+            if (key3_press == 1) {
+                key3_press = 0;
+                // key3 press - edit previous element
+                if (c == 0) {
+                    c = 5;
+                } else {
+                    c--;
+                }
+                timeout = 0; timeout_timer = 500;
+            }
+#endif            
+            if (key2_press == 1) {
+                key2_press = 0;
                 // key2 press - increment current element
                 switch (c) {
                     case 0:
@@ -820,15 +859,19 @@ void screen_time(void) {
                         if (time.day_of_week == 0) time.day_of_week++;
                         break;
                 }
+                timeout = 0; timeout_timer = 500;
             }
 
-            key1_press = 0;
-            key2_press = 0;
+            LCD_CMD(LCD_CURSOR_OFF);
+            print_current_time(&time);
+            LCD_CMD(cursor_position[c]);
+            LCD_CMD(LCD_UNDERLINE_ON);
+
+            while (screen_refresh == 0 && timeout == 0);
         }
         LCD_CMD(LCD_CURSOR_OFF);
         // save time
         set_ds_time(&time);
-        //key1_longpress = 0;
         key2_longpress = 0;
 
     } else {
@@ -1165,8 +1208,8 @@ void screen_main(void) {
         speed100_fl = 0; speed100_ok_fl = 0; speed100_timer = 0;
 
         unsigned char _speed100_skip_pulses = 8; // skip some pulses from speed sensor before start acceleration measurement
-        
-        while (timeout == 0 && speed100_ok_fl == 0 && key1_press == 0 && key2_press == 0) {
+
+        while (timeout == 0 && speed100_ok_fl == 0 && NO_KEY_PRESSED) {
             if (_speed100_skip_pulses != 0) {
                 if (drive_fl == 1) {
                     drive_fl = 0;
@@ -1187,7 +1230,7 @@ void screen_main(void) {
         }
         speed100_timer_fl = 0;
         
-        if (key1_press == 0 && key2_press == 0) {
+        if (NO_KEY_PRESSED) {
             if (speed100_ok_fl) {
                 // достигнута скорость 100 км/ч
                 print_speed100();
@@ -1203,7 +1246,10 @@ void screen_main(void) {
 #endif
             timeout = 0; timeout_timer = 600; while (timeout == 0);
         }
-        key1_press = 0; key2_press = 0; /*key1_longpress = 0;*/ key2_longpress = 0;
+        key1_press = 0; key2_press = 0; key2_longpress = 0;
+#ifdef KEY3_PRESSED
+        key3_press = 0;
+#endif        
     }
 }
 
@@ -1223,7 +1269,8 @@ unsigned char request_screen(char* request_str) {
         LCD_Write_String16(buf, strcpy2(buf, request_str, 0), LCD_ALIGN_CENTER);
 
         timeout = 0; timeout_timer = 500;
-        while (timeout == 0 && key2_press == 0);
+
+        while (timeout == 0 && NO_KEY_PRESSED);
         
         if (key2_press == 1) {
             key2_press = 0;
@@ -1309,7 +1356,11 @@ void screen_tripB() {
 #ifdef USE_DS18B20
 void screen_temp() {
     if (config.settings.skip_temp_screen) {
-        key1_press = 1;
+#ifndef KEY3_PRESSED
+        c_item++;
+#else
+        c_item += c_item_dir;
+#endif        
         screen_refresh = 1;
     } else {
         LCD_CMD(0x80);
@@ -1385,19 +1436,25 @@ unsigned char edit_value_char(unsigned char v, bool thousands) {
     while (timeout == 0) {
         screen_refresh = 0;
 
-        if (key1_press == 1 || key2_press == 1) {
-            if (key1_press == 1) {
-                key1_press = 0;
-                v++;
-                if (thousands && v == 60) {
-                    v = 0;
-                }
-            } else {
-                key2_press = 0;
-                v--;
-                if (thousands && v == 0xFF) {
-                    v = 60;
-                }
+        if (key1_press == 1) {
+            key1_press = 0;
+            v++;
+            if (thousands && v == 60) {
+                v = 0;
+            }
+            timeout = 0; timeout_timer = 300;
+        }
+        if (key2_press == 1) {
+            key2_press = 0;
+#ifdef KEY3_PRESSED
+            timeout = 1;
+        }
+        if (key3_press == 1) {
+            key3_press = 0;
+#endif            
+            v--;
+            if (thousands && v == 0xFF) {
+                v = 60;
             }
             timeout = 0; timeout_timer = 300;
         }
@@ -1409,8 +1466,6 @@ unsigned char edit_value_char(unsigned char v, bool thousands) {
 
         while (screen_refresh == 0 && timeout == 0);
     }
-    key1_press = 0;
-    key2_press = 0;
 
     return v;
 }
@@ -1435,7 +1490,7 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
     while (timeout == 0) {
         screen_refresh = 0;
 
-        // change cursor position
+        // change cursor to next position
         if (key1_press == 1) {
             key1_press = 0;
             pos++;
@@ -1444,7 +1499,19 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
             }
             timeout = 0; timeout_timer = 300;
         }
-        
+
+#ifdef KEY3_PRESSED        
+        // change cursor to prev position
+        if (key3_press == 1) {
+            key3_press = 0;
+            if (pos == 0) {
+                pos = max_len - 1;
+            } else {
+                pos--;
+            }
+            timeout = 0; timeout_timer = 300;
+        }
+#endif
         // edit number in cursor position
         if (key2_press == 1) {
             key2_press = 0;
@@ -1471,8 +1538,6 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
     
         while (screen_refresh == 0 && timeout == 0);
     }
-    key1_press = 0;
-    key2_press = 0;
     
     LCD_CMD(LCD_CURSOR_OFF);
 
@@ -1490,7 +1555,7 @@ unsigned char edit_value_bits(unsigned char v, char* str) {
     while (timeout == 0) {
         screen_refresh = 0;
         
-        // change cursor position
+        // change cursor to next position
         if (key1_press == 1) {
             key1_press = 0;
             if (++pos == 8) {
@@ -1499,6 +1564,18 @@ unsigned char edit_value_bits(unsigned char v, char* str) {
             timeout = 0; timeout_timer = 300;
         }
         
+#ifdef KEY3_PRESSED
+        // change cursor to prev position
+        if (key3_press == 1) {
+            key3_press = 0;
+            if (pos == 0) {
+                pos = 7;
+            } else {
+                pos--;
+            }
+            timeout = 0; timeout_timer = 300;
+        }
+#endif        
         // edit number in cursor position
         if (key2_press == 1) {
             key2_press = 0;
@@ -1527,8 +1604,6 @@ unsigned char edit_value_bits(unsigned char v, char* str) {
 
         while (screen_refresh == 0 && timeout == 0);
     }
-    key1_press = 0;
-    key2_press = 0;
     
     LCD_CMD(LCD_CURSOR_OFF);
 
@@ -1563,7 +1638,12 @@ void screen_service_temp_sensors(screen_service_item_t* item) {
     timeout = 0; timeout_timer = 300;
     while (timeout == 0) {
         screen_refresh = 0;
+#ifdef KEY3_PRESSED
+        if (key1_press == 1 || key2_press == 1 || key3_press == 1) {
+            key3_press = 0;
+#else        
         if (key1_press == 1 || key2_press == 1) {
+#endif
             key1_press = 0;
             key2_press = 0;
             t_num++;
@@ -1589,7 +1669,7 @@ void screen_service_temp_sensors(screen_service_item_t* item) {
 #endif
 
 void screen_service_service_counters(screen_service_item_t* item) {
-
+    // next service counter
     if (key1_press == 1) {
         key1_press = 0;
         c_sub_item++;
@@ -1600,7 +1680,22 @@ void screen_service_service_counters(screen_service_item_t* item) {
 
         timeout = 0; timeout_timer = 300;
     }
+    
+#ifdef KEY3_PRESSED
+    // prev service counter
+    if (key3_press == 1) {
+        key3_press = 0;
 
+        if (c_sub_item == 0) {
+            c_sub_item = 4;
+        } else {
+            c_sub_item--;
+        }
+
+        timeout = 0; timeout_timer = 300;
+    }
+#endif  
+    
     LCD_CMD(0x80);
     LCD_Write_String16(buf, strcpy2(buf, (char *) item->name, 0), LCD_ALIGN_LEFT);
     LCD_CMD(0xC0);
@@ -1640,17 +1735,23 @@ void screen_service_service_counters(screen_service_item_t* item) {
 
 void screen_service_ua_const(screen_service_item_t* item) {
 
-    if (key1_press == 1 || key2_press == 1) {
-        if (key2_press == 1) {
-            key2_press = 0;
-            if (config.vcc_const < 230) {
-                config.vcc_const++;
-            }
-        } else {
-            key1_press = 0;
-            if (config.vcc_const >= 140) {
-                config.vcc_const--;
-            }
+    if (key1_press == 1) {
+        key1_press = 0;
+        if (config.vcc_const >= 140) {
+            config.vcc_const--;
+        }
+        timeout = 0; timeout_timer = 300;
+    }
+    if (key2_press == 1) {
+        key2_press = 0;
+#ifdef KEY3_PRESSED
+        timeout = 1;
+    }
+    if (key3_press == 1) {
+        key3_press = 0;
+#endif    
+        if (config.vcc_const < 230) {
+            config.vcc_const++;
         }
         timeout = 0; timeout_timer = 300;
     }
@@ -1786,8 +1887,11 @@ void check_service_counters() {
             LCD_Write_String16(buf, strcpy2(buf, (char*) &service_counters, i + 1), LCD_ALIGN_CENTER);
 
             timeout = 0; timeout_timer = 300;
-            while (timeout == 0 && key1_press == 0 && key2_press == 0);
+            while (timeout == 0 && NO_KEY_PRESSED);
             key1_press = 0; key2_press = 0;
+#ifdef KEY3_PRESSED
+            key3_press = 0;
+#endif            
         }
     }
 }
@@ -1866,9 +1970,15 @@ void main() {
 
     power_on();
 
-    if (KEY1_PRESSED) {
+#ifdef USE_ADC_BUTTONS
+    start_timer1();
+    enable_interrupts();
+    delay_ms(50);
+#endif    
+    
+    if (KEY_SERVICE_PRESSED) {
         delay_ms(40);
-        if (KEY1_PRESSED) {
+        if (KEY_SERVICE_PRESSED) {
             service_mode = 1;
         }
     }
@@ -1881,15 +1991,17 @@ void main() {
     } else {
         LCD_CMD(0x80);
         LCD_Write_String8(buf, strcpy2(buf, (char *) &service_menu_title, 0), LCD_ALIGN_LEFT);
-        while (KEY1_PRESSED);
+        while (KEY_SERVICE_PRESSED);
     }
 
+#ifndef USE_ADC_BUTTONS
     start_timer1();
     enable_interrupts();
+#endif    
     
     if (service_mode == 0 && config.settings.service_alarm) {
         check_service_counters();
-        key1_press = 0; key2_press = 0; /*key1_longpress = 0;*/ key2_longpress = 0;
+        key1_press = 0; key2_press = 0; key2_longpress = 0;
     }
     
     while (1) {
@@ -1910,19 +2022,43 @@ void main() {
         }        
 
         // show next screen
-        if (key1_press) {
+#ifdef KEY3_PRESSED
+        if (key1_press == 1 || key3_press == 1) {
+#else       
+        if (key1_press == 1) {
+#endif        
+            do {
+#ifdef KEY3_PRESSED
+                if (key1_press == 1) {
+                    c_item_dir = 1;
+#endif              
+                    c_item++;
+                    if ((service_mode == 0 && c_item >= sizeof(items_main) / sizeof(screen_item_t)) 
+                        || (service_mode == 1 && c_item >= sizeof(items_service) / sizeof(screen_service_item_t))) {
+                        c_item = 0;
+                    }
+#ifdef KEY3_PRESSED
+                } else if (key3_press == 1) {
+                    c_item_dir = -1;
+                    if (c_item == 0) {
+                        if (service_mode == 0) {
+                            c_item = sizeof(items_main) / sizeof(screen_item_t) - 1;
+                        } else {
+                            c_item = sizeof(items_service) / sizeof(screen_service_item_t) - 1;
+                        }
+                    } else {
+                        c_item--;
+                    }
+                }
+#endif
+            } while (service_mode == 0 && drive_fl == 1 && items_main[c_item].drive_mode == 0);
             key1_press = 0;
             key2_press = 0;
-            /*key1_longpress = 0;*/
+#ifdef KEY3_PRESSED
+            key3_press = 0;
+#endif
             key2_longpress = 0;
             tmp_param = 0;
-            do {
-                c_item++;
-                if ((service_mode == 0 && c_item >= sizeof(items_main) / sizeof(screen_item_t)) 
-                    || (service_mode == 1 && c_item >= sizeof(items_service) / sizeof(screen_service_item_t))) {
-                    c_item = 0;
-                }
-            } while (service_mode == 0 && drive_fl == 1 && items_main[c_item].drive_mode == 0);
             LCD_Clear();
         }
         
