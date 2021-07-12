@@ -97,13 +97,16 @@
 #define PWR_MASK  (1 << _PORTA_RA4_POSITION)
 
 // PORTB definitions
-// key1 and key2 (active zero) (legacy hardware)
 #ifdef HW_LEGACY
+// key1 and key2 (active zero) (legacy hardware)
 #define KEY1 PORTBbits.RB2
 #define KEY2 PORTBbits.RB3
 #define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
 #else
-#define KEY_TRIS_MASK 0
+// encoder clock and data (new hardware)
+#define ENCODER_CLK PORTBbits.RB4
+#define ENCODER_DATA PORTBbits.RB5
+#define KEY_TRIS_MASK (1 << _TRISB_TRISB4_POSITION) | (1 << _TRISB_TRISB5_POSITION)
 #endif
 
 // speed sensor and injector
@@ -310,6 +313,10 @@
 
 #define int_handler_fuel_speed_end }                        \
 
+#define int_handler_encoder_begin ISR(PCINT2_vect) {        \
+
+#define int_handler_encoder_end }                           \
+
 #define int_handler_timer0_begin ISR(TIMER0_COMPA_vect) {   \
     
 #define int_handler_timer0_end }                            \
@@ -328,7 +335,9 @@
 
 // DDRx: 0 - input, 1 - output
 
+// PB0/PCINT0
 #define TX_ACTIVE   ((PINB & _BV(PINB0)) != 0)
+// PB1/PCINT1
 #define FUEL_ACTIVE ((PINB & _BV(PINB1)) == 0)
 
 #define set_adc_channel(ch) ADMUX = ADC_VREF_TYPE | ch
@@ -365,6 +374,10 @@
 #define ONEWIRE_OUTPUT   (DDRD |= _BV(DDD5))
 // configure DS18B20_PIN pin as input
 #define ONEWIRE_INPUT    ONEWIRE_CLEAR; DDRD &= ~_BV(DDD5)
+
+// encoder clk (PD6/PCINT22) and data (PD7/PCINT23)
+#define ENCODER_CLK  ((PIND & _BV(PIND6)) != 0 ? 1 : 0)
+#define ENCODER_DATA ((PIND & _BV(PIND7)) != 0 ? 1 : 0)
 
 // init values for port's data direction
 #define DDRB_INIT 0

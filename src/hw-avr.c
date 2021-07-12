@@ -95,14 +95,15 @@ void HW_Init(void) {
     // External Interrupt(s) initialization
     // INT0: Off
     // INT1: Off
-    // Interrupt on any change on pins PCINT0-7: On
+    // Interrupt on any change on pins PCINT0-7: On (PB0/PCINT0, PB1/PCINT1)
     // Interrupt on any change on pins PCINT8-14: Off
-    // Interrupt on any change on pins PCINT16-23: Off
+    // Interrupt on any change on pins PCINT16-23: On (PD6/PCINT22, PD7/PCINT23)
     EICRA = (0 << ISC11) | (0 << ISC10) | (0 << ISC01) | (0 << ISC00);
     EIMSK = (0 << INT1) | (0 << INT0);
-    PCICR = (0 << PCIE2) | (0 << PCIE1) | (1 << PCIE0);
+    PCICR = (1 << PCIE2) | (0 << PCIE1) | (1 << PCIE0);
     PCMSK0 = (0 << PCINT7) | (0 << PCINT6) | (0 << PCINT5) | (0 << PCINT4) | (0 << PCINT3) | (0 << PCINT2) | (1 << PCINT1) | (1 << PCINT0);
-    PCIFR = (0 << PCIF2) | (0 << PCIF1) | (1 << PCIF0);
+    PCMSK2 = (1 << PCINT23) | (1 << PCINT22) | (0 << PCINT21) | (0 << PCINT20) | (0 << PCINT19) | (0 << PCINT18) | (0 << PCINT17) | (0 << PCINT16);
+    PCIFR = (1 << PCIF2) | (0 << PCIF1) | (1 << PCIF0);
 
     // USART initialization
     // USART disabled

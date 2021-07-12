@@ -19,10 +19,26 @@ void bcd8_to_str(char* buf, unsigned char b) {
     buf[0] = ((b >> 4) & 0x0F) + '0';
 }
 
-unsigned char bcd8_inc(unsigned char bcd, unsigned char max) {
+unsigned char bcd8_incdec(unsigned char bcd, incdec_t incdec, unsigned char min, unsigned char max) {
+    unsigned char _tmp = bcd8_to_bin(bcd);
+    if (incdec == INC) {
+        if (_tmp++ >= max) {
+            return min;
+        }
+    } else {
+        if (_tmp == min) {
+            _tmp = max;
+        } else {
+            _tmp--;
+        }
+    }
+    return bin8_to_bcd(_tmp);
+}
+
+unsigned char bcd8_inc(unsigned char bcd, unsigned char min, unsigned char max) {
     unsigned char _tmp = bcd8_to_bin(bcd);
     if (_tmp++ >= max) {
-        return 0;
+        return min;
     }
     return bin8_to_bcd(_tmp);
 }
@@ -73,11 +89,19 @@ void add_leading_symbols(char* buf, char s, unsigned char len, unsigned char max
 
 unsigned char strcpy2(char* buf, char* str, unsigned char pos) {
     while (pos > 0) {
+#ifdef __AVR_ATMEGA
+        if (pgm_read_byte(str++) == '\0') {
+#else
         if (*str++ == '\0') {
+#endif            
             pos--;
         }
     }
+#ifdef __AVR_ATMEGA
+    while (pgm_read_byte(str) != '\0') buf[pos++] = pgm_read_byte(str++);
+#else
     while (*str != '\0') buf[pos++] = *str++;
+#endif
     return pos;
 }
 
