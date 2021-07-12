@@ -38,7 +38,14 @@ PROGMEM const char warning_str[] = "WARNING";
 
 PROGMEM const char service_menu_title[] = "SERVICE MENU";
 PROGMEM const char service_counters[] = "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
-PROGMEM const char settings_bits[] = "\0dual inj\0skip temp\0key sound\0serv alarm\0alt buttons\0\0\0";
+
+#ifdef HW_LEGACY
+#define ALT_BUTTONS "\0"
+#else
+#define ALT_BUTTONS "\0alt buttons"
+#endif
+PROGMEM const char settings_bits[] = "\0dual inj\0skip temp\0key sound\0serv alarm\0fast refresh" ALT_BUTTONS "\0\0";
+
 PROGMEM const char temp_sensors[] = "\0---\0out\0in\0eng";
 
 PROGMEM const char fuel_constant_str[] = "FUEL constant";
