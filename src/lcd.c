@@ -25,19 +25,17 @@ void LCD_Init() {
 #endif
     
   delay_ms(50);
-  LCD_CMD(0x03);
+  LCD_Write_4Bit(0x30, 0);
   delay_us(4100);
-  LCD_CMD(0x03);
+  LCD_Write_4Bit(0x30, 0);
   delay_us(100);
-  LCD_CMD(0x03);
+  LCD_Write_4Bit(0x30, 0);
+  delay_us(100);
   LCD_CMD(LCD_RETURN_HOME);
-  delay_us(1520);
   LCD_CMD(LCD_FUNCTION_SET | (LCD_TYPE << 2));
   LCD_CMD(LCD_TURN_ON);
-  LCD_CMD(LCD_CLEAR);
-  delay_us(1520);
+  LCD_Clear();
   LCD_CMD(LCD_ENTRY_MODE_SET | LCD_INCREMENT | LCD_NOSHIFT);
-
 }
 
 void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode) {
@@ -46,26 +44,25 @@ void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode) {
     I2C_Master_Write(i2c_add);
     I2C_Master_Write((Nibble | EN) | mode | LCD_BACKLIGHT);
     I2C_Master_Stop();
-//    delay_us(2);
 
     I2C_Master_Start();
     I2C_Master_Write(i2c_add);
     I2C_Master_Write((Nibble & ~EN) | mode | LCD_BACKLIGHT);
     I2C_Master_Stop();
-//    delay_us(50);
+    delay_us(40);
 #else
   LCD_PORT = (LCD_PORT & ~LCD_PORT_MASK) | ((Nibble | EN)  | mode);
   delay_us(2);
   LCD_PORT = (LCD_PORT & ~LCD_PORT_MASK) | ((Nibble & ~EN) | mode);
-  delay_us(50);
+  delay_us(40);
 #endif
-    
 }
 
 void LCD_CMD(unsigned char CMD) 
 {
   LCD_Write_4Bit(CMD & 0xF0, 0);
   LCD_Write_4Bit((CMD << 4) & 0xF0, 0);
+  delay_us(40);
 }
 
 void LCD_Write_Char(char Data)
@@ -76,23 +73,13 @@ void LCD_Write_Char(char Data)
 
 void LCD_Write_String(char* Str) {
     for (unsigned char i = 0; Str[i] != '\0'; i++) {
-#ifdef _LCD_INLINE_WRITE_
-        LCD_Write_4Bit(Str[i] & 0xF0, RS);
-        LCD_Write_4Bit((Str[i] << 4) & 0xF0, RS);
-#else
         LCD_Write_Char(Str[i]); 
-#endif        
     }
 }
 
 void LCD_Write_String_Len(char* Str, unsigned char len) {
     for (unsigned char i = 0; i < len; i++) {
-#ifdef _LCD_INLINE_WRITE_
-        LCD_Write_4Bit(Str[i] & 0xF0, RS);
-        LCD_Write_4Bit((Str[i] << 4) & 0xF0, RS);
-#else
         LCD_Write_Char(Str[i]); 
-#endif        
     }
 }
 
@@ -105,33 +92,18 @@ void __LCD_Write_String(char* Str, unsigned char len, unsigned char max, align_t
             p = p >> 1;
         }
         for (i = 0; i < p; i++) {
-#ifdef _LCD_INLINE_WRITE_
-            LCD_Write_4Bit(' ' & 0xF0, RS);
-            LCD_Write_4Bit((' ' << 4) & 0xF0, RS);
-#else
             LCD_Write_Char(' '); 
-#endif        
         }
     }
 
     for (i = 0; i < len; i++) {
-#ifdef _LCD_INLINE_WRITE_
-        LCD_Write_4Bit(Str[i] & 0xF0, RS);
-        LCD_Write_4Bit((Str[i] << 4) & 0xF0, RS);
-#else
         LCD_Write_Char(Str[i]); 
-#endif        
     }
 
     if (align == LCD_ALIGN_LEFT || align == LCD_ALIGN_CENTER) {
         p += len;
         while (++p <= max) {
-#ifdef _LCD_INLINE_WRITE_
-            LCD_Write_4Bit(' ' & 0xF0, RS);
-            LCD_Write_4Bit((' ' << 4) & 0xF0, RS);
-#else
             LCD_Write_Char(' '); 
-#endif        
         }
     }
 }
@@ -187,11 +159,6 @@ void LCD_Set_Cursor(unsigned char ROW, unsigned char COL)
 
 void LCD_Clear(void)
 {
-#ifdef _LCD_INLINE_WRITE_    
-  LCD_Write_4Bit(LCD_CLEAR & 0xF0, 0);
-  LCD_Write_4Bit((LCD_CLEAR << 4) & 0xF0, 0);
-#else
   LCD_CMD(LCD_CLEAR);
-#endif  
-  delay_ms(2);
+  delay_us(1520);
 }

@@ -45,13 +45,10 @@ typedef enum {
 
 //---[ LCD Routines ]---
 
-// eliminate possible stack overflow for pic midrange (+ ~50 bytes)
-#ifdef _PIC14
+// eliminate possible stack overflow for pic16f876a
+#ifdef HW_LEGACY
 #define LCD_Write_String8(Str, len, align) __LCD_Write_String(Str, len, 8, align)
 #define LCD_Write_String16(Str, len, align) __LCD_Write_String(Str, len, 16, align)
-#ifndef HW_LEGACY
-#define _LCD_INLINE_WRITE_
-#endif
 #endif
 
 #ifdef LCD_LEGACY
