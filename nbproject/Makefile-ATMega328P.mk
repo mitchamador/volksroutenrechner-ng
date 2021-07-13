@@ -88,11 +88,31 @@ LDLIBSOPTIONS=
 # fixDeps replaces a bunch of sed/cat/printf statements that slow down the build
 FIXDEPS=fixDeps
 
+# The following macros may be used in the pre and post step lines
+_/_=\\
+ShExtension=.bat
+Device=ATmega328P
+ProjectDir="D:\_dev_\volksroutenrechner-ng"
+ProjectName=volksroutenrechner-ng
+ConfName=ATMega328P
+ImagePath="dist\ATMega328P\${IMAGE_TYPE}\volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX}"
+ImageDir="dist\ATMega328P\${IMAGE_TYPE}"
+ImageName="volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX}"
+ifeq ($(TYPE_IMAGE), DEBUG_RUN)
+IsDebug="true"
+else
+IsDebug="false"
+endif
+
 .build-conf:  ${BUILD_SUBPROJECTS}
 ifneq ($(INFORMATION_MESSAGE), )
 	@echo $(INFORMATION_MESSAGE)
 endif
 	${MAKE}  -f nbproject/Makefile-ATMega328P.mk dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+	@echo "--------------------------------------"
+	@echo "User defined post-build step: [${MP_CC_DIR}\avr-size -C ${ImageDir}\${ProjectName}.${IMAGE_TYPE}.elf]"
+	@${MP_CC_DIR}\avr-size -C ${ImageDir}\${ProjectName}.${IMAGE_TYPE}.elf
+	@echo "--------------------------------------"
 
 MP_PROCESSOR_OPTION=ATmega328P
 # ------------------------------------------------------------------------------------
@@ -234,7 +254,7 @@ dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFF
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
 	${MP_CC} $(MP_EXTRA_LD_PRE) -mmcu=atmega328p ${PACK_COMMON_OPTIONS}   -gdwarf-2 -D__$(MP_PROCESSOR_OPTION)__  -Wl,-Map="dist\${CND_CONF}\${IMAGE_TYPE}\volksroutenrechner-ng.${IMAGE_TYPE}.map"    -o dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX} ${OBJECTFILES_QUOTED_IF_SPACED}      -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -Wl,--defsym=__MPLAB_BUILD=1$(MP_EXTRA_LD_POST)$(MP_LINKER_FILE_OPTION),--defsym=__ICD2RAM=1,--defsym=__MPLAB_DEBUG=1,--defsym=__DEBUG=1 -Wl,--gc-sections -Wl,--start-group  -Wl,-lm -Wl,--end-group 
 	
-	
+	${MP_CC_DIR}\\avr-objcopy -j .eeprom --set-section-flags=.eeprom=alloc,load --change-section-lma .eeprom=0 --no-change-warnings -O ihex "dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}" "dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.eep" || exit 0
 	
 	
 	
@@ -244,7 +264,7 @@ dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFF
 	@${MKDIR} dist/${CND_CONF}/${IMAGE_TYPE} 
 	${MP_CC} $(MP_EXTRA_LD_PRE) -mmcu=atmega328p ${PACK_COMMON_OPTIONS}  -D__$(MP_PROCESSOR_OPTION)__  -Wl,-Map="dist\${CND_CONF}\${IMAGE_TYPE}\volksroutenrechner-ng.${IMAGE_TYPE}.map"    -o dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX} ${OBJECTFILES_QUOTED_IF_SPACED}      -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD)  -Wl,--defsym=__MPLAB_BUILD=1$(MP_EXTRA_LD_POST)$(MP_LINKER_FILE_OPTION) -Wl,--gc-sections -Wl,--start-group  -Wl,-lm -Wl,--end-group 
 	${MP_CC_DIR}\\avr-objcopy -O ihex "dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}" "dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.hex"
-	
+	${MP_CC_DIR}\\avr-objcopy -j .eeprom --set-section-flags=.eeprom=alloc,load --change-section-lma .eeprom=0 --no-change-warnings -O ihex "dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}" "dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.eep" || exit 0
 	
 	
 	
