@@ -375,9 +375,9 @@
 // configure DS18B20_PIN pin as input
 #define ONEWIRE_INPUT    ONEWIRE_CLEAR; DDRD &= ~_BV(DDD5)
 
-// encoder clk (PD6/PCINT22) and data (PD7/PCINT23)
-#define ENCODER_CLK  ((PIND & _BV(PIND6)) != 0 ? 1 : 0)
-#define ENCODER_DATA ((PIND & _BV(PIND7)) != 0 ? 1 : 0)
+// encoder data (PD6/PCINT22) and clk (PD7/PCINT23)
+#define ENCODER_DATA ((PIND & _BV(PIND6)) != 0 ? 1 : 0)
+#define ENCODER_CLK  ((PIND & _BV(PIND7)) != 0 ? 1 : 0)
 
 // init values for port's data direction
 #define DDRB_INIT 0
