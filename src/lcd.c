@@ -52,9 +52,9 @@ void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode) {
     delay_us(40);
 #else
   LCD_PORT = (LCD_PORT & ~LCD_PORT_MASK) | ((Nibble | EN)  | mode);
-  delay_us(2);
+  delay_us(5);
   LCD_PORT = (LCD_PORT & ~LCD_PORT_MASK) | ((Nibble & ~EN) | mode);
-  delay_us(40);
+  delay_us(50);
 #endif
 }
 
