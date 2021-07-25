@@ -1,5 +1,6 @@
 #include "ds1307.h"
 #include "i2c.h"
+#include "version.h"
 
 void get_ds_time(ds_time* time) {
     I2C_Master_Start();
@@ -19,13 +20,13 @@ void get_ds_time(ds_time* time) {
         I2C_Master_Start();
         I2C_Master_Write(0xD0);
         I2C_Master_Write(0x00);
-        I2C_Master_Write(0);
-        I2C_Master_Write(0);
-        I2C_Master_Write(12);
-        I2C_Master_Write(3);
-        I2C_Master_Write(1);
-        I2C_Master_Write(6);
-        I2C_Master_Write(21);
+        I2C_Master_Write(0x00);
+        I2C_Master_Write(VERSION_MINUTE_BCD);
+        I2C_Master_Write(VERSION_HOUR_BCD);
+        I2C_Master_Write(VERSION_DAY_OF_WEEK_BCD);
+        I2C_Master_Write(VERSION_DAY_OF_MONTH_BCD);
+        I2C_Master_Write(VERSION_MONTH_BCD);
+        I2C_Master_Write(VERSION_YEAR_BCD);
         I2C_Master_Stop();
     }
 }
