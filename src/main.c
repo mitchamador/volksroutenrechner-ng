@@ -6,7 +6,6 @@
 
 #include "hw.h"
 #include "locale.h"
-#include "version.h"
 #include <stdbool.h>
 #include <string.h>
 #include "lcd.h"

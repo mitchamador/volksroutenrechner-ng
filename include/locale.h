@@ -2,9 +2,12 @@
 #define	LOCALE_H
 
 #include <hw.h>
+#include <version.h>
 #ifndef __AVR_ATMEGA
 #define PROGMEM
 #endif
+
+PROGMEM const char version_str[] = VERSION_STRING; 
 
 #define HOUR_SYMBOL 'h'
 #define LITRE_SYMBOL 'l'
