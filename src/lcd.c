@@ -108,18 +108,6 @@ void __LCD_Write_String(char* Str, unsigned char len, unsigned char max, align_t
     }
 }
 
-#ifndef LCD_Write_String8
-void LCD_Write_String8(char* Str, unsigned char len, align_t align) {
-    __LCD_Write_String(Str, len, 8, align);
-}
-#endif
-
-#ifndef LCD_Write_String16
-void LCD_Write_String16(char* Str, unsigned char len, align_t align) {
-    __LCD_Write_String(Str, len, 16, align);
-}
-#endif
-
 void LCD_Write_String0_8(char* Str, align_t align) {
     unsigned char len = 0;
 

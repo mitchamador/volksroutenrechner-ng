@@ -45,11 +45,8 @@ typedef enum {
 
 //---[ LCD Routines ]---
 
-// eliminate possible stack overflow for pic16f876a
-#ifdef HW_LEGACY
 #define LCD_Write_String8(Str, len, align) __LCD_Write_String(Str, len, 8, align)
 #define LCD_Write_String16(Str, len, align) __LCD_Write_String(Str, len, 16, align)
-#endif
 
 #ifdef LCD_LEGACY
 void LCD_Init(void);
@@ -64,12 +61,6 @@ void LCD_Write_Char(char);
 void LCD_Write_String(char*);
 void LCD_Write_String_Len(char* Str, unsigned char len);
 void __LCD_Write_String(char*, unsigned char, unsigned char, align_t);
-#ifndef LCD_Write_String8
-void LCD_Write_String8(char*, unsigned char, align_t);
-#endif
-#ifndef LCD_Write_String16
-void LCD_Write_String16(char*, unsigned char, align_t);
-#endif
 void LCD_Write_String0_8(char*, align_t);
 void LCD_Write_String0_16(char*, align_t);
 void LCD_Clear(void);

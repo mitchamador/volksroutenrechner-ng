@@ -875,8 +875,11 @@ void print_current_time_dmy(unsigned char day, unsigned char month, unsigned cha
 
 }
 
-void print_current_time(ds_time* time) {
+void print_current_time_dof(unsigned char day_of_week) {
+    LCD_Write_String16(buf, strcpy2((char *)buf, (char*) day_of_week_str, day_of_week), LCD_ALIGN_LEFT);
+}
 
+void print_current_time(ds_time* time) {
     LCD_CMD(0x80);
     print_current_time_hm(time->hour, time->minute, LCD_ALIGN_LEFT);
 
@@ -884,7 +887,7 @@ void print_current_time(ds_time* time) {
     print_current_time_dmy(time->day, time->month, time->year);
 
     LCD_CMD(0xc0);
-    LCD_Write_String16(buf, strcpy2((char *)buf, (char*) day_of_week_str, time->day_of_week), LCD_ALIGN_LEFT);
+    print_current_time_dof(time->day_of_week);
 }
 
 void screen_time(void) {
@@ -1152,7 +1155,6 @@ void print_temp(unsigned char index, bool header, align_t align) {
     if (index == 2) {
         len = ultoa2(buf, _t / 10, 10);
         buf[len++] = CELSIUS_SYMBOL;
-        LCD_Write_String8(buf, len, align);
     } else {
         len = get_fractional_string(&buf[1], _t) + 1;
         if (header) {
@@ -1160,9 +1162,8 @@ void print_temp(unsigned char index, bool header, align_t align) {
             strcpy2(buf, (char *) &temp_sensors, (index + 1) + 1);
             len = 8;
         }
-        
-        LCD_Write_String8(buf, len, align);
     }
+    LCD_Write_String8(buf, len, align);
 }
 
 void print_voltage(align_t align) {
@@ -1223,7 +1224,6 @@ void print_selected_param1(align_t align) {
 void print_speed100(void) {
     len = get_fractional_string((char*) tbuf, speed100_timer / 10U);
     tbuf[len++] = SECONDS_SYMBOL;
-    LCD_CMD(0xC4);
     LCD_Write_String8((char*) tbuf, len, LCD_ALIGN_RIGHT);
 }
 
@@ -1294,6 +1294,7 @@ void screen_main(void) {
                     LCD_Write_String16(buf, 16, LCD_ALIGN_LEFT);
                 }
 
+                LCD_CMD(0xC4);
                 print_speed100();
 
                 counter_01sec_fl = 0; while (counter_01sec_fl == 0);
@@ -1304,6 +1305,7 @@ void screen_main(void) {
         if (NO_KEY_PRESSED) {
             if (speed100_ok_fl) {
                 // достигнута скорость 100 км/ч
+                LCD_CMD(0xC4);
                 print_speed100();
             } else {
                 // timeout
