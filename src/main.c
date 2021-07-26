@@ -16,14 +16,7 @@
 // number of averaging ADC readings
 #define ADC_AVERAGE_SAMPLES 4
 
-// use screen with version info
-#define USE_VERSION_SCREEN
-
 #ifdef HW_LEGACY
-// defines/undefines for legacy hw
-//#ifdef USE_VERSION_SCREEN
-//#undef USE_VERSION_SCREEN
-//#endif
 // simple checking time difference (decrease memory usage)
 #define SIMPLE_TRIPC_TIME_CHECK
 #endif
@@ -62,8 +55,8 @@
 // show average fuel consumption after total consumption of AVERAGE_MIN_FUEL * 0,01 litres
 #define AVERAGE_MIN_FUEL 5
 
-// min speed (* 0.1 km/h)
-#define MIN_SPEED 50
+// min speed (km/h)
+#define DEFAULT_MIN_SPEED 5
 
 // max value of trip A odometer
 #define MAX_ODO_TRIPA 2000
@@ -144,6 +137,13 @@ typedef struct {
     unsigned char selected_param1;
     // param counter for tripC screen
     unsigned char selected_param2;
+
+    // min speed for drive mode
+    unsigned char min_speed;
+    
+    unsigned char dummy1;
+    unsigned char dummy2;
+    
 } config_t;
 
 typedef struct {
@@ -171,7 +171,7 @@ trips_t trips;
 services_t services;
 
 __EEPROM_DATA(0x8D,0xA6,0x04,0x00,0xC7,0x09,0x80,0x3E); /*config*/
-__EEPROM_DATA(0x6E,0xB3,0xA0,0x01,0x00,0x00,0x00,0x00);
+__EEPROM_DATA(0x6E,0xB3,0xA0,0x01,0x00,DEFAULT_MIN_SPEED,0x00,0x00);
 __EEPROM_DATA(0x54,0x00,0x86,0x10,0x78,0x6B,0x70,0x03); /*trips*/
 __EEPROM_DATA(0x7E,0x11,0x00,0x00,0xB9,0x02,0x65,0x32);
 __EEPROM_DATA(0x2D,0x01,0x81,0x1E,0x9B,0xA5,0x00,0x00);
@@ -300,7 +300,7 @@ char buf[16];
 //char buf2[16];
 unsigned char len = 0;
 
-ds_time time;
+__bank2 ds_time time;
 
 unsigned char fuel1_const;
 unsigned char fuel2_const;
@@ -373,9 +373,8 @@ void service_screen_settings_bits(service_screen_item_t *);
 void service_screen_temp_sensors(service_screen_item_t *);
 void service_screen_service_counters(service_screen_item_t *);
 void service_screen_ua_const(service_screen_item_t *);
-#ifdef USE_VERSION_SCREEN
+void service_screen_min_speed(service_screen_item_t *);
 void service_screen_version(service_screen_item_t *);
-#endif
 
 const service_screen_item_t items_service[] = {
     {(const char*) &fuel_constant_str, (service_screen_func) &service_screen_fuel_constant},
@@ -383,11 +382,10 @@ const service_screen_item_t items_service[] = {
     {(const char*) &total_trip_str, (service_screen_func) &service_screen_total_trip},
     {(const char*) &voltage_adjust_str, (service_screen_func) &service_screen_ua_const},
     {(const char*) &settings_bits_str, (service_screen_func) &service_screen_settings_bits},
+    {(const char*) &min_speed_str, (service_screen_func) &service_screen_min_speed},
     {(const char*) &temp_sensor_str, (service_screen_func) &service_screen_temp_sensors},
     {(const char*) &service_counters_str, (service_screen_func) &service_screen_service_counters},
-#ifdef USE_VERSION_SCREEN
     {(const char*) &version_info_str, (service_screen_func) &service_screen_version},
-#endif    
 };
 
 unsigned char c_item = 0, c_sub_item = 0;
@@ -1231,7 +1229,7 @@ void screen_main(void) {
 //; первый экран
 
     LCD_CMD(0x80);
-    if (drive_fl == 0 || speed < MIN_SPEED) {
+    if (drive_fl == 0 || speed < config.min_speed) {
 //; 1) на месте с заглушенным двигателем
 //; время текущее       общий пробег (км)
 //; нар.темп./пробег C  вольтметр
@@ -1361,7 +1359,7 @@ void clear_trip(trip_t* trip) {
 void screen_tripC(void) {
 //; второй экран
     LCD_CMD(0x80);
-    if (drive_fl == 0 || speed < MIN_SPEED) {
+    if (drive_fl == 0 || speed < config.min_speed) {
         print_trip_time(&trips.tripC, LCD_ALIGN_LEFT);
         if (motor_fl == 0) {
 //; 1) на месте с заглушенным двигателем
@@ -1703,6 +1701,10 @@ void service_screen_settings_bits(service_screen_item_t* item) {
     config.settings.byte = edit_value_bits(config.settings.byte, (char *) &settings_bits);
 }
 
+void service_screen_min_speed(service_screen_item_t* item) {
+    config.min_speed = edit_value_char(config.min_speed, false);
+}
+
 void service_screen_temp_sensors(service_screen_item_t* item) {
     
     memset(tbuf, 0xFF, 8);
@@ -1864,34 +1866,32 @@ void service_screen(unsigned char c_item) {
     }
 }
 
-#ifdef USE_VERSION_SCREEN
 void service_screen_version(service_screen_item_t* item) {
     LCD_CMD(0xC0);
     LCD_Write_String16(buf, strcpy2(buf, (char*) &version_str, 0), LCD_ALIGN_LEFT);
 }
-#endif
 
 void read_eeprom() {
     unsigned char ee_addr = 0;
     
     HW_read_eeprom_block((unsigned char*) &config, ee_addr, sizeof(config_t));
-    ee_addr += (sizeof(config_t) / 8 + 1) * 8;
+    ee_addr += ((sizeof(config_t) - 1) / 8 + 1) * 8;
     
     HW_read_eeprom_block((unsigned char*) &trips, ee_addr, sizeof(trips_t));
-    ee_addr += (sizeof(trips_t) / 8 + 1) * 8;
+    ee_addr += ((sizeof(trips_t) - 1) / 8 + 1) * 8;
     
     HW_read_eeprom_block((unsigned char*) &services, ee_addr, sizeof(services_t));
-    temps_ee_addr = ee_addr + (sizeof(services_t) / 8 + 1) * 8;
+    temps_ee_addr = ee_addr + ((sizeof(services_t) - 1) / 8 + 1) * 8;
     
 }
 
 void save_eeprom() {
     unsigned char ee_addr = 0;
     HW_write_eeprom_block((unsigned char*) &config, ee_addr, sizeof(config_t));
-    ee_addr += (sizeof(config_t) / 8 + 1) * 8;
+    ee_addr += ((sizeof(config_t) - 1) / 8 + 1) * 8;
     
     HW_write_eeprom_block((unsigned char*) &trips, ee_addr, sizeof(trips_t));
-    ee_addr += (sizeof(trips_t) / 8 + 1) * 8;
+    ee_addr += ((sizeof(trips_t) - 1) / 8 + 1) * 8;
     
     HW_write_eeprom_block((unsigned char*) &services, ee_addr, sizeof(services_t));
 }
@@ -2080,6 +2080,7 @@ void main() {
     
     // select main or service items
     if (service_mode == 0) {
+        config.min_speed *= 10;
         temperature_fl = 1;
     } else {
         LCD_CMD(0x80);

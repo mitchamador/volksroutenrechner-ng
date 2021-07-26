@@ -7,7 +7,11 @@
 #define PROGMEM
 #endif
 
+#ifdef HW_LEGACY
+PROGMEM const char version_str[] = VERSION_STRING_SHORT; 
+#else
 PROGMEM const char version_str[] = VERSION_STRING; 
+#endif
 
 #define HOUR_SYMBOL 'h'
 #define LITRE_SYMBOL 'l'
@@ -58,6 +62,7 @@ PROGMEM const char voltage_adjust_str[] = "voltage adjust";
 PROGMEM const char settings_bits_str[] = "settings bits";
 PROGMEM const char temp_sensor_str[] = "temp sensors";
 PROGMEM const char service_counters_str[] = "service cntrs";
+PROGMEM const char min_speed_str[] = "min speed";
 PROGMEM const char version_info_str[] = "sw version";
 
 PROGMEM const char day_of_week_str[] = "\0sunday\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday";
