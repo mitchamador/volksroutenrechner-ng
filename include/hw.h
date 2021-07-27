@@ -3,7 +3,7 @@
 
 #if defined(__XC8)
 #include <xc.h>
-#if defined(_16F876A) || defined(_16F1936)
+#if defined(_16F876A)
 #define __PIC_MIDRANGE
 #elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 #define __AVR_ATMEGA
@@ -50,15 +50,10 @@
 
 #if defined(__PIC_MIDRANGE)
 
-#ifdef HW_LEGACY
-#if !defined(_16F876A)
-#error ("hw legacy support only with pic16f876a")
-#endif
 // i2c software bit bang
 #define I2C_BITBANG
 // lcd parallel interface
 #define LCD_LEGACY
-#endif
 
 //#pragma warning disable 1090
 
@@ -73,57 +68,25 @@
 
 
 // PORTA definitions (analog input)
-#ifdef HW_LEGACY
 // pwr control
 #define PWR PORTAbits.RA0
 #define PWR_MASK  (1 << _PORTA_RA0_POSITION)
 // adc power
 #define POWER_SUPPLY_TRIS_MASK (1 << _TRISA_TRISA1_POSITION)
 #define ADC_BUTTONS_TRIS_MASK 0
-#else
-// adc power
-#define POWER_SUPPLY_TRIS_MASK (1 << _TRISA_TRISA0_POSITION)
-// adc buttons
-#define ADC_BUTTONS_TRIS_MASK (1 << _TRISA_TRISA1_POSITION)
-// pwr control
-#define PWR PORTAbits.RA4
-#define PWR_MASK  (1 << _PORTA_RA4_POSITION)
-#endif
 
-#if defined(_16F876A)
 #define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
-#ifdef HW_LEGACY
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION))
 #define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (0 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
-#else
-#define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
-#define ADC_CHANNEL_BUTTONS ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
-#define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION))
-#define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (1 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
-#endif
-#else
-#define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS4_POSITION) | (1 << _ADCON0_CHS3_POSITION) | (1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
-#define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
-#define ADC_CHANNEL_BUTTONS ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
-#define ADCON0_INIT 0
-#define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADCS1_POSITION) | (0 << _ADCON1_ADCS0_POSITION))
-#endif
 
 #define set_adc_channel(ch) ADCON0 = (ADCON0 & ~ADC_CHANNEL_MASK) | ch
 
 // PORTB definitions
-#ifdef HW_LEGACY
 // key1 and key2 (active zero) (legacy hardware)
 #define KEY1 PORTBbits.RB2
 #define KEY2 PORTBbits.RB3
 #define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
-#else
-// encoder clock and data (new hardware)
-#define ENCODER_CLK PORTBbits.RB4
-#define ENCODER_DATA PORTBbits.RB5
-#define KEY_TRIS_MASK (1 << _TRISB_TRISB4_POSITION) | (1 << _TRISB_TRISB5_POSITION)
-#endif
 
 // speed sensor and injector
 #define TX PORTBbits.RB6
@@ -138,10 +101,6 @@
 #define SND     RC0
 #define SND_TRIS (1 << _TRISC_TRISC0_POISITION)
 
-#ifndef I2C_BITBANG
-#define SCL_TRIS_MASK   (1 << _TRISC_TRISC3_POSITION)
-#define SDA_TRIS_MASK   (1 << _TRISC_TRISC4_POSITION)
-#else
 #define SDA       PORTBbits.RB0
 #define SDA_TRIS  TRISBbits.TRISB0
 #define SDA_TRIS_MASK   0
@@ -149,9 +108,7 @@
 #define SCL       PORTBbits.RB1
 #define SCL_TRIS  TRISBbits.TRISB1
 #define SCL_TRIS_MASK   0
-#endif
 
-#ifdef LCD_LEGACY
 // RS - RC1
 // EN - RC3
 // data - RC4..RC7
@@ -159,7 +116,6 @@
 #define RS (1 << 1)
 #define EN (1 << 3)
 #define LCD_PORT_MASK (0xF0 | RS | EN )
-#endif
 
 // init values for port's data direction
 #define TRISA_INIT POWER_SUPPLY_TRIS_MASK | ADC_BUTTONS_TRIS_MASK
@@ -195,8 +151,6 @@
 
 #define int_handler_GLOBAL_end }
                                                     \
-#if defined(_16F876A)
-
 #define int_handler_fuel_speed_begin                       \
     /* Was it the port B interrupt on change?*/            \
     if (/*RBIE && */RBIF) {                                \
@@ -208,19 +162,6 @@
         RBIF = 0;                                          \
     }                                                      \
 
-#elif defined(_16F1936)
-
-#define int_handler_fuel_speed_begin                       \
-    /* Was it interrupt on change?*/            \
-    if (/*IOCIE && */IOCIF) {                                \
-
-#define int_handler_fuel_speed_end                         \
-        /* Reset the interrupt flag */                     \
-        IOCIF = 0;                                          \
-    }                                                      \
-
-#endif
-
 #define int_handler_timer0_begin                           \
     /* Timer0 interrupt */                                 \
     if (/*T0IE && */T0IF) {                                \
@@ -228,8 +169,6 @@
 #define int_handler_timer0_end                             \
         T0IF = 0;                                          \
     }                                                      \
-
-#if defined(_16F876A)
 
 #define int_handler_timer1_begin                           \
     /* Timer1 interrupt */                                 \
@@ -239,19 +178,6 @@
         /* Reset the interrupt flag */                     \
         CCP2IF = 0;                                        \
     }                                                      \
-
-#elif defined(_16F1936)
-
-#define int_handler_timer1_begin                           \
-    /* Timer1 interrupt */                                 \
-    if (/*CCP5IE && */CCP5IF) {                            \
-        
-#define int_handler_timer1_end                             \
-        /* Reset the interrupt flag */                     \
-        CCP5IF = 0;                                        \
-    }                                                      \
-
-#endif
 
 #define int_handler_timer2_begin                           \
     /* Timer2 interrupt */                                 \
@@ -274,10 +200,8 @@
 #define TX_ACTIVE   (TX == 1)
 #define FUEL_ACTIVE (FUEL == 0)
 
-#ifdef HW_LEGACY
 #define KEY1_PRESSED (KEY1 == 0)
 #define KEY2_PRESSED (KEY2 == 0)
-#endif
 
 #define PWR_ON  (PWR = 1)
 #define PWR_OFF (PWR = 0)
