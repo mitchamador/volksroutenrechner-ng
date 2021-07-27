@@ -84,11 +84,31 @@ LDLIBSOPTIONS=
 # fixDeps replaces a bunch of sed/cat/printf statements that slow down the build
 FIXDEPS=fixDeps
 
-.build-conf:  ${BUILD_SUBPROJECTS}
+# The following macros may be used in the pre and post step lines
+_/_=\\
+ShExtension=.bat
+Device=PIC16F876A
+ProjectDir="D:\_dev_\volksroutenrechner-ng"
+ProjectName=volksroutenrechner-ng
+ConfName=PIC16F876A_legacy
+ImagePath="dist\PIC16F876A_legacy\${IMAGE_TYPE}\volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX}"
+ImageDir="dist\PIC16F876A_legacy\${IMAGE_TYPE}"
+ImageName="volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX}"
+ifeq ($(TYPE_IMAGE), DEBUG_RUN)
+IsDebug="true"
+else
+IsDebug="false"
+endif
+
+.build-conf:  .pre ${BUILD_SUBPROJECTS}
 ifneq ($(INFORMATION_MESSAGE), )
 	@echo $(INFORMATION_MESSAGE)
 endif
 	${MAKE}  -f nbproject/Makefile-PIC16F876A_legacy.mk dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFFIX}
+	@echo "--------------------------------------"
+	@echo "User defined post-build step: [if ${IsDebug} == "true" ( ${MP_CC_DIR}\avr-objcopy.exe -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${ImagePath} proteus\eeprom.bin )]"
+	@if ${IsDebug} == "true" ( ${MP_CC_DIR}\avr-objcopy.exe -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${ImagePath} proteus\eeprom.bin )
+	@echo "--------------------------------------"
 
 MP_PROCESSOR_OPTION=16F876A
 # ------------------------------------------------------------------------------------
@@ -268,6 +288,11 @@ dist/${CND_CONF}/${IMAGE_TYPE}/volksroutenrechner-ng.${IMAGE_TYPE}.${OUTPUT_SUFF
 	
 endif
 
+.pre:
+	@echo "--------------------------------------"
+	@echo "User defined pre-build step: [if ${IsDebug} == "false" ( ${ProjectDir}\version.bat )]"
+	@if ${IsDebug} == "false" ( ${ProjectDir}\version.bat )
+	@echo "--------------------------------------"
 
 # Subprojects
 .build-subprojects:

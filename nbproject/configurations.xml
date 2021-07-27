@@ -73,11 +73,11 @@
         </subordinates>
       </compileType>
       <makeCustomizationType>
-        <makeCustomizationPreStepEnabled>false</makeCustomizationPreStepEnabled>
+        <makeCustomizationPreStepEnabled>true</makeCustomizationPreStepEnabled>
         <makeUseCleanTarget>false</makeUseCleanTarget>
-        <makeCustomizationPreStep></makeCustomizationPreStep>
-        <makeCustomizationPostStepEnabled>false</makeCustomizationPostStepEnabled>
-        <makeCustomizationPostStep></makeCustomizationPostStep>
+        <makeCustomizationPreStep>if ${IsDebug} == "false" ( ${ProjectDir}\version.bat )</makeCustomizationPreStep>
+        <makeCustomizationPostStepEnabled>true</makeCustomizationPostStepEnabled>
+        <makeCustomizationPostStep>if ${IsDebug} == "true" ( ${MP_CC_DIR}\avr-objcopy.exe -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${ImagePath} proteus\eeprom.bin )</makeCustomizationPostStep>
         <makeCustomizationPutChecksumInUserID>false</makeCustomizationPutChecksumInUserID>
         <makeCustomizationEnableLongLines>false</makeCustomizationEnableLongLines>
         <makeCustomizationNormalizeHexFile>false</makeCustomizationNormalizeHexFile>
@@ -594,10 +594,7 @@
         <property key="warningmessagebreakoptions.warningmessages" value="holdstate"/>
       </Simulator>
       <Tool>
-        <property key="debugoptions.debug-startup" value="Use system settings"/>
-        <property key="debugoptions.reset-behaviour" value="Use system settings"/>
         <property key="design.file" value="proteus/mk-pic16f876a-legacy.pdsprj"/>
-        <property key="lastid" value=""/>
         <property key="target.ip.address" value="localhost"/>
         <property key="target.ip.port" value="8001"/>
       </Tool>
@@ -658,11 +655,11 @@
         </subordinates>
       </compileType>
       <makeCustomizationType>
-        <makeCustomizationPreStepEnabled>false</makeCustomizationPreStepEnabled>
+        <makeCustomizationPreStepEnabled>true</makeCustomizationPreStepEnabled>
         <makeUseCleanTarget>false</makeUseCleanTarget>
-        <makeCustomizationPreStep></makeCustomizationPreStep>
-        <makeCustomizationPostStepEnabled>false</makeCustomizationPostStepEnabled>
-        <makeCustomizationPostStep></makeCustomizationPostStep>
+        <makeCustomizationPreStep>if ${IsDebug} == "false" ( ${ProjectDir}\version.bat )</makeCustomizationPreStep>
+        <makeCustomizationPostStepEnabled>true</makeCustomizationPostStepEnabled>
+        <makeCustomizationPostStep>if ${IsDebug} == "true" ( ${MP_CC_DIR}\avr-objcopy.exe -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${ImagePath} proteus\eeprom.bin )</makeCustomizationPostStep>
         <makeCustomizationPutChecksumInUserID>false</makeCustomizationPutChecksumInUserID>
         <makeCustomizationEnableLongLines>false</makeCustomizationEnableLongLines>
         <makeCustomizationNormalizeHexFile>false</makeCustomizationNormalizeHexFile>
@@ -1780,14 +1777,6 @@
                   value=""/>
         <property key="warningmessagebreakoptions.warningmessages" value="holdstate"/>
       </Simulator>
-      <Tool>
-        <property key="debugoptions.debug-startup" value="Use system settings"/>
-        <property key="debugoptions.reset-behaviour" value="Use system settings"/>
-        <property key="design.file" value="proteus/mk-atmega328p.pdsprj"/>
-        <property key="lastid" value=""/>
-        <property key="target.ip.address" value="localhost"/>
-        <property key="target.ip.port" value="8001"/>
-      </Tool>
       <VSMViewerPlatformTool>
         <property key="design.file" value="proteus/mk-atmega328p.pdsprj"/>
         <property key="target.ip.address" value="localhost"/>

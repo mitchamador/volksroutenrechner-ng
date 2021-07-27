@@ -1,1 +1,0 @@
-"c:\Program Files\Microchip\xc8\v2.30\avr\bin\avr-objcopy.exe" -b 0 -i 2 -O binary -I elf32-little -j eeprom_data d:\_dev_\pic16f876a-xc8\dist\default\production\pic16f876a-xc8.production.elf  eeprom.bin
