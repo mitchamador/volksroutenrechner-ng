@@ -1,14 +1,6 @@
 #ifndef LOCALE_H
 #define	LOCALE_H
 
-#include <hw.h>
-#include <version.h>
-#ifndef __AVR_ATMEGA
-#define PROGMEM
-#endif
-
-PROGMEM const char version_str[] = VERSION_STRING; 
-
 #define HOUR_SYMBOL 'h'
 #define LITRE_SYMBOL 'l'
 #define VOLT_SYMBOL 'V'
@@ -28,36 +20,36 @@ PROGMEM const char version_str[] = VERSION_STRING;
 #define _lh0	0x06
 #define _lh1    0x07
 
-PROGMEM const char empty_string[] = "----";
-PROGMEM const char no_time_string[] = "-----'--";
-PROGMEM const char trip_string[] = "trip ";
-PROGMEM const char onoff_string[] = "\0 OFF\0  ON";
-PROGMEM const char time_correction[] = "time correction?";
-PROGMEM const char reset_string[] = "reset?"; 
-PROGMEM const char speed100_string[] = "0-100 timing"; 
-PROGMEM const char speed100_wait_string[] = "wait for start"; 
-PROGMEM const char timeout_string[] = "timeout"; 
-PROGMEM const char warning_str[] = "WARNING"; 
+#define EMPTY_STRING "----";
+#define NO_TIME_STRING "-----'--";
+#define TRIP_STRING "trip ";
+#define ONOFF_STRING "\0 OFF\0  ON";
+#define TIME_CORRECTION "time correction?";
+#define RESET_STRING "reset?"; 
+#define SPEED100_STRING "0-100 timing"; 
+#define SPEED100_WAIT_STRING "wait for start"; 
+#define TIMEOUT_STRING "timeout"; 
+#define WARNING_STR "WARNING"; 
 
-PROGMEM const char service_menu_title[] = "SERVICE MENU";
-PROGMEM const char service_counters[] = "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
+#define SERVICE_MENU_TITLE "SERVICE MENU";
+#define SERVICE_COUNTERS "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
 
-PROGMEM const char settings_bits[] = "\0dual inj\0skip temp\0key sound\0serv alarm\0fast refresh\0alt buttons\0\0";
+#define SETTINGS_BITS "\0dual inj\0skip temp\0key sound\0serv alarm\0fast refresh\0alt buttons\0\0";
 
-PROGMEM const char temp_sensors[] = "\0---\0out\0in\0eng";
+#define TEMP_SENSORS "\0---\0out\0in\0eng";
 
-PROGMEM const char fuel_constant_str[] = "FUEL constant";
-PROGMEM const char vss_constant_str[] = "VSS constant";
-PROGMEM const char total_trip_str[] = "total trip";
-PROGMEM const char voltage_adjust_str[] = "voltage adjust";
-PROGMEM const char settings_bits_str[] = "settings bits";
-PROGMEM const char temp_sensor_str[] = "temp sensors";
-PROGMEM const char service_counters_str[] = "service cntrs";
-PROGMEM const char min_speed_str[] = "min speed";
-PROGMEM const char version_info_str[] = "sw version";
+#define FUEL_CONSTANT_STR "FUEL constant";
+#define VSS_CONSTANT_STR "VSS constant";
+#define TOTAL_TRIP_STR "total trip";
+#define VOLTAGE_ADJUST_STR "voltage adjust";
+#define SETTINGS_BITS_STR "settings bits";
+#define TEMP_SENSOR_STR "temp sensors";
+#define SERVICE_COUNTERS_STR "service cntrs";
+#define MIN_SPEED_STR "min speed";
+#define VERSION_INFO_STR "sw version";
 
-PROGMEM const char day_of_week_str[] = "\0sunday\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday";
-PROGMEM const char month_str[] = "\0jan\0feb\0mar\0apr\0may\0jun\0jul\0aug\0sep\0oct\0nov\0dec";
+#define DAY_OF_WEEK_STR "\0sunday\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday";
+#define MONTH_STR "\0jan\0feb\0mar\0apr\0may\0jun\0jul\0aug\0sep\0oct\0nov\0dec";
 
 #define DATA_KMH_0  0x05, 0x06, 0x05, 0x00, 0x00, 0x00, 0x01, 0x02
 #define DATA_KMH_1  0x0A, 0x15, 0x15, 0x00, 0x10, 0x05, 0x07, 0x01
@@ -67,6 +59,39 @@ PROGMEM const char month_str[] = "\0jan\0feb\0mar\0apr\0may\0jun\0jul\0aug\0sep\
 #define DATA_L100_1 0x00, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x15, 0x1F
 #define DATA_LH_0   0x03, 0x05, 0x05, 0x00, 0x00, 0x01, 0x02, 0x00
 #define DATA_LH_1   0x00, 0x00, 0x08, 0x10, 0x00, 0x14, 0x1C, 0x04
+
+extern const char version_str[]; 
+
+extern const char empty_string[];
+extern const char no_time_string[];
+extern const char trip_string[];
+extern const char onoff_string[];
+extern const char time_correction[];
+extern const char reset_string[]; 
+extern const char speed100_string[]; 
+extern const char speed100_wait_string[]; 
+extern const char timeout_string[]; 
+extern const char warning_str[]; 
+
+extern const char service_menu_title[];
+extern const char service_counters[];
+
+extern const char settings_bits[];
+
+extern const char temp_sensors[];
+
+extern const char fuel_constant_str[];
+extern const char vss_constant_str[];
+extern const char total_trip_str[];
+extern const char voltage_adjust_str[];
+extern const char settings_bits_str[];
+extern const char temp_sensor_str[];
+extern const char service_counters_str[];
+extern const char min_speed_str[];
+extern const char version_info_str[];
+
+extern const char day_of_week_str[];
+extern const char month_str[];
 
 #endif	/* LOCALE_H */
 

@@ -57,17 +57,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=src/ds18b20.c src/ds1307.c src/hw-pic.c src/i2c-pic.c src/lcd.c src/main.c src/utils.c src/hw-avr.c src/i2c-avr.c
+SOURCEFILES_QUOTED_IF_SPACED=src/ds18b20.c src/ds1307.c src/hw-pic.c src/i2c-pic.c src/lcd.c src/main.c src/utils.c src/hw-avr.c src/i2c-avr.c src/locale.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/src/ds18b20.o ${OBJECTDIR}/src/ds1307.o ${OBJECTDIR}/src/hw-pic.o ${OBJECTDIR}/src/i2c-pic.o ${OBJECTDIR}/src/lcd.o ${OBJECTDIR}/src/main.o ${OBJECTDIR}/src/utils.o ${OBJECTDIR}/src/hw-avr.o ${OBJECTDIR}/src/i2c-avr.o
-POSSIBLE_DEPFILES=${OBJECTDIR}/src/ds18b20.o.d ${OBJECTDIR}/src/ds1307.o.d ${OBJECTDIR}/src/hw-pic.o.d ${OBJECTDIR}/src/i2c-pic.o.d ${OBJECTDIR}/src/lcd.o.d ${OBJECTDIR}/src/main.o.d ${OBJECTDIR}/src/utils.o.d ${OBJECTDIR}/src/hw-avr.o.d ${OBJECTDIR}/src/i2c-avr.o.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/src/ds18b20.o ${OBJECTDIR}/src/ds1307.o ${OBJECTDIR}/src/hw-pic.o ${OBJECTDIR}/src/i2c-pic.o ${OBJECTDIR}/src/lcd.o ${OBJECTDIR}/src/main.o ${OBJECTDIR}/src/utils.o ${OBJECTDIR}/src/hw-avr.o ${OBJECTDIR}/src/i2c-avr.o ${OBJECTDIR}/src/locale.o
+POSSIBLE_DEPFILES=${OBJECTDIR}/src/ds18b20.o.d ${OBJECTDIR}/src/ds1307.o.d ${OBJECTDIR}/src/hw-pic.o.d ${OBJECTDIR}/src/i2c-pic.o.d ${OBJECTDIR}/src/lcd.o.d ${OBJECTDIR}/src/main.o.d ${OBJECTDIR}/src/utils.o.d ${OBJECTDIR}/src/hw-avr.o.d ${OBJECTDIR}/src/i2c-avr.o.d ${OBJECTDIR}/src/locale.o.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/src/ds18b20.o ${OBJECTDIR}/src/ds1307.o ${OBJECTDIR}/src/hw-pic.o ${OBJECTDIR}/src/i2c-pic.o ${OBJECTDIR}/src/lcd.o ${OBJECTDIR}/src/main.o ${OBJECTDIR}/src/utils.o ${OBJECTDIR}/src/hw-avr.o ${OBJECTDIR}/src/i2c-avr.o
+OBJECTFILES=${OBJECTDIR}/src/ds18b20.o ${OBJECTDIR}/src/ds1307.o ${OBJECTDIR}/src/hw-pic.o ${OBJECTDIR}/src/i2c-pic.o ${OBJECTDIR}/src/lcd.o ${OBJECTDIR}/src/main.o ${OBJECTDIR}/src/utils.o ${OBJECTDIR}/src/hw-avr.o ${OBJECTDIR}/src/i2c-avr.o ${OBJECTDIR}/src/locale.o
 
 # Source Files
-SOURCEFILES=src/ds18b20.c src/ds1307.c src/hw-pic.c src/i2c-pic.c src/lcd.c src/main.c src/utils.c src/hw-avr.c src/i2c-avr.c
+SOURCEFILES=src/ds18b20.c src/ds1307.c src/hw-pic.c src/i2c-pic.c src/lcd.c src/main.c src/utils.c src/hw-avr.c src/i2c-avr.c src/locale.c
 
 # Pack Options 
 PACK_COMPILER_OPTIONS=-I "${DFP_DIR}/include"
@@ -184,6 +184,12 @@ ${OBJECTDIR}/src/i2c-avr.o: src/i2c-avr.c  .generated_files/flags/ATMega328P/4e8
 	@${RM} ${OBJECTDIR}/src/i2c-avr.o 
 	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/i2c-avr.o.d" -MT "${OBJECTDIR}/src/i2c-avr.o.d" -MT ${OBJECTDIR}/src/i2c-avr.o  -o ${OBJECTDIR}/src/i2c-avr.o src/i2c-avr.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
 	
+${OBJECTDIR}/src/locale.o: src/locale.c  .generated_files/flags/ATMega328P/58f9a9b844bd5fa6f1559affd77f13791157c881 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/locale.o.d 
+	@${RM} ${OBJECTDIR}/src/locale.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS} -g -DDEBUG  -gdwarf-2  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/locale.o.d" -MT "${OBJECTDIR}/src/locale.o.d" -MT ${OBJECTDIR}/src/locale.o  -o ${OBJECTDIR}/src/locale.o src/locale.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
 else
 ${OBJECTDIR}/src/ds18b20.o: src/ds18b20.c  .generated_files/flags/ATMega328P/b6bdef661f0d1bfd838d19d1050c31b7f6ec319e .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
 	@${MKDIR} "${OBJECTDIR}/src" 
@@ -238,6 +244,12 @@ ${OBJECTDIR}/src/i2c-avr.o: src/i2c-avr.c  .generated_files/flags/ATMega328P/580
 	@${RM} ${OBJECTDIR}/src/i2c-avr.o.d 
 	@${RM} ${OBJECTDIR}/src/i2c-avr.o 
 	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/i2c-avr.o.d" -MT "${OBJECTDIR}/src/i2c-avr.o.d" -MT ${OBJECTDIR}/src/i2c-avr.o  -o ${OBJECTDIR}/src/i2c-avr.o src/i2c-avr.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
+	
+${OBJECTDIR}/src/locale.o: src/locale.c  .generated_files/flags/ATMega328P/15363c51fec4d053ba608e3534c272fd6d881fe6 .generated_files/flags/ATMega328P/a9b356ce7035b08538a425db1a3c50a0afa6c2d6
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/locale.o.d 
+	@${RM} ${OBJECTDIR}/src/locale.o 
+	 ${MP_CC}  $(MP_EXTRA_CC_PRE) -mmcu=atmega328p ${PACK_COMPILER_OPTIONS} ${PACK_COMMON_OPTIONS}  -x c -c -D__$(MP_PROCESSOR_OPTION)__  -I"include" -funsigned-char -funsigned-bitfields -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -MD -MP -MF "${OBJECTDIR}/src/locale.o.d" -MT "${OBJECTDIR}/src/locale.o.d" -MT ${OBJECTDIR}/src/locale.o  -o ${OBJECTDIR}/src/locale.o src/locale.c  -DXPRJ_ATMega328P=$(CND_CONF)  $(COMPARISON_BUILD) 
 	
 endif
 

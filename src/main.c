@@ -6,6 +6,7 @@
 
 #include "hw.h"
 #include "locale.h"
+#include "eeprom.h"
 #include <stdbool.h>
 #include <string.h>
 #include "lcd.h"
@@ -19,13 +20,6 @@
 #ifdef HW_LEGACY
 // simple checking time difference (decrease memory usage)
 #define SIMPLE_TRIPC_TIME_CHECK
-#endif
-
-// place custom chars data in eeprom/pgmspace
-#if defined(__PIC_MIDRANGE)
-#define EEPROM_CUSTOM_CHARS
-#elif defined(__AVR_ATMEGA)
-#define PGMSPACE_CUSTOM_CHARS
 #endif
 
 // power supply threshold 
@@ -158,24 +152,6 @@ config_t config;
 trips_t trips;
 services_t services;
 
-__EEPROM_DATA(0xEF,0xA6,0x04,0x00,0x0A,0x20,0x80,0x3E); /*config*/
-__EEPROM_DATA(0x6E,0xB3,0xA0,0x01,0x00,0x05,0x00,0x00);
-__EEPROM_DATA(0xB6,0x00,0xC9,0x26,0x6C,0x02,0xC1,0x07); /*trips*/
-__EEPROM_DATA(0x32,0x28,0x00,0x00,0x1C,0x03,0x28,0x0A);
-__EEPROM_DATA(0x21,0x06,0xD1,0x22,0x4F,0xBC,0x00,0x00);
-__EEPROM_DATA(0x06,0x00,0xEF,0x0A,0x48,0x48,0x41,0x00);
-__EEPROM_DATA(0x80,0x01,0x00,0x00,0x15,0x17,0x28,0x07);
-__EEPROM_DATA(0x21,0xDB,0x02,0x00,0x00,0x00,0x00,0x00);
-__EEPROM_DATA(0xE2,0xD9,0x04,0x00,0x00,0x00,0x7C,0x11); /*services*/
-__EEPROM_DATA(0x0A,0x22,0x01,0x21,0x00,0x00,0xFF,0x1A);
-__EEPROM_DATA(0x28,0xFF,0xFF,0xFF,0x00,0x00,0xA5,0x06);
-__EEPROM_DATA(0x0A,0x21,0x03,0x20,0x00,0x00,0x10,0x12);
-__EEPROM_DATA(0x0A,0x07,0x01,0x21,0x00,0x00,0x00,0x00);
-// ds18b20 serial numbers (OUT, IN, ENGINE)
-__EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF); /*ds18b20 serial numbers*/
-__EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
-__EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
-
 //========================================================================================
 
 #ifdef HW_LEGACY
@@ -294,32 +270,6 @@ __bank2 ds_time time;
 unsigned char fuel1_const;
 unsigned char fuel2_const;
 unsigned short odo_con4;
-
-#ifdef EEPROM_CUSTOM_CHARS
-#define CUSTOM_CHAR_DATA(a) __EEPROM_DATA(a);
-#else
-#define CUSTOM_CHAR_DATA(a) a,
-#endif
-
-#ifndef EEPROM_CUSTOM_CHARS
-// custom lcd characters data
-#ifdef PGMSPACE_CUSTOM_CHARS
-PROGMEM const unsigned char custom_chars[] = {
-#else
-const unsigned char custom_chars[] = {
-#endif    
-#endif    
-CUSTOM_CHAR_DATA(DATA_KMH_0)    // kmh[0]
-CUSTOM_CHAR_DATA(DATA_KMH_1)    // kmh[1]
-CUSTOM_CHAR_DATA(DATA_OMIN_0)   // omin[0]
-CUSTOM_CHAR_DATA(DATA_OMIN_1)   // omin[1]
-CUSTOM_CHAR_DATA(DATA_L100_0)   // L100[0]
-CUSTOM_CHAR_DATA(DATA_L100_1)   // L100[1]
-CUSTOM_CHAR_DATA(DATA_LH_0)     // l/h[0]
-CUSTOM_CHAR_DATA(DATA_LH_1)     // l/h[1]
-#ifndef EEPROM_CUSTOM_CHARS
-};
-#endif
 
 typedef void (*screen_func) (void);
 
@@ -815,35 +765,6 @@ int_handler_GLOBAL_begin
     int_handler_adc_end
     
 int_handler_GLOBAL_end
-
-void _LCD_Init(void) {
-    LCD_Init(0x4E);    // Initialize LCD module with I2C address = 0x40 ((0x20<<1) for PCF8574) or 0x70 ((0x38<<1) for PCF8574A)
-    
-    // LCD set custom characters
-    unsigned char i = 0;
-#ifdef EEPROM_CUSTOM_CHARS
-    for (i = 0; i < 64; i = i + 8) {
-        LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
-        HW_read_eeprom_block((unsigned char*) buf, temps_ee_addr + 24 + i, 8);
-        unsigned char j;
-        for (j = 0; j < 8; j++) {
-            LCD_Write_Char(buf[j]);
-        }
-    }
-#else        
-    for (i = 0; i < 64; i++) {
-        // LCD_SETCGRAMADDR | (location << 3)
-        if ((i & 0x07) == 0) {
-            LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
-        }
-#ifdef PGMSPACE_CUSTOM_CHARS
-        LCD_Write_Char(pgm_read_byte(&custom_chars[i]));
-#else
-        LCD_Write_Char(custom_chars[i]);
-#endif
-    }
-#endif
-}
 
 void print_current_time_hm(unsigned char hour, unsigned char minute, align_t align) {
     bcd8_to_str(buf, hour);
@@ -1919,7 +1840,7 @@ void power_on() {
     
     read_eeprom();
     
-    _LCD_Init();
+    LCD_Init();
     
     // default const
     fuel1_const = 65;

@@ -57,17 +57,17 @@ OBJECTDIR=build/${CND_CONF}/${IMAGE_TYPE}
 DISTDIR=dist/${CND_CONF}/${IMAGE_TYPE}
 
 # Source Files Quoted if spaced
-SOURCEFILES_QUOTED_IF_SPACED=src/ds18b20.c src/ds1307.c src/hw-pic.c src/i2c-pic.c src/lcd.c src/main.c src/utils.c src/hw-avr.c src/i2c-avr.c
+SOURCEFILES_QUOTED_IF_SPACED=src/ds18b20.c src/ds1307.c src/hw-pic.c src/i2c-pic.c src/lcd.c src/main.c src/utils.c src/hw-avr.c src/i2c-avr.c src/locale.c
 
 # Object Files Quoted if spaced
-OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/src/ds18b20.p1 ${OBJECTDIR}/src/ds1307.p1 ${OBJECTDIR}/src/hw-pic.p1 ${OBJECTDIR}/src/i2c-pic.p1 ${OBJECTDIR}/src/lcd.p1 ${OBJECTDIR}/src/main.p1 ${OBJECTDIR}/src/utils.p1 ${OBJECTDIR}/src/hw-avr.p1 ${OBJECTDIR}/src/i2c-avr.p1
-POSSIBLE_DEPFILES=${OBJECTDIR}/src/ds18b20.p1.d ${OBJECTDIR}/src/ds1307.p1.d ${OBJECTDIR}/src/hw-pic.p1.d ${OBJECTDIR}/src/i2c-pic.p1.d ${OBJECTDIR}/src/lcd.p1.d ${OBJECTDIR}/src/main.p1.d ${OBJECTDIR}/src/utils.p1.d ${OBJECTDIR}/src/hw-avr.p1.d ${OBJECTDIR}/src/i2c-avr.p1.d
+OBJECTFILES_QUOTED_IF_SPACED=${OBJECTDIR}/src/ds18b20.p1 ${OBJECTDIR}/src/ds1307.p1 ${OBJECTDIR}/src/hw-pic.p1 ${OBJECTDIR}/src/i2c-pic.p1 ${OBJECTDIR}/src/lcd.p1 ${OBJECTDIR}/src/main.p1 ${OBJECTDIR}/src/utils.p1 ${OBJECTDIR}/src/hw-avr.p1 ${OBJECTDIR}/src/i2c-avr.p1 ${OBJECTDIR}/src/locale.p1
+POSSIBLE_DEPFILES=${OBJECTDIR}/src/ds18b20.p1.d ${OBJECTDIR}/src/ds1307.p1.d ${OBJECTDIR}/src/hw-pic.p1.d ${OBJECTDIR}/src/i2c-pic.p1.d ${OBJECTDIR}/src/lcd.p1.d ${OBJECTDIR}/src/main.p1.d ${OBJECTDIR}/src/utils.p1.d ${OBJECTDIR}/src/hw-avr.p1.d ${OBJECTDIR}/src/i2c-avr.p1.d ${OBJECTDIR}/src/locale.p1.d
 
 # Object Files
-OBJECTFILES=${OBJECTDIR}/src/ds18b20.p1 ${OBJECTDIR}/src/ds1307.p1 ${OBJECTDIR}/src/hw-pic.p1 ${OBJECTDIR}/src/i2c-pic.p1 ${OBJECTDIR}/src/lcd.p1 ${OBJECTDIR}/src/main.p1 ${OBJECTDIR}/src/utils.p1 ${OBJECTDIR}/src/hw-avr.p1 ${OBJECTDIR}/src/i2c-avr.p1
+OBJECTFILES=${OBJECTDIR}/src/ds18b20.p1 ${OBJECTDIR}/src/ds1307.p1 ${OBJECTDIR}/src/hw-pic.p1 ${OBJECTDIR}/src/i2c-pic.p1 ${OBJECTDIR}/src/lcd.p1 ${OBJECTDIR}/src/main.p1 ${OBJECTDIR}/src/utils.p1 ${OBJECTDIR}/src/hw-avr.p1 ${OBJECTDIR}/src/i2c-avr.p1 ${OBJECTDIR}/src/locale.p1
 
 # Source Files
-SOURCEFILES=src/ds18b20.c src/ds1307.c src/hw-pic.c src/i2c-pic.c src/lcd.c src/main.c src/utils.c src/hw-avr.c src/i2c-avr.c
+SOURCEFILES=src/ds18b20.c src/ds1307.c src/hw-pic.c src/i2c-pic.c src/lcd.c src/main.c src/utils.c src/hw-avr.c src/i2c-avr.c src/locale.c
 
 
 
@@ -186,6 +186,14 @@ ${OBJECTDIR}/src/i2c-avr.p1: src/i2c-avr.c  nbproject/Makefile-${CND_CONF}.mk
 	@-${MV} ${OBJECTDIR}/src/i2c-avr.d ${OBJECTDIR}/src/i2c-avr.p1.d 
 	@${FIXDEPS} ${OBJECTDIR}/src/i2c-avr.p1.d $(SILENT) -rsi ${MP_CC_DIR}../  
 	
+${OBJECTDIR}/src/locale.p1: src/locale.c  nbproject/Makefile-${CND_CONF}.mk 
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/locale.p1.d 
+	@${RM} ${OBJECTDIR}/src/locale.p1 
+	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c  -D__DEBUG=1   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -DHW_LEGACY -xassembler-with-cpp -I"include" -mwarn=-3 -Wa,-a -DXPRJ_PIC16F876A_legacy=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall $(COMPARISON_BUILD)  -std=c99 -gcoff -mstack=compiled:auto:auto     -o ${OBJECTDIR}/src/locale.p1 src/locale.c 
+	@-${MV} ${OBJECTDIR}/src/locale.d ${OBJECTDIR}/src/locale.p1.d 
+	@${FIXDEPS} ${OBJECTDIR}/src/locale.p1.d $(SILENT) -rsi ${MP_CC_DIR}../  
+	
 else
 ${OBJECTDIR}/src/ds18b20.p1: src/ds18b20.c  nbproject/Makefile-${CND_CONF}.mk 
 	@${MKDIR} "${OBJECTDIR}/src" 
@@ -258,6 +266,14 @@ ${OBJECTDIR}/src/i2c-avr.p1: src/i2c-avr.c  nbproject/Makefile-${CND_CONF}.mk
 	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -DHW_LEGACY -xassembler-with-cpp -I"include" -mwarn=-3 -Wa,-a -DXPRJ_PIC16F876A_legacy=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall $(COMPARISON_BUILD)  -std=c99 -gcoff -mstack=compiled:auto:auto     -o ${OBJECTDIR}/src/i2c-avr.p1 src/i2c-avr.c 
 	@-${MV} ${OBJECTDIR}/src/i2c-avr.d ${OBJECTDIR}/src/i2c-avr.p1.d 
 	@${FIXDEPS} ${OBJECTDIR}/src/i2c-avr.p1.d $(SILENT) -rsi ${MP_CC_DIR}../  
+	
+${OBJECTDIR}/src/locale.p1: src/locale.c  nbproject/Makefile-${CND_CONF}.mk 
+	@${MKDIR} "${OBJECTDIR}/src" 
+	@${RM} ${OBJECTDIR}/src/locale.p1.d 
+	@${RM} ${OBJECTDIR}/src/locale.p1 
+	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -DHW_LEGACY -xassembler-with-cpp -I"include" -mwarn=-3 -Wa,-a -DXPRJ_PIC16F876A_legacy=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall $(COMPARISON_BUILD)  -std=c99 -gcoff -mstack=compiled:auto:auto     -o ${OBJECTDIR}/src/locale.p1 src/locale.c 
+	@-${MV} ${OBJECTDIR}/src/locale.d ${OBJECTDIR}/src/locale.p1.d 
+	@${FIXDEPS} ${OBJECTDIR}/src/locale.p1.d $(SILENT) -rsi ${MP_CC_DIR}../  
 	
 endif
 

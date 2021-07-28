@@ -1,16 +1,57 @@
-
 #include "lcd.h"
 #include "i2c.h"
 #include <stdbool.h>
 
-#ifndef LCD_LEGACY
-unsigned char i2c_add;
+#ifndef EEPROM_CUSTOM_CHARS
+#ifdef PGMSPACE_CUSTOM_CHARS
+PROGMEM const unsigned char custom_chars[] = {
+#else
+const unsigned char custom_chars[] = {
+#endif    
+DATA_KMH_0,    // kmh[0]
+DATA_KMH_1,    // kmh[1]
+DATA_OMIN_0,   // omin[0]
+DATA_OMIN_1,   // omin[1]
+DATA_L100_0,   // L100[0]
+DATA_L100_1,   // L100[1]
+DATA_LH_0,     // l/h[0]
+DATA_LH_1,     // l/h[1]
+};
 #endif
-//---------------[ LCD Routines ]----------------
-//------------------------------------------------------
+
+void LCD_Init(void) {
+    _LCD_Init(0x4E);    // Initialize LCD module with I2C address = 0x40 ((0x20<<1) for PCF8574) or 0x70 ((0x38<<1) for PCF8574A)
+    
+    // LCD set custom characters
+    unsigned char i = 0;
+#ifdef EEPROM_CUSTOM_CHARS
+    for (i = 0; i < 64; i = i + 8) {
+        LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
+        HW_read_eeprom_block((unsigned char*) buf, temps_ee_addr + 24 + i, 8);
+        unsigned char j;
+        for (j = 0; j < 8; j++) {
+            LCD_Write_Char(buf[j]);
+        }
+    }
+#else        
+    for (i = 0; i < 64; i++) {
+        // LCD_SETCGRAMADDR | (location << 3)
+        if ((i & 0x07) == 0) {
+            LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
+        }
+#ifdef PGMSPACE_CUSTOM_CHARS
+        LCD_Write_Char(pgm_read_byte(&custom_chars[i]));
+#else
+        LCD_Write_Char(custom_chars[i]);
+#endif
+    }
+#endif
+}
 
 #ifndef LCD_LEGACY
-void LCD_Init(unsigned char I2C_Add) 
+unsigned char i2c_add;
+
+void _LCD_Init(unsigned char I2C_Add) 
 {
   i2c_add = I2C_Add;
   
@@ -20,7 +61,7 @@ void LCD_Init(unsigned char I2C_Add)
   I2C_Master_Write((RS | EN) | LCD_BACKLIGHT);
   I2C_Master_Stop();
 #else
-void LCD_Init() {  
+void _LCD_Init() {  
   LCD_PORT = (LCD_PORT & ~LCD_PORT_MASK) | (RS | EN);
 #endif
     
