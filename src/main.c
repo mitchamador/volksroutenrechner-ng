@@ -55,9 +55,6 @@
 // show average fuel consumption after total consumption of AVERAGE_MIN_FUEL * 0,01 litres
 #define AVERAGE_MIN_FUEL 5
 
-// min speed (km/h)
-#define DEFAULT_MIN_SPEED 5
-
 // max value of trip A odometer
 #define MAX_ODO_TRIPA 2000
 
@@ -78,25 +75,26 @@
 #define TIMEOUT_TEMPERATURE (15 - 1)
 
 typedef struct {
-    unsigned char day;
-    unsigned char month;
-    unsigned char year;
+    uint8_t day;
+    uint8_t month;
+    uint8_t year;
 } service_time_t;
 
 typedef struct {
-    unsigned short counter;
-    unsigned char limit;
+    uint16_t counter;
+    uint8_t limit;
     service_time_t time;
+    uint8_t dummy[2];      // fill to 8 bytes size
 } srv_t;
 
 typedef struct {
     uint32_t counter;
-    unsigned short limit;
+    uint16_t limit;
 } srv_mh_t;
 
 typedef union {
   // a structure with 8 single bit bit-field objects, overlapping the union member "byte"
-  unsigned char byte;
+  uint8_t byte;
   struct {
     unsigned b0:1;
     unsigned b1:1;
@@ -110,78 +108,69 @@ typedef union {
 } settings_u;
 
 typedef struct {
-    unsigned short odo;
-    unsigned short odo_temp;
-    unsigned char fuel_tmp1, fuel_tmp2;
-    unsigned short fuel;
+    uint16_t odo;
+    uint16_t odo_temp;
+    uint8_t fuel_tmp1, fuel_tmp2;
+    uint16_t fuel;
     uint32_t time;
 } trip_t;
 
 typedef struct {
-    unsigned char minute, hour, day, month, year;
+    uint8_t minute, hour, day, month, year;
 } trip_time_t;
 
 // service counters limits
 typedef struct {
     // main odometer
     uint32_t odo;
-    unsigned short odo_temp;
+    uint16_t odo_temp;
 
-    unsigned short odo_const;
-    unsigned char fuel_const;
-    unsigned char vcc_const;
+    uint16_t odo_const;
+    uint8_t fuel_const;
+    uint8_t vcc_const;
 
     settings_u settings;
 
     // param counter for main screen
-    unsigned char selected_param1;
+    uint8_t selected_param1;
     // param counter for tripC screen
-    unsigned char selected_param2;
+    uint8_t selected_param2;
 
     // min speed for drive mode
-    unsigned char min_speed;
+    uint8_t min_speed;
     
-    unsigned char dummy1;
-    unsigned char dummy2;
+    uint8_t dummy[2];
     
 } config_t;
 
 typedef struct {
     srv_mh_t mh;
-    srv_t oil_engine;
-    srv_t oil_gearbox;
-    srv_t air_filter;
-    srv_t sparks;
+    srv_t srv[4];
 } services_t;
 
 typedef struct {
     trip_t tripA, tripB, tripC;
     trip_time_t tripC_time;
-    unsigned short tripC_max_speed;
+    uint16_t tripC_max_speed;
 } trips_t;
-
-typedef struct {
-    char sn_in[8];
-    char sn_out[8];
-    char sn_engine[8];  
-} ds18b20_sn_t;
 
 config_t config;
 trips_t trips;
 services_t services;
 
-__EEPROM_DATA(0x8D,0xA6,0x04,0x00,0xC7,0x09,0x80,0x3E); /*config*/
-__EEPROM_DATA(0x6E,0xB3,0xA0,0x01,0x00,DEFAULT_MIN_SPEED,0x00,0x00);
-__EEPROM_DATA(0x54,0x00,0x86,0x10,0x78,0x6B,0x70,0x03); /*trips*/
-__EEPROM_DATA(0x7E,0x11,0x00,0x00,0xB9,0x02,0x65,0x32);
-__EEPROM_DATA(0x2D,0x01,0x81,0x1E,0x9B,0xA5,0x00,0x00);
-__EEPROM_DATA(0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
-__EEPROM_DATA(0x00,0x00,0x00,0x00,0x10,0x15,0x25,0x07);
-__EEPROM_DATA(0x21,0x00,0x00,0x00,0x00,0x00,0x00,0x00);
-__EEPROM_DATA(0x2E,0xC3,0x04,0x00,0x00,0x00,0x1A,0x11); /*services*/
-__EEPROM_DATA(0x0A,0x22,0x01,0x21,0x9D,0x1A,0x28,0xFF);
-__EEPROM_DATA(0xFF,0xFF,0x43,0x06,0x0A,0x21,0x03,0x20);
-__EEPROM_DATA(0xAE,0x11,0x0A,0x07,0x01,0xFF,0x00,0x00);
+__EEPROM_DATA(0xEF,0xA6,0x04,0x00,0x0A,0x20,0x80,0x3E); /*config*/
+__EEPROM_DATA(0x6E,0xB3,0xA0,0x01,0x00,0x05,0x00,0x00);
+__EEPROM_DATA(0xB6,0x00,0xC9,0x26,0x6C,0x02,0xC1,0x07); /*trips*/
+__EEPROM_DATA(0x32,0x28,0x00,0x00,0x1C,0x03,0x28,0x0A);
+__EEPROM_DATA(0x21,0x06,0xD1,0x22,0x4F,0xBC,0x00,0x00);
+__EEPROM_DATA(0x06,0x00,0xEF,0x0A,0x48,0x48,0x41,0x00);
+__EEPROM_DATA(0x80,0x01,0x00,0x00,0x15,0x17,0x28,0x07);
+__EEPROM_DATA(0x21,0xDB,0x02,0x00,0x00,0x00,0x00,0x00);
+__EEPROM_DATA(0xE2,0xD9,0x04,0x00,0x00,0x00,0x7C,0x11); /*services*/
+__EEPROM_DATA(0x0A,0x22,0x01,0x21,0x00,0x00,0xFF,0x1A);
+__EEPROM_DATA(0x28,0xFF,0xFF,0xFF,0x00,0x00,0xA5,0x06);
+__EEPROM_DATA(0x0A,0x21,0x03,0x20,0x00,0x00,0x10,0x12);
+__EEPROM_DATA(0x0A,0x07,0x01,0x21,0x00,0x00,0x00,0x00);
 // ds18b20 serial numbers (OUT, IN, ENGINE)
 __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF); /*ds18b20 serial numbers*/
 __EEPROM_DATA(0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF);
@@ -345,17 +334,20 @@ void screen_service_counters(void);
 
 typedef struct {
     screen_func screen;
-    unsigned char drive_mode; // show screen id drive mode
 } screen_item_t;
 
+
+// max screen in drive mode
+#define DRIVE_MODE_MAX 2
+
 const screen_item_t items_main[] = {
-    {screen_main, 1},
-    {screen_tripC, 1},
-    {screen_temp, 1},
-    {screen_tripA, 0},
-    {screen_tripB, 0},
-    {screen_time, 0},
-    {screen_service_counters, 0},
+    {screen_main},
+    {screen_tripC},
+    {screen_temp},
+    {screen_tripA},
+    {screen_tripB},
+    {screen_time},
+    {screen_service_counters},
 };
 
 typedef struct service_screen_item_t service_screen_item_t;
@@ -530,10 +522,10 @@ int_handler_GLOBAL_begin
                     config.odo_temp = 0;
                     // increment odometer counters
                     config.odo++;
-                    services.oil_engine.counter++;
-                    services.oil_gearbox.counter++;
-                    services.air_filter.counter++;
-                    services.sparks.counter++;
+                    services.srv[0].counter++;
+                    services.srv[1].counter++;
+                    services.srv[2].counter++;
+                    services.srv[3].counter++;
                 }
 
 #ifdef HW_LEGACY                
@@ -992,10 +984,11 @@ unsigned char get_fractional_string(char * buf, unsigned short num) {
  */
 void print_trip_time(trip_t* t, align_t align) {
     unsigned short time = (unsigned short) (t->time / 30);
-    
+
     len = ultoa2(buf, (unsigned short) (time / 60), 10);
     buf[len++] = ':';
-    len += ultoa2(&buf[len], time % 60, 10);
+    bcd8_to_str(&buf[len], bin8_to_bcd(time % 60));
+    len += 2;
 
     LCD_Write_String8(buf, len, align);
 }
@@ -1446,33 +1439,19 @@ void screen_service_counters() {
     service_time_t s_time;
     unsigned short v;
     
-    switch (select_param(&service_param, 5)) {
-        case 0:
-        case 1:
-            srv = &services.oil_engine;
-            break;
-        case 2:
-            srv = &services.oil_gearbox;
-            break;
-        case 3:
-            srv = &services.air_filter;
-            break;
-        case 4:
-            srv = &services.sparks;
-            break;
-    }
+    select_param(&service_param, 5);
 
     LCD_CMD(0x80);
     LCD_Write_String16(buf, strcpy2((char*)buf, (char *) &service_counters, service_param + 1), LCD_ALIGN_LEFT);
 
-    LCD_CMD(0xC0);
     if (service_param == 0) {
-        s_time = services.oil_engine.time;
+        srv = &services.srv[0];
         v = (unsigned short) (services.mh.counter / 1800L);
     } else {
-        s_time = srv->time;
+        srv = &services.srv[service_param - 1];
         v = srv->counter;
     }
+
     len = ultoa2(buf, v, 10);
     if (service_param == 0) {
         buf[len++] = HOUR_SYMBOL;
@@ -1481,8 +1460,11 @@ void screen_service_counters() {
         buf[len++] = KM2_SYMBOL;
     }
     buf[len++] = ' ';
+    LCD_CMD(0xC0);
     LCD_Write_String8(buf, len, LCD_ALIGN_RIGHT);
     
+    s_time = srv->time;
+
     LCD_CMD(0xC8);
     print_current_time_dmy(s_time.day, s_time.month, s_time.year);
     
@@ -1785,22 +1767,10 @@ void service_screen_service_counters(service_screen_item_t* item) {
         memset(buf, ' ', 16);
         LCD_Write_String16(buf, 16, LCD_ALIGN_LEFT);
 
-        switch (c_sub_item) {
-            case 0:
-                services.mh.limit = (unsigned short) edit_value_long(services.mh.limit, 1999L);
-                break;
-            case 1:
-                services.oil_engine.limit = edit_value_char(services.oil_engine.limit, true);
-                break;
-            case 2:
-                services.oil_gearbox.limit = edit_value_char(services.oil_gearbox.limit, true);
-                break;
-            case 3:
-                services.air_filter.limit = edit_value_char(services.air_filter.limit, true);
-                break;
-            case 4:
-                services.sparks.limit = edit_value_char(services.sparks.limit, true);
-                break;
+        if (c_sub_item == 0) {
+            services.mh.limit = (unsigned short) edit_value_long(services.mh.limit, 1999L);
+        } else {
+            services.srv[c_sub_item - 1].limit = edit_value_char(services.srv[c_sub_item - 1].limit, true);
         }
 
         timeout = 0; timeout_timer = 300;
@@ -1833,13 +1803,18 @@ void service_screen_ua_const(service_screen_item_t* item) {
     
 }
 
+void service_screen_version(service_screen_item_t* item) {
+    LCD_CMD(0xC0);
+    LCD_Write_String16(buf, strcpy2(buf, (char*) &version_str, 0), LCD_ALIGN_LEFT);
+}
+
 void service_screen(unsigned char c_item) {
     service_screen_item_t item = items_service[c_item];
     
     LCD_CMD(0x80);
     LCD_Write_String16(buf, strcpy2(buf, (char *) &service_menu_title, 0), LCD_ALIGN_LEFT);
-    LCD_CMD(0xC0);
 
+    LCD_CMD(0xC0);
     buf[0] = '1' + c_item;
     buf[1] = '.';
     LCD_Write_String16(buf, strcpy2(&buf[2], (char*) item.name, 0) + 2, LCD_ALIGN_LEFT);
@@ -1864,11 +1839,6 @@ void service_screen(unsigned char c_item) {
         }
         screen_refresh = 1;
     }
-}
-
-void service_screen_version(service_screen_item_t* item) {
-    LCD_CMD(0xC0);
-    LCD_Write_String16(buf, strcpy2(buf, (char*) &version_str, 0), LCD_ALIGN_LEFT);
 }
 
 void read_eeprom() {
@@ -1978,35 +1948,28 @@ void power_on() {
     }
 }
 
-void check_service_counters() {
+unsigned char check_service_counters() {
     unsigned char i;
+    unsigned char warn = 0;
     for (i = 0; i < 5; i++) {
-        unsigned char warn = 0;
         if (i == 0) {
-            if (services.mh.limit != 0 && (services.mh.counter / 1800UL) > services.mh.limit) {
-                warn = 1;
+            if (services.mh.limit != 0 && (services.mh.counter / 1800UL) >= services.mh.limit) {
+                warn |= (1 << i);
             }
         } else {
-            srv_t* srv;
-            switch (i) {
-                case 1:
-                    srv = &services.oil_engine;
-                    break;
-                case 2:
-                    srv = &services.oil_gearbox;
-                    break;
-                case 3:
-                    srv = &services.air_filter;
-                    break;
-                case 4:
-                    srv = &services.sparks;
-                    break;
-            }
-            if (srv->limit != 0 && srv->counter > (srv->limit * 1000U)) {
-                warn = 1;
+            srv_t* srv = &services.srv[i - 1];
+            if (srv->limit != 0 && srv->counter >= (srv->limit * 1000U)) {
+                warn |= (1 << i);
             }
         }
-        if (warn != 0) {
+    }
+    return warn;
+}
+
+void print_warning_service_counters(unsigned char warn) {
+    unsigned char i;
+    for (i = 0; i < 5; i++) {
+        if ((warn & 0x01) != 0) {
             buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[BUZZER_WARN];
             LCD_CMD(0x80);
             LCD_Write_String16(buf, strcpy2(buf, (char*) &warning_str, 0), LCD_ALIGN_CENTER);
@@ -2015,9 +1978,11 @@ void check_service_counters() {
             LCD_Write_String16(buf, strcpy2(buf, (char*) &service_counters, i + 1), LCD_ALIGN_CENTER);
 
             timeout = 0; timeout_timer = 300;
-            while (timeout == 0 && NO_KEY_PRESSED);
+            while (timeout == 0 && NO_KEY_PRESSED)
+                ;
             CLEAR_KEYS_STATE();
         }
+        warn >>= 1;
     }
 }
 
@@ -2028,8 +1993,9 @@ void handle_temp() {
         timeout_temperature = TIMEOUT_TEMPERATURE;
         temperature_conv_fl = 0;
         unsigned char i;
+        unsigned char _temps_ee_addr = temps_ee_addr;
         for (i = 0; i < 3; i++) {
-            HW_read_eeprom_block((unsigned char *) &tbuf, temps_ee_addr + i * 8, 8);
+            HW_read_eeprom_block((unsigned char *) &tbuf, _temps_ee_addr, 8);
             ds18b20_read_temp_matchrom((unsigned char *) &tbuf, &temps[i]);
         }
     } else {
@@ -2062,6 +2028,7 @@ void handle_misc_values() {
 void main() {
 
     unsigned char service_mode = 0;
+    unsigned char max_item = 0;
 
     power_on();
 
@@ -2080,9 +2047,11 @@ void main() {
     
     // select main or service items
     if (service_mode == 0) {
+        max_item = sizeof(items_main) / sizeof(screen_item_t);
         config.min_speed *= 10;
         temperature_fl = 1;
     } else {
+        max_item = sizeof(items_service) / sizeof(service_screen_item_t);
         LCD_CMD(0x80);
         LCD_Write_String8(buf, strcpy2(buf, (char *) &service_menu_title, 0), LCD_ALIGN_LEFT);
         while (KEY_SERVICE_PRESSED);
@@ -2094,7 +2063,8 @@ void main() {
 #endif    
     
     if (service_mode == 0 && config.settings.service_alarm) {
-        check_service_counters();
+        unsigned char warn = check_service_counters();
+        print_warning_service_counters(warn);
     }
     
     CLEAR_KEYS_STATE();
@@ -2114,45 +2084,40 @@ void main() {
             handle_misc_values();
         }        
 
+        
         // show next/prev screen
-#ifndef HW_LEGACY
-        if (key1_press != 0 || key3_press != 0) {
-#else       
+#ifdef HW_LEGACY
         if (key1_press != 0) {
-#endif        
-            do {
-#ifndef HW_LEGACY
-                if (key1_press != 0) {
+            if (++c_item >= max_item) {
+                c_item = 0;
+            }
+#else
+        if (key1_press != 0 || key3_press != 0) {
+               if (key1_press != 0) {
                     c_item_dir = 1;
-#endif              
-                    c_item++;
-                    if ((service_mode == 0 && c_item >= sizeof(items_main) / sizeof(screen_item_t)) 
-                        || (service_mode != 0 && c_item >= sizeof(items_service) / sizeof(service_screen_item_t))) {
+                    if (++c_item >= max_item) {
                         c_item = 0;
                     }
-#ifndef HW_LEGACY
                 } else if (key3_press != 0) {
                     c_item_dir = -1;
-                    if (c_item == 0) {
-                        if (service_mode == 0) {
-                            c_item = sizeof(items_main) / sizeof(screen_item_t) - 1;
-                        } else {
-                            c_item = sizeof(items_service) / sizeof(service_screen_item_t) - 1;
-                        }
-                    } else {
-                        c_item--;
+                    if (c_item-- == 0) {
+                        c_item = max_item -1;
                     }
                 }
-#endif
-            } while (service_mode == 0 && drive_fl != 0 && items_main[c_item].drive_mode == 0);
+ #endif        
             tmp_param = 0;
             LCD_Clear();
             CLEAR_KEYS_STATE();
         }
         
+        
         if (service_mode != 0) {
             service_screen(c_item);
         } else {
+            if (drive_fl != 0 && c_item > DRIVE_MODE_MAX) {
+                c_item = 0;
+                LCD_Clear();
+            }
             items_main[c_item].screen();
         }
         

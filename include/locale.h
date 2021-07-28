@@ -7,11 +7,7 @@
 #define PROGMEM
 #endif
 
-#ifdef HW_LEGACY
-PROGMEM const char version_str[] = VERSION_STRING_SHORT; 
-#else
 PROGMEM const char version_str[] = VERSION_STRING; 
-#endif
 
 #define HOUR_SYMBOL 'h'
 #define LITRE_SYMBOL 'l'
@@ -46,12 +42,7 @@ PROGMEM const char warning_str[] = "WARNING";
 PROGMEM const char service_menu_title[] = "SERVICE MENU";
 PROGMEM const char service_counters[] = "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
 
-#ifdef HW_LEGACY
-#define ALT_BUTTONS "\0"
-#else
-#define ALT_BUTTONS "\0alt buttons"
-#endif
-PROGMEM const char settings_bits[] = "\0dual inj\0skip temp\0key sound\0serv alarm\0fast refresh" ALT_BUTTONS "\0\0";
+PROGMEM const char settings_bits[] = "\0dual inj\0skip temp\0key sound\0serv alarm\0fast refresh\0alt buttons\0\0";
 
 PROGMEM const char temp_sensors[] = "\0---\0out\0in\0eng";
 
