@@ -1913,11 +1913,11 @@ void handle_temp() {
         // read temperature for ds18b20
         timeout_temperature = TIMEOUT_TEMPERATURE;
         temperature_conv_fl = 0;
-        unsigned char i;
         unsigned char _temps_ee_addr = temps_ee_addr;
-        for (i = 0; i < 3; i++) {
+        for (unsigned char i = 0; i < 3; i++) {
             HW_read_eeprom_block((unsigned char *) &tbuf, _temps_ee_addr, 8);
             ds18b20_read_temp_matchrom((unsigned char *) &tbuf, &temps[i]);
+            _temps_ee_addr += 8;
         }
     } else {
         // start conversion for ds18b20
