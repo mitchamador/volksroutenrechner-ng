@@ -226,6 +226,8 @@ unsigned char adc_counter = ADC_AVERAGE_SAMPLES; // init value for first reading
 __bank3 unsigned short speed;
 __bank3 volatile unsigned char save_tripc_time_fl = 0;
 
+__bank2 unsigned char min_speed;
+
 // ds18b20 temperatures and eeprom pointer
 #define TEMP_OUT 0
 #define TEMP_IN 1
@@ -1143,7 +1145,7 @@ void screen_main(void) {
 //; первый экран
 
     LCD_CMD(0x80);
-    if (drive_fl == 0 || speed < config.min_speed) {
+    if (drive_fl == 0 || speed < min_speed) {
 //; 1) на месте с заглушенным двигателем
 //; время текущее       общий пробег (км)
 //; нар.темп./пробег C  вольтметр
@@ -1273,7 +1275,7 @@ void clear_trip(trip_t* trip) {
 void screen_tripC(void) {
 //; второй экран
     LCD_CMD(0x80);
-    if (drive_fl == 0 || speed < config.min_speed) {
+    if (drive_fl == 0 || speed < min_speed) {
         print_trip_time(&trips.tripC, LCD_ALIGN_LEFT);
         if (motor_fl == 0) {
 //; 1) на месте с заглушенным двигателем
@@ -1401,15 +1403,20 @@ void screen_service_counters() {
     }
 }
 
-unsigned char edit_value_char(unsigned char v, bool thousands) {
+typedef enum {
+    CHAREDIT_MODE_NONE,
+    CHAREDIT_MODE_KMH,
+    CHAREDIT_MODE_10000KM        
+} edit_value_char_t;
+
+unsigned char edit_value_char(unsigned char v, edit_value_char_t mode, unsigned char min_value, unsigned char max_value) {
     timeout = 0; timeout_timer = 300;
     while (timeout == 0) {
         screen_refresh = 0;
 
         if (key1_press != 0) {
-            v++;
-            if (thousands && v > 60) {
-                v = 0;
+            if (v++ == max_value) {
+                v = min_value;
             }
             timeout = 0; timeout_timer = 300;
         }
@@ -1419,18 +1426,25 @@ unsigned char edit_value_char(unsigned char v, bool thousands) {
         }
         if (key3_press != 0) {
 #endif            
-            v--;
-            if (thousands && v == 0xFF) {
-                v = 60;
+            if (v-- == min_value) {
+                v = max_value;
             }
             timeout = 0; timeout_timer = 300;
         }
         
-        len = ultoa2(buf, (unsigned long) (thousands ? (v * 1000L) : v) , 10);
+        len = ultoa2(buf, (unsigned long) (mode == CHAREDIT_MODE_10000KM ? (v * 1000L) : v) , 10);
         
+        if (mode == CHAREDIT_MODE_10000KM) {
+            buf[len++] = KM1_SYMBOL;
+            buf[len++] = KM2_SYMBOL;
+        } else if (mode == CHAREDIT_MODE_KMH) {
+            buf[len++] = _kmh0;
+            buf[len++] = _kmh1;
+        }
+
         LCD_CMD(0xC4);
         LCD_Write_String8(buf, len, LCD_ALIGN_RIGHT);
-
+        
         CLEAR_KEYS_STATE();
 
         while (screen_refresh == 0 && timeout == 0);
@@ -1589,7 +1603,7 @@ unsigned char edit_value_bits(unsigned char v, char* str) {
 }
 
 void service_screen_fuel_constant(service_screen_item_t* item) {
-    config.fuel_const = edit_value_char(config.fuel_const, false);
+    config.fuel_const = edit_value_char(config.fuel_const, CHAREDIT_MODE_NONE, 1, 255);
 }
 
 void service_screen_vss_constant(service_screen_item_t* item) {
@@ -1605,7 +1619,7 @@ void service_screen_settings_bits(service_screen_item_t* item) {
 }
 
 void service_screen_min_speed(service_screen_item_t* item) {
-    config.min_speed = edit_value_char(config.min_speed, false);
+    config.min_speed = edit_value_char(config.min_speed, CHAREDIT_MODE_KMH, 1, 10);
 }
 
 void service_screen_temp_sensors(service_screen_item_t* item) {
@@ -1691,7 +1705,7 @@ void service_screen_service_counters(service_screen_item_t* item) {
         if (c_sub_item == 0) {
             services.mh.limit = (unsigned short) edit_value_long(services.mh.limit, 1999L);
         } else {
-            services.srv[c_sub_item - 1].limit = edit_value_char(services.srv[c_sub_item - 1].limit, true);
+            services.srv[c_sub_item - 1].limit = edit_value_char(services.srv[c_sub_item - 1].limit, CHAREDIT_MODE_10000KM, 0, 60);
         }
 
         timeout = 0; timeout_timer = 300;
@@ -1969,7 +1983,7 @@ void main() {
     // select main or service items
     if (service_mode == 0) {
         max_item = sizeof(items_main) / sizeof(screen_item_t);
-        config.min_speed *= 10;
+        min_speed = config.min_speed * 10;
         temperature_fl = 1;
     } else {
         max_item = sizeof(items_service) / sizeof(service_screen_item_t);
