@@ -76,31 +76,31 @@ unsigned char ultoa2(char * buf, unsigned long val, unsigned char b) {
 }
 
 void add_leading_symbols(char* buf, char s, unsigned char len, unsigned char max_len) {
-    unsigned char i;
-    // add leading zeroes
-    unsigned char diff = max_len - len;
-    for (i = len; i != 0; i--) {
-        buf[i + diff - 1] = buf[i - 1];
+    // right align symbols
+    while (len > 0) {
+        buf[--max_len] = buf[--len];
     }
-    for (i = 0; i < diff; i++) {
-        buf[i] = s;
+    // add leading symbols
+    while (max_len > 0) {
+        buf[--max_len] = s;
     }
 }
 
 unsigned char strcpy2(char* buf, char* str, unsigned char pos) {
+    char divider = pos == 0 ? 0x00 : str[0];
     while (pos > 0) {
 #ifdef __AVR_ATMEGA
-        if (pgm_read_byte(str++) == '\0') {
+        if (pgm_read_byte(str++) == divider) {
 #else
-        if (*str++ == '\0') {
+        if (*str++ == divider) {
 #endif            
             pos--;
         }
     }
 #ifdef __AVR_ATMEGA
-    while (pgm_read_byte(str) != '\0') buf[pos++] = pgm_read_byte(str++);
+    while (pgm_read_byte(str) != divider) buf[pos++] = pgm_read_byte(str++);
 #else
-    while (*str != '\0') buf[pos++] = *str++;
+    while (*str != divider) buf[pos++] = *str++;
 #endif
     return pos;
 }
@@ -120,16 +120,16 @@ void str_center16(char * buf, unsigned char len) {
 }
 
 void ds18b20_serial_to_string(unsigned char *sn, unsigned char *p) {
-    unsigned char i, in, t;
-    for (i = 0; i < 8; i++) {
-        in = *sn++;
-        t = (in >> 4);
-        if (t > 10) {
-            *p++ = 'A' - 10 + t;
+    unsigned char i = 16, t;
+
+    while (--i != 0) {
+        t = *sn;
+        if ((i & 0x01) != 0) {
+          t >>= 4;
         } else {
-            *p++ = '0' + t;
+          sn++;
         }
-        t = in & 0x0F;
+        t &= 0x0F;
         if (t > 10) {
             *p++ = 'A' - 10 + t;
         } else {
