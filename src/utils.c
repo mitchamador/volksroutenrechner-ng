@@ -87,7 +87,11 @@ void add_leading_symbols(char* buf, char s, unsigned char len, unsigned char max
 }
 
 unsigned char strcpy2(char* buf, char* str, unsigned char pos) {
-    char divider = pos == 0 ? 0x00 : str[0];
+#ifdef __AVR_ATMEGA
+    unsigned char divider = pos == 0 ? 0x00 : pgm_read_byte(str);
+#else
+    unsigned char divider = pos == 0 ? 0x00 : str[0];
+#endif
     while (pos > 0) {
 #ifdef __AVR_ATMEGA
         if (pgm_read_byte(str++) == divider) {
