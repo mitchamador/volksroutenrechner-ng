@@ -1,9 +1,3 @@
-
-/********************************************************************************************
-* PIC16F876A 
-* LCD 16x2 with 4 bits
-*********************************************************************************************/
-
 #include "hw.h"
 #include "locale.h"
 #include "eeprom.h"
@@ -13,6 +7,12 @@
 #include "ds1307.h"
 #include "ds18b20.h"
 #include "utils.h"
+
+// new taho calculation
+#define NEW_TAHO
+
+// fix taho weird values (maybe hw fix needed)
+#define TAHO_FIX_MAX_RPM 7500UL
 
 // number of averaging ADC readings
 #define ADC_AVERAGE_SAMPLES 4
@@ -83,6 +83,7 @@ typedef struct {
 
 typedef struct {
     uint32_t counter;
+    uint32_t counter_rpm;
     uint16_t limit;
 } srv_mh_t;
 
@@ -91,8 +92,8 @@ typedef union {
   uint8_t byte;
   struct {
     unsigned b0:1;
-    unsigned b1:1;
     unsigned alt_buttons:1;
+    unsigned mh_rpm:1;
     unsigned fast_refresh:1;
     unsigned service_alarm:1;
     unsigned key_sound:1;
@@ -150,7 +151,7 @@ typedef struct {
 
 config_t config;
 trips_t trips;
-services_t services;
+__bank1 services_t services;
 
 //========================================================================================
 
@@ -226,6 +227,8 @@ volatile unsigned char save_tripc_time_fl = 0;
 unsigned short speed;
 unsigned char min_speed;
 
+unsigned char mh_rpm_const;
+
 // ds18b20 temperatures and eeprom pointer
 #define TEMP_OUT 0
 #define TEMP_IN 1
@@ -265,7 +268,7 @@ char buf[16];
 //char buf2[16];
 unsigned char len = 0;
 
-__bank2 ds_time time;
+__bank3 ds_time time;
 
 unsigned char fuel1_const;
 unsigned char fuel2_const;
@@ -414,13 +417,37 @@ int_handler_GLOBAL_begin
                 fuel_fl = 1;
                 motor_fl = 1;
                 save_tripc_time_fl = 1;
+                
+                services.mh.counter_rpm += mh_rpm_const;
 
+#ifdef NEW_TAHO
+                if (speed100_timer_fl == 0) {
+                    if (taho_measure_fl == 0) {
+                        // stop timer2
+                        stop_timer_taho();
+                    }
+#ifdef TAHO_FIX_MAX_RPM                        
+                    if (taho_tmp >= (uint16_t) (TAHO_CONST / TAHO_FIX_MAX_RPM))
+#endif
+                    {
+                        taho = taho_tmp;
+                        taho_tmp = 0;
+                    }
+                    if (taho_measure_fl == 1) {
+                        // start timer2
+                        start_timer_taho();
+                    }
+                }
+#else
                 // taho calculation
                 if (taho_measure_fl != 0) {
                     if (taho_fl != 0) {
                        // stop timer2
                         stop_timer_taho();
-                        taho = taho_tmp;
+                        // fix for showing very high rpm?
+                        if (taho_tmp >= (TAHO_CONST / 10000UL)) {
+                            taho = taho_tmp;
+                        }
                         taho_fl = 0;
                         taho_measure_fl = 0;
                     } else {
@@ -430,6 +457,7 @@ int_handler_GLOBAL_begin
                         taho_fl = 1;
                     }
                 }
+#endif                
             }
         } else {
             if (fuel_fl != 0) {
@@ -701,14 +729,16 @@ int_handler_GLOBAL_begin
     int_handler_timer1_end
 
     int_handler_timer2_begin
-        if (++taho_tmp > TAHO_TIMEOUT)
+        if (++taho_tmp == TAHO_TIMEOUT)
         {
             // stop timer2
             stop_timer_taho();
             // stop timer0
             stop_timer_fuel();
+#ifndef NEW_TAHO
             taho_measure_fl = 0;
             taho_fl = 0;
+#endif
             speed100_fl = 0;
             motor_fl = 0;
             taho = 0;
@@ -1017,6 +1047,8 @@ void print_speed(unsigned short speed, unsigned short i, align_t align) {
 }
 
 void print_taho(align_t align) {
+
+#ifndef NEW_TAHO
     taho_measure_fl = 1;
     start_timeout(TAHO_TIMEOUT_TIMER);
     while (motor_fl != 0 && taho_measure_fl != 0 && timeout == 0)
@@ -1024,13 +1056,14 @@ void print_taho(align_t align) {
     if (timeout != 0) {
         motor_fl = 0; taho_measure_fl = 0;
     }
-
+#endif
+    
     if (taho == 0 || motor_fl == 0) {
         len = strcpy2(buf, (char *) &empty_string, 0);
     } else {
-        unsigned short res = (unsigned short) ((TAHO_CONST / taho));
+        unsigned short res = (unsigned short) (((config.settings.dual_injection == 1 ? TAHO_CONST : TAHO_CONST*2) / taho));
 #ifdef TAHO_ROUND
-        res = res / TAHO_ROUND * TAHO_ROUND;
+        res = (res + TAHO_ROUND / 2) / TAHO_ROUND * TAHO_ROUND;
 #endif        
         len = ultoa2(buf, res, 10);
     }
@@ -1139,9 +1172,13 @@ void print_selected_param1(align_t align) {
 }
 
 void speed100(void) {
-    LCD_CMD(0xC0);
+    LCD_CMD(0x80);
     LCD_Write_String16(buf, strcpy2(buf, (char *) &speed100_wait_string, 0), LCD_ALIGN_CENTER);
 
+#ifdef NEW_TAHO
+    taho_measure_fl = 0;
+#endif
+    
     speed100_fl = 0; speed100_ok_fl = 0; speed100_timer = 0;
 
     // skip some pulses from speed sensor before start acceleration measurement
@@ -1188,6 +1225,9 @@ void speed100(void) {
             } else {
                 // timeout or 100 km/h
                 speed100_timer_fl = 0;
+#ifdef NEW_TAHO
+                taho_measure_fl = 1;
+#endif
                 if (timeout == 1) {
                     // timeout
                     LCD_CMD(0xC0);
@@ -1200,6 +1240,9 @@ void speed100(void) {
         }
     }
     speed100_timer_fl = 0;
+#ifdef NEW_TAHO
+    taho_measure_fl = 1;
+#endif
     CLEAR_KEYS_STATE();
 }
 
@@ -1359,6 +1402,20 @@ void screen_temp() {
     }
 }
 
+/**
+ * get motor hours (based on rpm or time)
+ * @return 
+ */
+uint16_t get_mh() {
+    if (config.settings.mh_rpm != 0) {
+        // rpm based motor hours (rpm / 96000)
+        return (uint16_t) (services.mh.counter_rpm / 96000UL);
+    } else {
+        // time based motor hours
+        return (uint16_t) (services.mh.counter / 1800UL);
+    }
+}
+
 void screen_service_counters() {
     
     srv_t* srv;
@@ -1372,7 +1429,7 @@ void screen_service_counters() {
 
     if (service_param == 0) {
         srv = &services.srv[0];
-        v = (unsigned short) (services.mh.counter / 1800L);
+        v = get_mh();
     } else {
         srv = &services.srv[service_param - 1];
         v = srv->counter;
@@ -1395,6 +1452,7 @@ void screen_service_counters() {
         get_ds_time(&time);
         if (service_param == 0 || service_param == 1) {
             services.mh.counter = 0;
+            services.mh.counter_rpm = 0;
         }
         srv->counter = 0;
         srv->time.day = time.day;
@@ -1880,7 +1938,7 @@ unsigned char check_service_counters() {
     unsigned char warn = 0;
     for (i = 0; i < 5; i++) {
         if (i == 0) {
-            if (services.mh.limit != 0 && (services.mh.counter / 1800UL) >= services.mh.limit) {
+            if (services.mh.limit != 0 && get_mh() >= services.mh.limit) {
                 warn |= (1 << i);
             }
         } else {
@@ -1978,6 +2036,8 @@ void main() {
         
         min_speed = config.min_speed * 10;
         
+        mh_rpm_const = config.settings.dual_injection == 1 ? 1 : 2;
+        
         // 36000000 / 80us / odo_const
         speed100_const = (unsigned short) (450000UL / config.odo_const);
 
@@ -1999,6 +2059,9 @@ void main() {
         print_warning_service_counters(warn);
     }
     
+#ifdef NEW_TAHO
+    taho_measure_fl = 1;
+#endif    
     CLEAR_KEYS_STATE();
     
     while (1) {
