@@ -1,4 +1,4 @@
-nbproject/Makefile-local-*.mk
+nbproject/*.mk
 nbproject/*.properties
 nbproject/*.bash
 nbproject/private/*

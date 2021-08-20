@@ -49,7 +49,7 @@
         <targetDevice>PIC16F876A</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>VSMViewerPlatformTool</platformTool>
+        <platformTool>noID</platformTool>
         <languageToolchain>XC8</languageToolchain>
         <languageToolchainVersion>2.32</languageToolchainVersion>
         <platform>3</platform>
@@ -77,9 +77,9 @@
       <makeCustomizationType>
         <makeCustomizationPreStepEnabled>true</makeCustomizationPreStepEnabled>
         <makeUseCleanTarget>false</makeUseCleanTarget>
-        <makeCustomizationPreStep>if ${IsDebug} == "false" ( ${ProjectDir}\version.bat )</makeCustomizationPreStep>
+        <makeCustomizationPreStep>${ProjectDir}/version.cmd</makeCustomizationPreStep>
         <makeCustomizationPostStepEnabled>true</makeCustomizationPostStepEnabled>
-        <makeCustomizationPostStep>if ${IsDebug} == "true" ( ${MP_CC_DIR}\avr-objcopy.exe -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${ImagePath} proteus\eeprom.bin )</makeCustomizationPostStep>
+        <makeCustomizationPostStep>${MP_CC_DIR}/avr-objcopy -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${ImageDir}/${ProjectName}.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX} proteus/eeprom_$(MP_PROCESSOR_OPTION).bin</makeCustomizationPostStep>
         <makeCustomizationPutChecksumInUserID>false</makeCustomizationPutChecksumInUserID>
         <makeCustomizationEnableLongLines>false</makeCustomizationEnableLongLines>
         <makeCustomizationNormalizeHexFile>false</makeCustomizationNormalizeHexFile>
@@ -657,11 +657,11 @@
         </subordinates>
       </compileType>
       <makeCustomizationType>
-        <makeCustomizationPreStepEnabled>false</makeCustomizationPreStepEnabled>
+        <makeCustomizationPreStepEnabled>true</makeCustomizationPreStepEnabled>
         <makeUseCleanTarget>false</makeUseCleanTarget>
-        <makeCustomizationPreStep></makeCustomizationPreStep>
+        <makeCustomizationPreStep>${ProjectDir}/version.cmd</makeCustomizationPreStep>
         <makeCustomizationPostStepEnabled>true</makeCustomizationPostStepEnabled>
-        <makeCustomizationPostStep>${MP_CC_DIR}\avr-size -C ${ImageDir}\${ProjectName}.${IMAGE_TYPE}.elf</makeCustomizationPostStep>
+        <makeCustomizationPostStep>${MP_CC_DIR}/avr-objcopy -O binary -I elf32-little -j .eeprom ${ImageDir}/${ProjectName}.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX} proteus/eeprom_$(MP_PROCESSOR_OPTION).bin</makeCustomizationPostStep>
         <makeCustomizationPutChecksumInUserID>false</makeCustomizationPutChecksumInUserID>
         <makeCustomizationEnableLongLines>false</makeCustomizationEnableLongLines>
         <makeCustomizationNormalizeHexFile>false</makeCustomizationNormalizeHexFile>
@@ -713,7 +713,7 @@
         <property key="call-prologues" value="false"/>
         <property key="default-bitfield-type" value="true"/>
         <property key="default-char-type" value="true"/>
-        <property key="extra-include-directories" value=""/>
+        <property key="extra-include-directories" value="include"/>
         <property key="extra-warnings" value="false"/>
         <property key="garbage-collect-data" value="true"/>
         <property key="garbage-collect-functions" value="true"/>
@@ -734,6 +734,7 @@
         <property key="syntax-only" value="false"/>
         <property key="undefined-identifier" value="false"/>
         <property key="verbose" value="false"/>
+        <appendMe value="-std=gnu99"/>
       </AVR-GCC>
       <AVR-Global>
         <property key="common-include-directories" value="include"/>
@@ -1197,6 +1198,11 @@
                   value=""/>
         <property key="warningmessagebreakoptions.warningmessages" value="holdstate"/>
       </Simulator>
+      <Tool>
+        <property key="design.file" value="proteus/mk-atmega328p.pdsprj"/>
+        <property key="target.ip.address" value="localhost"/>
+        <property key="target.ip.port" value="8001"/>
+      </Tool>
       <VSMViewerPlatformTool>
         <property key="design.file" value="proteus/mk-atmega328p.pdsprj"/>
         <property key="target.ip.address" value="localhost"/>

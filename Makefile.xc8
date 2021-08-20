@@ -1,0 +1,45 @@
+TOOLCHAIN_DIR=xc8-toolchain
+MP_CC=${TOOLCHAIN_DIR}/xc8/v2.32/bin/xc8-cc
+AVR_OBJCOPY=${TOOLCHAIN_DIR}/xc8/v2.32/bin/avr-objcopy
+DFP_DIR=${TOOLCHAIN_DIR}/PIC16Fxxx_DFP/1.2.33
+
+# Environment
+MKDIR=mkdir -p
+RM=rm -f 
+MV=mv 
+CP=cp  
+
+MP_PROCESSOR_OPTION=16F876A
+TARGET=PIC16F876A_legacy
+OUTPUTNAME=volksroutenrechner-ng
+DEBUGGABLE_SUFFIX=elf
+OUTPUT_SUFFIX=hex
+OBJECTDIR=build/${TARGET}
+
+SRCS = src/ds18b20.c src/ds1307.c src/hw-avr.c src/hw-pic.c src/i2c-avr.c src/i2c-pic.c src/lcd.c src/locale.c src/main.c src/utils.c
+OBJS = $(SRCS:%.c=${OBJECTDIR}/%.p1)
+
+.PHONY: all clean rebuild
+
+all: $(TARGET)
+
+rebuild:
+	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean
+	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) all
+
+$(TARGET): $(OBJS)
+	@${MKDIR} ${OBJECTDIR} 
+	${MP_CC} $(MP_EXTRA_LD_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -Wl,-Map=${OBJECTDIR}/${OUTPUTNAME}.map  -DXPRJ_PIC16F876A_legacy=$(CND_CONF)  -Wl,--defsym=__MPLAB_BUILD=1   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -DHW_LEGACY -xassembler-with-cpp -I"include" -mwarn=-3 -Wa,-a -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall -std=c99 -gcoff -mstack=compiled:auto:auto     $(COMPARISON_BUILD) -Wl,--memorysummary,${OBJECTDIR}/memoryfile.xml -o ${OBJECTDIR}/${OUTPUTNAME}.${OUTPUT_SUFFIX}  ${OBJS}      
+
+${OBJECTDIR}/%.p1 : %.c
+	@${MKDIR} "${OBJECTDIR}/src" 
+	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -DHW_LEGACY -xassembler-with-cpp -I"include" -mwarn=-3 -Wa,-a -DXPRJ_PIC16F876A_legacy=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall $(COMPARISON_BUILD)  -std=c99 -gcoff -mstack=compiled:auto:auto     -o $@ -c $<
+
+clean:
+	@rm -rf $(OBJECTDIR)
+
+eeprom: $(TARGET)
+	${AVR_OBJCOPY} -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${OBJECTDIR}/${OUTPUTNAME}.${DEBUGGABLE_SUFFIX} proteus/eeprom_$(MP_PROCESSOR_OPTION).bin
+
+version:
+	@version.cmd
