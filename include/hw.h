@@ -25,8 +25,7 @@
 #define delay_us(us) __delay_us(us)
 #define _XTAL_FREQ 20000000
 
-#define __START_EEPROM_DATA
-#define __END_EEPROM_DATA
+#define __EEDATA(a0,a1,a2,a3,a4,a5,a6,a7) __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7);
 
 #else
 #ifndef F_CPU
@@ -39,10 +38,7 @@
 #define delay_ms(ms) _delay_ms(ms)
 #define delay_us(us) _delay_us(us)
 
-#define CONCATE1(X,Y) X##Y
-#define CONCATE(X,Y) CONCATE1(X,Y)
-
-#define __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7) volatile const EEMEM char CONCATE(a_,__COUNTER__)[8] = {a0,a1,a2,a3,a4,a5,a6,a7}
+#define __EEDATA(a0,a1,a2,a3,a4,a5,a6,a7) a0,a1,a2,a3,a4,a5,a6,a7,
 
 #endif
 
@@ -136,13 +132,10 @@
 
 #define start_timer_fuel() T0CS = 0
 #define stop_timer_fuel() T0CS = 1
-#define start_timer_taho() TMR2 = 0; \
-                           TMR2IF = 0; \
-                           TMR2ON = 1
-
-#define stop_timer_taho() TMR2ON = 0
 
 #define start_timer1() TMR1ON = 1
+
+#define get_timer1() TMR1
 
 #define enable_interrupts() ei();
 #define disable_interrupts() di();
@@ -231,9 +224,10 @@
 
 #define stop_timer_fuel()  TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
 
-#define start_timer_taho() TCNT2 = 0; TCCR2B = (0 << WGM22) | (0 << CS22) | (1 << CS21) | (0 << CS20);
+// timer1 compare 10ms
+#define TIMER1_VALUE 20000
 
-#define stop_timer_taho()  TCCR2B = (0 << WGM22) | (0 << CS22) | (0 << CS21) | (0 << CS20);
+#define get_timer1() TCNT1;
 
 #define start_timer1() TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (1 << CS11) | (0 << CS10);
 

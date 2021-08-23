@@ -64,10 +64,10 @@ void HW_Init(void) {
     TCNT1L = 0x00;
     ICR1H = 0x00;
     ICR1L = 0x00;
-    OCR1AH = 0x4E;
-    OCR1AL = 0x1F;
-    OCR1BH = 0x4E;
-    OCR1BL = 0x1F;
+    OCR1AH = (TIMER1_VALUE - 1) >> 8;
+    OCR1AL = (TIMER1_VALUE - 1) & 0xFF;
+    OCR1BH = (TIMER1_VALUE - 1) >> 8;
+    OCR1BL = (TIMER1_VALUE - 1) & 0xFF;
 
     // Timer/Counter 2 initialization
     // Clock source: System Clock
@@ -76,12 +76,12 @@ void HW_Init(void) {
     // OC2A output: Disconnected
     // OC2B output: Disconnected
     // Timer Period: 0,08 ms
-    ASSR = (0 << EXCLK) | (0 << AS2);
-    TCCR2A = (0 << COM2A1) | (0 << COM2A0) | (0 << COM2B1) | (0 << COM2B0) | (1 << WGM21) | (0 << WGM20);
-    TCCR2B = (0 << WGM22) | (0 << CS22) | (0 << CS21) | (0 << CS20);
-    TCNT2 = 0x00;
-    OCR2A = 0x9F;
-    OCR2B = 0x00;
+    //ASSR = (0 << EXCLK) | (0 << AS2);
+    //TCCR2A = (0 << COM2A1) | (0 << COM2A0) | (0 << COM2B1) | (0 << COM2B0) | (1 << WGM21) | (0 << WGM20);
+    //TCCR2B = (0 << WGM22) | (0 << CS22) | (0 << CS21) | (0 << CS20);
+    //TCNT2 = 0x00;
+    //OCR2A = 0x9F;
+    //OCR2B = 0x00;
 
     // Timer/Counter 0 Interrupt(s) initialization
     TIMSK0 = (0 << OCIE0B) | (1 << OCIE0A) | (0 << TOIE0);
@@ -90,7 +90,7 @@ void HW_Init(void) {
     TIMSK1 = (0 << ICIE1) | (0 << OCIE1B) | (1 << OCIE1A) | (0 << TOIE1);
 
     // Timer/Counter 2 Interrupt(s) initialization
-    TIMSK2 = (0 << OCIE2B) | (1 << OCIE2A) | (0 << TOIE2);
+    //TIMSK2 = (0 << OCIE2B) | (1 << OCIE2A) | (0 << TOIE2);
 
     // External Interrupt(s) initialization
     // INT0: Off

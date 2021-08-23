@@ -28,11 +28,11 @@ void HW_Init(void) {
     T1CON = (1 << _T1CON_T1CKPS1_POSITION) | (1 << _T1CON_T1CKPS0_POSITION) | (1 << _T1CON_TMR1ON_POSITION);
     
     // timer 2 init (prescaler 1:4), overflow interrupt 80us
-    T2CON = ((0 << _T2CON_TMR2ON_POSITION) | (0 << _T2CON_T2CKPS1_POSITION) | (1 << _T2CON_T2CKPS0_POSITION));
-    PR2 = 100 - 1;
+    //T2CON = ((0 << _T2CON_TMR2ON_POSITION) | (0 << _T2CON_T2CKPS1_POSITION) | (1 << _T2CON_T2CKPS0_POSITION));
+    //PR2 = 100 - 1;
     
     // timer 2 overflow interrupt enable, adc interrupt
-    PIE1 = (1 << _PIE1_ADIE_POSITION)| (1 << _PIE1_TMR2IE_POSITION);
+    PIE1 = (1 << _PIE1_ADIE_POSITION) /*| (1 << _PIE1_TMR2IE_POSITION)*/;
     // ccp2 compare interrupt enable
     PIE2 = (1 << _PIE2_CCP2IE_POSITION);
     
