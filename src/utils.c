@@ -11,7 +11,9 @@ unsigned char bcd8_to_bin(unsigned char b) {
 }
 
 unsigned char bin8_to_bcd(unsigned char b) {
-    return (unsigned char) ((b / 10) << 4) + (b % 10);
+    // use lwmod and lwdiv instead of byte functions (gives some size optimizations as lwmod and lwdiv already used)
+    unsigned short _b = b;
+    return (unsigned char) ((_b / 10) << 4) + (_b % 10);
 }
 
 void bcd8_to_str(char* buf, unsigned char b) {
@@ -68,6 +70,15 @@ char * _ultoa(char * buf, unsigned long val, unsigned int b) {
 	return buf;
 }
 
+unsigned long strtoul2(char * buf) {
+    //return strtoul(buf, NULL, 10);
+    unsigned long val = 0;
+    while (*buf) {
+        val = val * 10 + (*buf++ - '0');
+    }
+    return val;
+}
+
 unsigned char ultoa2(char * buf, unsigned long val, unsigned char b) {
     _ultoa(buf, val, b);
     unsigned char _len = 0;
@@ -120,24 +131,5 @@ void str_center16(char * buf, unsigned char len) {
     }
     for (i = len + pos; i < 16; i++) {
         buf[i] = ' ';
-    }
-}
-
-void ds18b20_serial_to_string(unsigned char *sn, unsigned char *p) {
-    unsigned char i = 16, t;
-
-    while (--i != 0) {
-        t = *sn;
-        if ((i & 0x01) != 0) {
-          t >>= 4;
-        } else {
-          sn++;
-        }
-        t &= 0x0F;
-        if (t > 10) {
-            *p++ = 'A' - 10 + t;
-        } else {
-            *p++ = '0' + t;
-        }
     }
 }

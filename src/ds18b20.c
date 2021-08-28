@@ -150,3 +150,21 @@ __bit ds18b20_read_temp_matchrom(unsigned char *buf, uint16_t *raw_temp_value)
   return 1;   // OK --> return 1
 }
 
+void ds18b20_serial_to_string(unsigned char *sn, unsigned char *p) {
+    unsigned char i = 16, t;
+
+    while (--i != 0) {
+        t = *sn;
+        if ((i & 0x01) != 0) {
+          t >>= 4;
+        } else {
+          sn++;
+        }
+        t &= 0x0F;
+        if (t > 10) {
+            *p++ = 'A' - 10 + t;
+        } else {
+            *p++ = '0' + t;
+        }
+    }
+}

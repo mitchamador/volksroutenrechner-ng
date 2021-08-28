@@ -19,6 +19,8 @@
 #error "device and compiler not supported"
 #endif
 
+#include <stdint.h>
+
 // define cpu frequency
 #if defined(__PIC_MIDRANGE)
 #define delay_ms(ms) __delay_ms(ms)
@@ -40,9 +42,9 @@
 
 #define __EEDATA(a0,a1,a2,a3,a4,a5,a6,a7) a0,a1,a2,a3,a4,a5,a6,a7,
 
-#endif
+typedef uint32_t uint24_t;
 
-#include <stdint.h>
+#endif
 
 #if defined(__PIC_MIDRANGE)
 
@@ -224,12 +226,13 @@
 
 #define stop_timer_fuel()  TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
 
-// timer1 compare 10ms
-#define TIMER1_VALUE 20000
+// timer1 compare 1ms, 2500 with prescaler 1:64 running at 16Mhz
+#define TIMER1_VALUE 2500
 
 #define get_timer1() TCNT1;
 
-#define start_timer1() TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (1 << CS11) | (0 << CS10);
+// start timer with prescaler 1:64
+#define start_timer1() TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (1 << CS11) | (1 << CS10);
 
 #ifdef __XC8
 #define enable_interrupts() ei();

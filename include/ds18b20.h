@@ -14,6 +14,7 @@ __bit ds18b20_start_conversion(void);
 __bit ds18b20_read_temp_skiprom(uint16_t*);
 __bit ds18b20_read_rom(unsigned char *);
 __bit ds18b20_read_temp_matchrom(unsigned char*, uint16_t *);
+void ds18b20_serial_to_string(unsigned char*, unsigned char*);
 
 #endif	/* DS18B20_H */
 

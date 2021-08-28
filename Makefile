@@ -58,7 +58,12 @@ build: .build-post
 
 .build-post: .build-impl
 # Add your post 'build' code here...
-
+ifneq (${EEPROM},)
+.build-post: .eeprom_${CONF}
+endif
+ifneq (${RELEASE},)
+.build-post: .release_${CONF}
+endif
 
 # clean
 clean: .clean-post
@@ -104,10 +109,32 @@ help: .help-post
 .help-post: .help-impl
 # Add your post 'help' code here...
 
-
-
 # include project implementation makefile
 include nbproject/Makefile-impl.mk
 
 # include project make variables
 include nbproject/Makefile-variables.mk
+
+include nbproject/Makefile-local-${CONF}.mk
+
+.eeprom_PIC16F876A_legacy:
+	${MP_CC_DIR}/avr-objcopy -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_16F876A.bin
+
+.release_PIC16F876A_legacy:
+	${CP} ${CND_ARTIFACT_PATH_${CONF}} firmware/${PROJECTNAME}.pic16f876a.hex
+
+.eeprom_ATMega328P:
+	${MP_CC_DIR}/avr-objcopy -O binary -I elf32-little -j .eeprom ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_ATmega328P.bin
+
+.release_ATMega328P:
+	${CP} ${CND_ARTIFACT_PATH_${CONF}} firmware/${PROJECTNAME}.atmega328p.hex
+	${CP} ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.eep firmware/${PROJECTNAME}.atmega328p.eep
+
+version:
+	@version.cmd
+
+eeprom:
+	${MAKE} EEPROM=1 all
+
+release: version
+	${MAKE} RELEASE=1 clobber all

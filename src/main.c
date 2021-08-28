@@ -47,17 +47,26 @@
 #define TRIPC_PAUSE_MINUTES 120
 
 // fix taho weird values (maybe hw fix needed)
+// possible fuel injector oscillogram
+//  |-------|  |-|                           |-------|
+//  |       |  | |                           |       |
+// _|       |__| |___________________________|       |__
+//  injector  strange
+//    pulse    pulse
 #define TAHO_FIX_MAX_RPM 7500UL
 // round taho
 #define TAHO_ROUND 10
 // min rpm
 #define TAHO_MIN_RPM 100UL
+// min rpm constant (1/(TAHO_MIN_RPM/60sec)/0.01s) 0.01s timer overflow
+#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / 0.01f))
 // taho const 
 #define TAHO_CONST ((uint32_t) (60 / 0.01f * TIMER1_VALUE))
-// min rpm constant (1/(TAHO_MIN_RPM/60sec)/0.01s) 0.01s timer overflow
-#define TAHO_OVERFLOW (uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / 0.01f)
 
-// 36 / (0.01f/TIMER1_VALUE)
+// print speed while acceleration's measurement 
+#define PRINT_SPEED100
+// timer1 counts between speed pulses when speed is 100 km/h
+// (1 / ((config.odo_const * 100) / 3600)) / (0.01f/TIMER1_VALUE) = (36 / (0.01f / TIMER1_VALUE) / config.odo_const
 #define SPEED100_CONST ((uint32_t) (36 / (0.01f / TIMER1_VALUE)))
 
 // temperature timeout
@@ -144,9 +153,9 @@ typedef struct {
     uint16_t tripC_max_speed;
 } trips_t;
 
-config_t config;
-trips_t trips;
-__bank1 services_t services;
+__bank2 config_t config;
+__bank2 trips_t trips;
+services_t services;
 
 //========================================================================================
 
@@ -209,16 +218,21 @@ volatile __bit temperature_fl, temperature_conv_fl;
 volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, shutdown_fl;
 
 // speed100 flags and variables
-volatile __bit speed100_measure_fl, speed100_ok_fl, speed100_timer_fl;
-volatile uint16_t speed100_const, speed100_timer;
-uint16_t speed100_tmp;
-uint8_t speed100_tmp_ofl;
+volatile __bit speed100_measure_fl, speed100_ok_fl, speed100_timer_fl, speed100_fl;
+volatile uint16_t speed100_const, speed100_timer, speed100;
+uint16_t speed100_tmr1_prev, speed100_tmr1;
+uint8_t speed100_tmr1_ofl;
 
 uint16_t kmh_tmp, fuel_tmp;
-uint16_t taho_tmp;
-uint8_t taho_tmp_ofl;
-volatile uint16_t kmh, fuel, taho, adc;
-volatile uint8_t taho_ofl;
+uint16_t taho_tmr1_prev;
+uint8_t taho_tmr1_ofl;
+volatile uint16_t kmh, fuel, adc;
+
+#ifdef TAHO_FIX_MAX_RPM
+uint16_t taho_fix_rpm_const;
+#endif
+volatile uint24_t taho;
+volatile uint24_t taho_tmr1;
 
 uint16_t adc_tmp;
 uint8_t adc_counter = ADC_AVERAGE_SAMPLES; // init value for first reading
@@ -235,16 +249,16 @@ uint8_t mh_rpm_const;
 #define TEMP_ENGINE 2
 uint16_t temps[3] = {0, 0, 0};
 
-unsigned char temps_ee_addr;
+uint8_t temps_ee_addr;
 
 __bit buzzer_fl, buzzer_init_fl, buzzer_snd_fl, buzzer_repeat_fl;
-unsigned char buzzer_counter_r;
-unsigned char buzzer_counter;
+uint8_t buzzer_counter_r;
+uint8_t buzzer_counter;
 
 typedef struct {
-    unsigned char counter; // number of repeats
-    unsigned char sound;   // sound on duration  (*0.1ms)
-    unsigned char pause;   // sound off duration (*0.1ms)
+    uint8_t counter; // number of repeats
+    uint8_t sound;   // sound on duration  (*0.1ms)
+    uint8_t pause;   // sound off duration (*0.1ms)
 } buzzer_t;
 
 buzzer_t *buzzer_mode;
@@ -260,19 +274,19 @@ buzzer_t buzzer[3] = {
     {3,3,2}  // BUZZER_WARN
 };
 
-unsigned char tbuf[8];
-unsigned char tmp_param = 0, service_param = 0;
+__bank1 uint8_t tbuf[8];
+uint8_t tmp_param = 0, service_param = 0;
 
 // buffer for strings
 char buf[16];
 //char buf2[16];
-unsigned char len = 0;
+uint8_t len = 0;
 
 __bank2 ds_time time;
 
-unsigned char fuel1_const;
-unsigned char fuel2_const;
-unsigned short odo_con4;
+__bank2 uint8_t fuel1_const;
+uint8_t fuel2_const;
+__bank1 uint16_t odo_con4;
 
 typedef void (*screen_func) (void);
 
@@ -333,9 +347,9 @@ const service_screen_item_t items_service[] = {
     {VERSION_INFO_INDEX, (service_screen_func) &service_screen_version},
 };
 
-unsigned char c_item = 0, c_sub_item = 0;
+uint8_t c_item = 0, c_sub_item = 0;
 
-unsigned char request_screen(char *);
+uint8_t request_screen(char *);
 
 int8_t key_sound = BUZZER_NONE;    
 
@@ -405,7 +419,6 @@ int_handler_GLOBAL_begin
 
     int_handler_fuel_speed_begin
 
-        uint16_t _tmr1;
         // capture 0.01s timer value
         uint16_t _timer1 = get_timer1();
 
@@ -427,25 +440,22 @@ int_handler_GLOBAL_begin
 // new taho calculation based on captured value of 0.01s timer
                 if (taho_measure_fl == 0) {
                     taho_measure_fl = 1;
-                    taho_tmp = _timer1;
-                    taho_tmp_ofl = 0;
+
+                    taho_tmr1 = 0;
+                    taho_tmr1_prev = _timer1;
+                    taho_tmr1_ofl = 0;
                 } else {
-                    _tmr1 = _timer1;
-                    if (/*_tmr1 < taho_tmp*/taho_tmp_ofl != 0) {
-                        _tmr1 += TIMER1_VALUE;
-                        taho_tmp_ofl--;
-                    }
-                    _tmr1 = _tmr1 - taho_tmp;
+                    uint24_t _taho = taho_tmr1 + _timer1 - taho_tmr1_prev;
 #ifdef TAHO_FIX_MAX_RPM                        
-                    if (taho_tmp_ofl > 0 || _tmr1 >= (uint16_t) (TAHO_CONST / TAHO_FIX_MAX_RPM))
+                    if (_taho >= taho_fix_rpm_const)
 #endif
                     {
-                        taho = _tmr1;
-                        taho_ofl = taho_tmp_ofl;
+                        taho = _taho;
                         taho_fl = 1;
-                        
-                        taho_tmp = _timer1;
-                        taho_tmp_ofl = 0;
+
+                        taho_tmr1 = 0;
+                        taho_tmr1_prev = _timer1;
+                        taho_tmr1_ofl = 0;
                     }
                 }
             }
@@ -467,21 +477,19 @@ int_handler_GLOBAL_begin
                 if (speed100_timer_fl != 0) {
                     if (speed100_measure_fl == 0) {
                         speed100_measure_fl = 1;
-                        speed100_tmp = _timer1;
-                        speed100_tmp_ofl = 0;
+                        speed100_tmr1_prev = _timer1;
+                        speed100_tmr1 = 0;
+                        speed100_tmr1_ofl = 0;
                     } else {
-                        _tmr1 = _timer1;
-                        if (speed100_tmp_ofl != 0) {
-                            _tmr1 += TIMER1_VALUE;
-                            speed100_tmp_ofl--;
-                        }
-                        _tmr1 = _tmr1 - speed100_tmp;
-                        if (speed100_tmp_ofl == 0 && _tmr1 < speed100_const) {
+                        speed100 = speed100_tmr1 + _timer1 - speed100_tmr1_prev;
+                        speed100_fl = 1;
+                        if (speed100 <= speed100_const) {
                             speed100_ok_fl = 1;
                             speed100_timer_fl = 0;
                         } else {
-                            speed100_tmp = _timer1;
-                            speed100_tmp_ofl = 0;
+                            speed100_tmr1_prev = _timer1;
+                            speed100_tmr1 = 0;
+                            speed100_tmr1_ofl = 0;
                         }
                     }
                 } else {
@@ -576,17 +584,22 @@ int_handler_GLOBAL_begin
     int_handler_timer1_begin
 
         if (taho_measure_fl != 0) {
-            if (++taho_tmp_ofl == TAHO_OVERFLOW) {
+            if (++taho_tmr1_ofl == TAHO_OVERFLOW) {
                 taho_measure_fl = 0;
                 stop_timer_fuel();
                 taho_fl = 0;
                 motor_fl = 0;
+            } else {
+                taho_tmr1 += TIMER1_VALUE;
             }
         }
     
         if (speed100_measure_fl != 0) {
-            if (++speed100_tmp_ofl == (65536 / TIMER1_VALUE)) {
+            if (++speed100_tmr1_ofl == (65536 / TIMER1_VALUE)) {
                 speed100_measure_fl = 0;
+                speed100_fl = 0;
+            } else {
+                speed100_tmr1 += TIMER1_VALUE;
             }
         }
 
@@ -1044,7 +1057,7 @@ void print_taho(align_t align) {
     if (taho_fl == 0) {
         len = strcpy2(buf, (char *) &empty_string, 0);
     } else {
-        unsigned short res = (unsigned short) (((config.settings.dual_injection == 1 ? (TAHO_CONST) : (TAHO_CONST*2)) / (taho + (taho_ofl * TIMER1_VALUE))));
+        unsigned short res = (unsigned short) (((config.settings.dual_injection != 0 ? (TAHO_CONST) : (TAHO_CONST*2)) / taho));
 #ifdef TAHO_ROUND
         res = (res + TAHO_ROUND / 2) / TAHO_ROUND * TAHO_ROUND;        
 #endif
@@ -1154,7 +1167,7 @@ void print_selected_param1(align_t align) {
     }
 }
 
-void speed100(void) {
+void speed100_measurement(void) {
     LCD_CMD(0x80);
     LCD_Write_String16(buf, strcpy2(buf, (char *) &speed100_wait_string, 0), LCD_ALIGN_CENTER);
 
@@ -1193,8 +1206,22 @@ void speed100(void) {
                     timeout_timer = 3072;
                     speed100_timer_fl = 1;
                 }
+
                 len = print_fract((char*) buf, speed100_timer / 10U);
                 len += print_symbols_str(len, POS_SEC);
+
+#ifdef PRINT_SPEED100                
+                add_leading_symbols(buf, ' ', len, 16);
+                if (speed100_fl != 0) {
+                    // print current speed
+                    len = print_fract((char*) buf, (uint16_t) ((360000UL * TIMER1_VALUE / config.odo_const) * 10UL / speed100));
+                } else {
+                    // no speed
+                    len = strcpy2(buf, (char *) &empty_string, 0);
+                }
+                print_symbols_str(len, POS_KMH);
+                len = 16;
+#endif
                 LCD_CMD(0xC0);
                 LCD_Write_String16(buf, len, LCD_ALIGN_CENTER);
             }
@@ -1258,7 +1285,7 @@ void screen_main(void) {
     }
 
     if (drive_fl == 0 && motor_fl != 0 && request_screen((char *) &speed100_string) != 0) {
-        speed100();
+        speed100_measurement();
     }
 }
 
@@ -1535,7 +1562,7 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
                 buf[pos] = '0';
             }
             
-            unsigned long _t = strtoul(buf, NULL, 10);
+            unsigned long _t = strtoul2(buf);
             if (_t > max_value) {
                 buf[pos] = '0';
             }
@@ -1559,7 +1586,7 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
     LCD_CMD(LCD_CURSOR_OFF);
     screen_refresh = 1;
 
-    return strtoul(buf, NULL, 10);
+    return strtoul2(buf);
 }
 
 unsigned char edit_value_bits(unsigned char v, char* str) {
@@ -1882,9 +1909,15 @@ void power_on() {
     fuel1_const = 65;
     fuel2_const = 28;
     odo_con4 = config.odo_const * 2 / 13;
+#ifdef TAHO_FIX_MAX_RPM    
+    taho_fix_rpm_const = (uint16_t) (TAHO_CONST*2 / TAHO_FIX_MAX_RPM);
+#endif    
     
     // const for dual injection
     if (config.settings.dual_injection != 0) {
+#ifdef TAHO_FIX_MAX_RPM    
+        taho_fix_rpm_const >>= 1;
+#endif
         fuel1_const <<= 1; // 130
         fuel2_const >>= 1; // 14
         odo_con4 >>= 1;    // (config.odo_const * 2 / 13) / 2
@@ -2008,7 +2041,7 @@ void main() {
         
         min_speed = config.min_speed * 10;
         
-        mh_rpm_const = config.settings.dual_injection == 1 ? 1 : 2;
+        mh_rpm_const = config.settings.dual_injection != 0 ? 1 : 2;
         
         speed100_const = (unsigned short) (SPEED100_CONST / config.odo_const);
 
