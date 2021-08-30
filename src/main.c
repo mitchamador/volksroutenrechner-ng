@@ -153,8 +153,8 @@ typedef struct {
     uint16_t tripC_max_speed;
 } trips_t;
 
-__bank2 config_t config;
-__bank2 trips_t trips;
+config_t config;
+trips_t trips;
 services_t services;
 
 //========================================================================================
@@ -282,11 +282,11 @@ char buf[16];
 //char buf2[16];
 uint8_t len = 0;
 
-__bank2 ds_time time;
+ds_time time;
 
-__bank2 uint8_t fuel1_const;
+uint8_t fuel1_const;
 uint8_t fuel2_const;
-__bank1 uint16_t odo_con4;
+uint16_t odo_con4;
 
 typedef void (*screen_func) (void);
 
@@ -336,15 +336,15 @@ void service_screen_min_speed(service_screen_item_t *);
 void service_screen_version(service_screen_item_t *);
 
 const service_screen_item_t items_service[] = {
-    {FUEL_CONSTANT_INDEX, (service_screen_func) &service_screen_fuel_constant},
-    {VSS_CONSTANT_INDEX, (service_screen_func) &service_screen_vss_constant},
-    {TOTAL_TRIP_INDEX, (service_screen_func) &service_screen_total_trip},
-    {VOLTAGE_ADJUST_INDEX, (service_screen_func) &service_screen_ua_const},
-    {SETTINGS_BITS_INDEX, (service_screen_func) &service_screen_settings_bits},
-    {MIN_SPEED_INDEX, (service_screen_func) &service_screen_min_speed},
-    {TEMP_SENSOR_INDEX, (service_screen_func) &service_screen_temp_sensors},
-    {SERVICE_COUNTERS_INDEX, (service_screen_func) &service_screen_service_counters},
-    {VERSION_INFO_INDEX, (service_screen_func) &service_screen_version},
+    {FUEL_CONSTANT_INDEX, service_screen_fuel_constant},
+    {VSS_CONSTANT_INDEX, service_screen_vss_constant},
+    {TOTAL_TRIP_INDEX, service_screen_total_trip},
+    {VOLTAGE_ADJUST_INDEX, service_screen_ua_const},
+    {SETTINGS_BITS_INDEX, service_screen_settings_bits},
+    {MIN_SPEED_INDEX, service_screen_min_speed},
+    {TEMP_SENSOR_INDEX, service_screen_temp_sensors},
+    {SERVICE_COUNTERS_INDEX, service_screen_service_counters},
+    {VERSION_INFO_INDEX, service_screen_version},
 };
 
 uint8_t c_item = 0, c_sub_item = 0;

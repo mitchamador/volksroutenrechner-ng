@@ -97,15 +97,28 @@ typedef uint32_t uint24_t;
 #define ONEWIRE_PIN_Dir  TRISA5
 
 #define SND     RC0
-#define SND_TRIS (1 << _TRISC_TRISC0_POISITION)
+#define SND_TRIS (1 << _TRISC_TRISC0_POSITION)
 
 #define SDA       PORTBbits.RB0
+#define SDA_MASK  (1 << _PORTB_RB0_POSITION)
 #define SDA_TRIS  TRISBbits.TRISB0
-#define SDA_TRIS_MASK   0
+#define SDA_TRIS_MASK   (1 << _TRISB_TRISB0_POSITION)
 
 #define SCL       PORTBbits.RB1
+#define SCL_MASK  (1 << _PORTB_RB1_POSITION)
 #define SCL_TRIS  TRISBbits.TRISB1
-#define SCL_TRIS_MASK   0
+#define SCL_TRIS_MASK   (0 << _TRISB_TRISB1_POSITION)
+
+#define SDA_INPUT SDA_TRIS = 1
+#define SDA_OUTPUT SDA_TRIS = 0
+#define SDA_HIGH SDA = 1
+#define SDA_LOW SDA = 0
+#define SDA_GET() (SDA)
+
+#define SCL_INPUT SCL_TRIS = 1
+#define SCL_OUTPUT SCL_TRIS = 0
+#define SCL_HIGH SCL = 1
+#define SCL_LOW SCL = 0
 
 // RS - RC1
 // EN - RC3
@@ -117,12 +130,12 @@ typedef uint32_t uint24_t;
 
 // init values for port's data direction
 #define TRISA_INIT POWER_SUPPLY_TRIS_MASK | ADC_BUTTONS_TRIS_MASK
-#define TRISB_INIT KEY_TRIS_MASK | TX_TRIS_MASK | FUEL_TRIS_MASK
-#define TRISC_INIT SCL_TRIS_MASK | SDA_TRIS_MASK
+#define TRISB_INIT KEY_TRIS_MASK | TX_TRIS_MASK | FUEL_TRIS_MASK | SCL_TRIS_MASK | SDA_TRIS_MASK
+#define TRISC_INIT 0
 
 // init values for port's data
 #define PORTA_INIT PWR_MASK
-#define PORTB_INIT 0
+#define PORTB_INIT 0 | SDA_MASK | SCL_MASK
 #define PORTC_INIT 0
 
 // timer1 compare 10ms
@@ -299,18 +312,18 @@ typedef uint32_t uint24_t;
 #define ONEWIRE_CLEAR    (PORTD &= ~_BV(PORTD5))
 #define ONEWIRE_SET      (PORTD |= _BV(PORTD5))
 
-#define ONEWIRE_VALUE(v)                        \
-    if ((v & 0x01) != 0) {                      \
-        ONEWIRE_CLEAR; DDRD &= ~_BV(DDD5);      \
-    } else {                                    \
-        ONEWIRE_CLEAR;                          \
-    }                                           \
-
 #define ONEWIRE_GET      ((PIND & _BV(PIND5)) != 0 ? 1 : 0)
 // configure DS18B20_PIN pin as output
 #define ONEWIRE_OUTPUT   (DDRD |= _BV(DDD5))
 // configure DS18B20_PIN pin as input
 #define ONEWIRE_INPUT    ONEWIRE_CLEAR; DDRD &= ~_BV(DDD5)
+
+#define ONEWIRE_VALUE(v)                        \
+    if ((v & 0x01) != 0) {                      \
+        ONEWIRE_INPUT;                          \
+    } else {                                    \
+        ONEWIRE_CLEAR;                          \
+    }                                           \
 
 // encoder data (PD6/PCINT22) and clk (PD7/PCINT23)
 #define ENCODER_DATA ((PIND & _BV(PIND6)) != 0 ? 1 : 0)

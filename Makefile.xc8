@@ -16,7 +16,7 @@ DEBUGGABLE_SUFFIX=elf
 OUTPUT_SUFFIX=hex
 OBJECTDIR=build/${TARGET}
 
-SRCS = src/ds18b20.c src/ds1307.c src/hw-avr.c src/hw-pic.c src/i2c-avr.c src/i2c-pic.c src/lcd.c src/locale.c src/main.c src/utils.c
+SRCS = src/ds18b20.c src/ds1307.c src/hw-avr.c src/hw-pic.c src/i2c-avr.c src/i2c-pic.c src/i2c-soft.c src/lcd.c src/locale.c src/main.c src/utils.c
 OBJS = $(SRCS:%.c=${OBJECTDIR}/%.p1)
 
 .PHONY: all clean rebuild

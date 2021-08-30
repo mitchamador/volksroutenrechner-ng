@@ -31,6 +31,7 @@
       <itemPath>src/hw-avr.c</itemPath>
       <itemPath>src/i2c-avr.c</itemPath>
       <itemPath>src/locale.c</itemPath>
+      <itemPath>src/i2c-soft.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"

@@ -4,7 +4,7 @@
 #include "hw.h"
 
 typedef struct {
-    unsigned char minute,hour,day_of_week,day,month,year;
+    uint8_t minute,hour,day_of_week,day,month,year;
 } ds_time;
 
 void get_ds_time(ds_time*);

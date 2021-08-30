@@ -1,7 +1,7 @@
 #include "i2c.h"
 #include <stdint.h>
 
-#if defined(__AVR_ATMEGA)
+#if defined(__AVR_ATMEGA) && !defined(I2C_BITBANG)
 #include <util/twi.h>
 //---------------[ I2C Routines ]-------------------
 //--------------------------------------------------

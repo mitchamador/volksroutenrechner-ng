@@ -19,15 +19,12 @@
 void I2C_Master_Init(void);
 void I2C_Master_Start(void);
 #ifdef I2C_BITBANG
-#define I2C_Master_RepeatedStart() I2C_Master_Start();
+#define I2C_Master_RepeatedStart() delay_us(3.5); I2C_Master_Start();
 #else
 void I2C_Master_RepeatedStart(void);
 #endif
 void I2C_Master_Stop(void);
 unsigned char I2C_Master_Write(unsigned char data);
 unsigned char I2C_Read_Byte(unsigned char);
-
-#define I2C_Read_Byte_ACK() I2C_Read_Byte(ACK);
-#define I2C_Read_Byte_NACK() I2C_Read_Byte(NACK);
 
 #endif

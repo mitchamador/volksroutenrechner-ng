@@ -6,15 +6,15 @@
 void HW_Init(void) {
 
     // set port's data directions and init values
-    TRISA = TRISA_INIT;
     PORTA = PORTA_INIT;
+    TRISA = TRISA_INIT;
 
-    TRISB = TRISB_INIT;
     PORTB = PORTB_INIT;
+    TRISB = TRISB_INIT;
 
     // set port to output
-    TRISC = TRISC_INIT;
     PORTC = PORTC_INIT;
+    TRISC = TRISC_INIT;
     
     TMR0 = 0; TMR1 = 0;
     
