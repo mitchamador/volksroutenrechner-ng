@@ -19,7 +19,10 @@ OBJECTDIR=build/${TARGET}
 SRCS = src/ds18b20.c src/ds1307.c src/hw-avr.c src/hw-pic.c src/i2c-avr.c src/i2c-pic.c src/i2c-soft.c src/lcd.c src/locale.c src/main.c src/utils.c
 OBJS = $(SRCS:%.c=${OBJECTDIR}/%.p1)
 
-.PHONY: all clean rebuild
+.PHONY: all clean rebuild release
+
+release: version all
+	${CP} ${OBJECTDIR}/${OUTPUTNAME}.${OUTPUT_SUFFIX} firmware/${OUTPUTNAME}.pic16f876a.${OUTPUT_SUFFIX}
 
 all: $(TARGET)
 

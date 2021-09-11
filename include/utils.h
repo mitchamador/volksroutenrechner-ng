@@ -7,14 +7,14 @@
 #include <stdlib.h>
 
 typedef enum {
-    INC,
-    DEC
-} incdec_t;
+    FORWARD,
+    BACKWARD,
+} dir_t;
 
 unsigned char bcd8_to_bin(unsigned char);
 unsigned char bin8_to_bcd(unsigned char);
 void bcd8_to_str(char*, unsigned char);
-unsigned char bcd8_incdec(unsigned char, incdec_t, unsigned char, unsigned char);
+unsigned char bcd8_incdec(unsigned char, dir_t, unsigned char, unsigned char);
 unsigned char bcd8_inc(unsigned char, unsigned char, unsigned char);
 signed char bcd_subtract(unsigned char, unsigned char);
 

@@ -53,7 +53,7 @@ typedef enum {
 #define EMPTY_STRING "----";
 #define NO_TIME_STRING "-----'--";
 #define TRIP_STRING "trip ";
-#define ONOFF_STRING "\0 OFF\0  ON";
+#define ONOFF_STRING "\0 off\0  on";
 #define TIME_CORRECTION "time correction?";
 #define RESET_STRING "reset?"; 
 #define SPEED100_STRING "0-100 timing"; 

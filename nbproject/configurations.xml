@@ -13,6 +13,7 @@
       <itemPath>include/utils.h</itemPath>
       <itemPath>include/version.h</itemPath>
       <itemPath>include/eeprom.h</itemPath>
+      <itemPath>include/main.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"

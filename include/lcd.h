@@ -1,16 +1,15 @@
 #ifndef _LCD_H
 #define _LCD_H
 
-#include "hw.h"
-#include "locale.h"
+#include "main.h"
+#include "i2c.h"
+
+#define LCD_I2C_ADDRESS 0x4E
 
 // place custom chars data in eeprom/pgmspace
 #if defined(__PIC_MIDRANGE)
 #define EEPROM_CUSTOM_CHARS
 char buf[16];
-unsigned char temps_ee_addr;
-#elif defined(__AVR_ATMEGA)
-#define PGMSPACE_CUSTOM_CHARS
 #endif
 
 #ifndef LCD_LEGACY
@@ -59,12 +58,6 @@ typedef enum {
 #define LCD_Write_String16(Str, len, align) __LCD_Write_String(Str, len, 16, align)
 
 void LCD_Init(void);
-#ifdef LCD_LEGACY
-void _LCD_Init(void);
-#define _LCD_Init(a) _LCD_Init()
-#else
-void _LCD_Init(unsigned char I2C_Add);
-#endif
 void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode);
 void LCD_CMD(unsigned char CMD);
 void LCD_Set_Cursor(unsigned char ROW, unsigned char COL);

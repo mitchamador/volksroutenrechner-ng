@@ -48,6 +48,8 @@ typedef uint32_t uint24_t;
 
 #if defined(__PIC_MIDRANGE)
 
+#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
+
 // i2c software bit bang
 #define I2C_BITBANG
 // lcd parallel interface
@@ -81,7 +83,7 @@ typedef uint32_t uint24_t;
 #define set_adc_channel(ch) ADCON0 = (ADCON0 & ~ADC_CHANNEL_MASK) | ch
 
 // PORTB definitions
-// key1 and key2 (active zero) (legacy hardware)
+// key1 and key2 (active ground) (legacy hardware)
 #define KEY1 PORTBbits.RB2
 #define KEY2 PORTBbits.RB3
 #define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
@@ -123,10 +125,12 @@ typedef uint32_t uint24_t;
 // RS - RC1
 // EN - RC3
 // data - RC4..RC7
+#ifdef LCD_LEGACY
 #define LCD_PORT    PORTC
 #define RS (1 << 1)
 #define EN (1 << 3)
 #define LCD_PORT_MASK (0xF0 | RS | EN )
+#endif
 
 // init values for port's data direction
 #define TRISA_INIT POWER_SUPPLY_TRIS_MASK | ADC_BUTTONS_TRIS_MASK
@@ -150,7 +154,7 @@ typedef uint32_t uint24_t;
 
 #define start_timer1() TMR1ON = 1
 
-#define get_timer1() TMR1
+#define get_timer1() (TMR1)
 
 #define enable_interrupts() ei();
 #define disable_interrupts() di();
