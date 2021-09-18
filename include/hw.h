@@ -3,7 +3,7 @@
 
 #if defined(__XC8)
 #include <xc.h>
-#if defined(_16F876A)
+#if defined(_16F876A) || defined(_16F1936)
 #define __PIC_MIDRANGE
 #elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 #define __AVR_ATMEGA
@@ -48,6 +48,10 @@ typedef uint32_t uint24_t;
 
 #if defined(__PIC_MIDRANGE)
 
+#if !defined(HW_LEGACY)
+#error "only legacy hardware supported with pic midrange"
+#endif
+
 #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
 
 // i2c software bit bang
@@ -62,10 +66,13 @@ typedef uint32_t uint24_t;
 #pragma config PWRTE = ON       // Power-up Timer Enable bit (PWRT enabled)
 #pragma config BOREN = ON       // Brown-out Reset Enable bit (BOR enabled)
 #pragma config LVP = OFF        // Low-Voltage (Single-Supply) In-Circuit Serial Programming Enable bit (RB3 is digital I/O, HV on MCLR must be used for programming)
-#pragma config CPD = OFF        // Data EEPROM Memory Code Protection bit (Data EEPROM code protection off)
 #pragma config WRT = OFF        // Flash Program Memory Write Enable bits (Write protection off; all program memory may be written to by EECON control)
 #pragma config CP = OFF         // Flash Program Memory Code Protection bit (Code protection off)
+#pragma config CPD = OFF        // Data EEPROM Memory Code Protection bit (Data EEPROM code protection off)
 
+#if defined(_16F1936)
+#pragma config PLLEN = OFF
+#endif
 
 // PORTA definitions (analog input)
 // pwr control
@@ -73,12 +80,18 @@ typedef uint32_t uint24_t;
 #define PWR_MASK  (1 << _PORTA_RA0_POSITION)
 // adc power
 #define POWER_SUPPLY_TRIS_MASK (1 << _TRISA_TRISA1_POSITION)
-#define ADC_BUTTONS_TRIS_MASK 0
 
+#if defined(_16F876A)
 #define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION))
 #define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (0 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
+#elif defined(_16F1936)
+#define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS4_POSITION) | (1 << _ADCON0_CHS3_POSITION) | (1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#define ADCON0_INIT 0
+#define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADCS1_POSITION) | (0 << _ADCON1_ADCS0_POSITION))
+#endif
 
 #define set_adc_channel(ch) ADCON0 = (ADCON0 & ~ADC_CHANNEL_MASK) | ch
 
@@ -133,7 +146,7 @@ typedef uint32_t uint24_t;
 #endif
 
 // init values for port's data direction
-#define TRISA_INIT POWER_SUPPLY_TRIS_MASK | ADC_BUTTONS_TRIS_MASK
+#define TRISA_INIT POWER_SUPPLY_TRIS_MASK
 #define TRISB_INIT KEY_TRIS_MASK | TX_TRIS_MASK | FUEL_TRIS_MASK | SCL_TRIS_MASK | SDA_TRIS_MASK
 #define TRISC_INIT 0
 
@@ -142,7 +155,8 @@ typedef uint32_t uint24_t;
 #define PORTB_INIT 0 | SDA_MASK | SCL_MASK
 #define PORTC_INIT 0
 
-// timer1 compare 10ms
+// timer1 compare 10ms, 6250 with prescaler 1:8 at 20MHz
+#define TIMER1_PERIOD 0.01f
 #define TIMER1_VALUE 6250
 
 /* ======================================= */
@@ -156,23 +170,44 @@ typedef uint32_t uint24_t;
 
 #define get_timer1() (TMR1)
 
+#if defined(_16F876A)
+#define timer1_overflow() CCP2IF
+#elif defined(_16F1936)
+#define timer1_overflow() CCP5IF
+#endif
+
 #define enable_interrupts() ei();
 #define disable_interrupts() di();
 
 #define int_handler_GLOBAL_begin __interrupt() void HW_isr(void) {
 
 #define int_handler_GLOBAL_end }
-                                                    \
+
+#if defined(_16F876A)
+
 #define int_handler_fuel_speed_begin                       \
     /* Was it the port B interrupt on change?*/            \
     if (/*RBIE && */RBIF) {                                \
         /* Dummy read of the port, as per datasheet */     \
         asm("movf PORTB,f");                               \
-
-#define int_handler_fuel_speed_end                         \
         /* Reset the interrupt flag */                     \
         RBIF = 0;                                          \
+
+#define int_handler_fuel_speed_end                         \
     }                                                      \
+
+#elif defined(_16F1936)
+
+#define int_handler_fuel_speed_begin                       \
+    /* Was it interrupt on change?*/                       \
+    if (/*IOCIE && */IOCIF) {                              \
+        /* Clear interrupt flags*/                         \
+        IOCBF = 0;                                         \
+
+#define int_handler_fuel_speed_end                         \
+    }                                                      \
+
+#endif
 
 #define int_handler_timer0_begin                           \
     /* Timer0 interrupt */                                 \
@@ -181,6 +216,8 @@ typedef uint32_t uint24_t;
 #define int_handler_timer0_end                             \
         T0IF = 0;                                          \
     }                                                      \
+
+#if defined(_16F876A)
 
 #define int_handler_timer1_begin                           \
     /* Timer1 interrupt */                                 \
@@ -191,14 +228,18 @@ typedef uint32_t uint24_t;
         CCP2IF = 0;                                        \
     }                                                      \
 
-#define int_handler_timer2_begin                           \
-    /* Timer2 interrupt */                                 \
-    if (/*TMR2IE && */TMR2IF) {                            \
-    
-#define int_handler_timer2_end                             \
+#elif defined(_16F1936)
+
+#define int_handler_timer1_begin                           \
+    /* Timer1 interrupt */                                 \
+    if (/*CCP5IE && */CCP5IF) {                            \
+        
+#define int_handler_timer1_end                             \
         /* Reset the interrupt flag */                     \
-        TMR2IF = 0;                                        \
+        CCP5IF = 0;                                        \
     }                                                      \
+
+#endif
 
 #define int_handler_adc_begin                              \
     /* ADC interrupt */                                    \
@@ -243,10 +284,13 @@ typedef uint32_t uint24_t;
 
 #define stop_timer_fuel()  TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
 
-// timer1 compare 1ms, 2500 with prescaler 1:64 running at 16Mhz
+// timer1 compare 10ms, 2500 with prescaler 1:64 running at 16Mhz
+#define TIMER1_PERIOD 0.01f
 #define TIMER1_VALUE 2500
 
-#define get_timer1() TCNT1;
+#define get_timer1() (TCNT1)
+
+#define timer1_overflow() ((TIFR1 & (1 << OCF1A)) != 0)
 
 // start timer with prescaler 1:64
 #define start_timer1() TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (1 << CS11) | (1 << CS10);

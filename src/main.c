@@ -20,12 +20,12 @@
 #endif
 #endif
 
-// number of averaging ADC readings
-#define ADC_AVERAGE_SAMPLES 4
+// adc voltage filtering (power of 2)
+//#define ADC_VOLTAGE_FILTER_VALUE 4
 
 #ifdef HW_LEGACY
 // simple checking time difference (decrease memory usage)
-#define SIMPLE_TRIPC_TIME_CHECK
+//#define SIMPLE_TRIPC_TIME_CHECK
 #endif
 
 // power supply threshold 
@@ -37,11 +37,11 @@
 #define ADC_BUTTONS_THRESHOLD 100
 #define ADC_BUTTONS_1V (1024/5)            
 
-// * timer1 resolution * 0,01s
-#define MAIN_INTERVAL 200
-#define DEBOUNCE 4
-#define SHORTKEY 50
-#define LONGKEY 100
+// misc constants (in seconds)
+#define MAIN_INTERVAL ((uint8_t) (2.0f / TIMER1_PERIOD))
+#define DEBOUNCE ((uint8_t) (0.04f / TIMER1_PERIOD))
+#define SHORTKEY ((uint8_t) (0.5f / TIMER1_PERIOD))
+#define LONGKEY ((uint8_t) (1.0f / TIMER1_PERIOD))
 
 //show average speed (or fuel consumption) after distance AVERAGE_MIN_DIST * 0.1 km
 #define AVERAGE_MIN_DIST 3
@@ -65,21 +65,29 @@
 // _|       |__| |___________________________|       |__
 //  injector  strange
 //    pulse    pulse
-#define TAHO_FIX_MAX_RPM 7500UL
+// seems to be fixed with timer overflow checking
+//#define TAHO_RPM_FIX_VALUE 7500UL
 // round taho
 #define TAHO_ROUND 10
 // min rpm
 #define TAHO_MIN_RPM 100UL
 // min rpm constant (1/(TAHO_MIN_RPM/60sec)/0.01s) 0.01s timer overflow
-#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / 0.01f))
+#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / TIMER1_PERIOD))
 // taho const 
-#define TAHO_CONST ((uint32_t) (60 / 0.01f * TIMER1_VALUE))
+#define TAHO_CONST ((uint32_t) (60 / TIMER1_PERIOD * TIMER1_VALUE))
 
 // print speed while acceleration's measurement 
 #define PRINT_SPEED100
 // timer1 counts between speed pulses when speed is 100 km/h
 // (1 / ((config.odo_const * 100) / 3600)) / (0.01f/TIMER1_VALUE) = (36 / (0.01f / TIMER1_VALUE) / config.odo_const
-#define SPEED100_CONST ((uint32_t) (36 / (0.01f / TIMER1_VALUE)))
+#define SPEED100_CONST ((uint32_t) (36 / (TIMER1_PERIOD / TIMER1_VALUE)))
+
+// minimum pulse width for speed100 calculation (10 * 0.01s)
+#if (65536 / TIMER1_VALUE) >= 10
+#define SPEED100_OVERFLOW 10
+#else
+#define SPEED100_OVERFLOW (65536 / TIMER1_VALUE)
+#endif
 
 // temperature timeout
 #define TIMEOUT_TEMPERATURE (15 - 1)
@@ -102,17 +110,17 @@ services_t services;
 
 #else
 
-unsigned char _adc_ch;
-unsigned short _adc;
-volatile unsigned char adc_key;
+uint8_t _adc_ch;
+uint16_t adc_key;
+volatile uint8_t key_pressed;
 
-unsigned char key3_counter;
+uint8_t key3_counter;
 volatile __bit key3_press;
 signed char c_item_dir;
 
-#define KEY1_PRESSED (adc_key == 1)
-#define KEY2_PRESSED (adc_key == 2)
-#define KEY3_PRESSED (adc_key == 3)
+#define KEY1_PRESSED (key_pressed == 1)
+#define KEY2_PRESSED (key_pressed == 2)
+#define KEY3_PRESSED (key_pressed == 3)
 
 #define KEY_SERVICE_PRESSED KEY2_PRESSED
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0 && key3_press == 0)
@@ -150,27 +158,27 @@ volatile __bit temperature_fl, temperature_conv_fl;
 #endif
 
 // misc flags
-volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, shutdown_fl;
+volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, shutdown_fl, _timer1_overflow;
 
 // speed100 flags and variables
-volatile __bit speed100_measure_fl, speed100_ok_fl, speed100_timer_fl, speed100_fl;
+volatile __bit speed100_measure_fl, speed100_ok_fl, speed100_timer_fl, speed100_fl, speed100_final_fl, _speed100_exit;
 volatile uint16_t speed100_const, speed100_timer, speed100;
 uint16_t speed100_tmr1_prev, speed100_tmr1;
 uint8_t speed100_tmr1_ofl;
 
 uint16_t kmh_tmp, fuel_tmp;
-uint16_t taho_tmr1_prev;
-uint8_t taho_tmr1_ofl;
-volatile uint16_t kmh, fuel, adc;
+volatile uint16_t taho_tmr1_prev;
+uint16_t _timer1;
+volatile uint8_t taho_tmr1_ofl;
+volatile uint16_t kmh, fuel, adc_voltage;
 
-#ifdef TAHO_FIX_MAX_RPM
-uint16_t taho_fix_rpm_const;
+#ifdef TAHO_RPM_FIX_VALUE
+uint16_t taho_rpm_fix_const;
 #endif
-volatile uint24_t taho;
+volatile uint24_t taho, _taho;
 volatile uint24_t taho_tmr1;
 
-uint16_t adc_tmp;
-uint8_t adc_counter = ADC_AVERAGE_SAMPLES; // init value for first reading
+uint16_t adc_tmp0, adc_tmp1;
 
 volatile __bit save_tripc_time_fl = 0;
 uint16_t speed;
@@ -178,11 +186,14 @@ uint8_t min_speed;
 
 uint8_t mh_rpm_const;
 
+#ifdef DS18B20_SUPPORT
 // ds18b20 temperatures and eeprom pointer
 #define TEMP_OUT 0
 #define TEMP_IN 1
 #define TEMP_ENGINE 2
+uint16_t _t;
 uint16_t temps[3] = {0, 0, 0};
+#endif
 
 __bit buzzer_fl, buzzer_init_fl, buzzer_snd_fl, buzzer_repeat_fl;
 uint8_t buzzer_counter_r;
@@ -212,9 +223,9 @@ uint8_t tmp_param = 0, service_param = 0;
 // buffer for strings
 char buf[16];
 //char buf2[16];
-uint8_t len = 0;
+uint8_t len;
 
-ds_time time;
+__bank2 ds_time time;
 
 uint8_t fuel1_const;
 uint8_t fuel2_const;
@@ -242,15 +253,15 @@ const screen_item_t items_main[] = {
     {screen_service_counters},
 };
 
-void service_screen_fuel_constant(service_screen_item_t *);
-void service_screen_vss_constant(service_screen_item_t *);
-void service_screen_total_trip(service_screen_item_t *);
-void service_screen_settings_bits(service_screen_item_t *);
-void service_screen_temp_sensors(service_screen_item_t *);
-void service_screen_service_counters(service_screen_item_t *);
-void service_screen_ua_const(service_screen_item_t *);
-void service_screen_min_speed(service_screen_item_t *);
-void service_screen_version(service_screen_item_t *);
+void service_screen_fuel_constant(void);
+void service_screen_vss_constant(void);
+void service_screen_total_trip(void);
+void service_screen_settings_bits(void);
+void service_screen_temp_sensors(void);
+void service_screen_service_counters(void);
+void service_screen_ua_const(void);
+void service_screen_min_speed(void);
+void service_screen_version(void);
 
 const service_screen_item_t items_service[] = {
     {FUEL_CONSTANT_INDEX, service_screen_fuel_constant},
@@ -273,7 +284,7 @@ uint8_t max_item = 0;
 
 uint8_t request_screen(char *);
 
-int8_t key_sound = BUZZER_NONE;    
+int8_t key_sound = BUZZER_NONE;
 
 #ifndef HW_LEGACY
 void inc_fuel(trip_t* trip) {
@@ -342,7 +353,10 @@ int_handler_GLOBAL_begin
     int_handler_fuel_speed_begin
 
         // capture 0.01s timer value
-        uint16_t _timer1 = get_timer1();
+        /*uint16_t*/ _timer1 = get_timer1();
+        if (timer1_overflow()) {
+            _timer1_overflow = 1;
+        }
 
 #if !defined(HW_LEGACY) && !defined(int_handler_encoder_begin)
         // handle encoder
@@ -367,9 +381,12 @@ int_handler_GLOBAL_begin
                     taho_tmr1_prev = _timer1;
                     taho_tmr1_ofl = 0;
                 } else {
-                    uint24_t _taho = taho_tmr1 + _timer1 - taho_tmr1_prev;
-#ifdef TAHO_FIX_MAX_RPM                        
-                    if (_taho >= taho_fix_rpm_const)
+                    _taho = taho_tmr1 + _timer1 - taho_tmr1_prev;
+                    if (_timer1_overflow != 0) {
+                        _taho += TIMER1_VALUE;
+                    }
+#ifdef TAHO_RPM_FIX_VALUE
+                    if (_taho >= taho_rpm_fix_const)
 #endif
                     {
                         taho = _taho;
@@ -404,6 +421,9 @@ int_handler_GLOBAL_begin
                         speed100_tmr1_ofl = 0;
                     } else {
                         speed100 = speed100_tmr1 + _timer1 - speed100_tmr1_prev;
+                        if (_timer1_overflow != 0) {
+                            speed100 += TIMER1_VALUE;
+                        }
                         speed100_fl = 1;
                         if (speed100 <= speed100_const) {
                             speed100_ok_fl = 1;
@@ -505,24 +525,28 @@ int_handler_GLOBAL_begin
 
     int_handler_timer1_begin
 
-        if (taho_measure_fl != 0) {
-            if (++taho_tmr1_ofl == TAHO_OVERFLOW) {
-                taho_measure_fl = 0;
-                stop_timer_fuel();
-                taho_fl = 0;
-                motor_fl = 0;
-            } else {
-                taho_tmr1 += TIMER1_VALUE;
+        if (_timer1_overflow == 0) {
+            if (taho_measure_fl != 0) {
+                if (++taho_tmr1_ofl == TAHO_OVERFLOW) {
+                    taho_measure_fl = 0;
+                    stop_timer_fuel();
+                    taho_fl = 0;
+                    motor_fl = 0;
+                } else {
+                    taho_tmr1 += TIMER1_VALUE;
+                }
             }
-        }
-    
-        if (speed100_measure_fl != 0) {
-            if (++speed100_tmr1_ofl == (65536 / TIMER1_VALUE)) {
-                speed100_measure_fl = 0;
-                speed100_fl = 0;
-            } else {
-                speed100_tmr1 += TIMER1_VALUE;
+
+            if (speed100_measure_fl != 0) {
+                if (++speed100_tmr1_ofl == SPEED100_OVERFLOW) {
+                    speed100_measure_fl = 0;
+                    speed100_fl = 0;
+                } else {
+                    speed100_tmr1 += TIMER1_VALUE;
+                }
             }
+        } else {
+            _timer1_overflow = 0;
         }
 
         if (KEY1_PRESSED) // key pressed
@@ -685,39 +709,41 @@ int_handler_GLOBAL_begin
 
 #ifndef HW_LEGACY
         if (_adc_ch == 0) {
-            adc_tmp += adc_read_value();
-            if (--adc_counter == 0) {
-                adc_counter = ADC_AVERAGE_SAMPLES;
-                adc = adc_tmp / ADC_AVERAGE_SAMPLES;
-                adc_tmp = 0;
+#endif
+
+#ifdef ADC_VOLTAGE_FILTER_VALUE            
+            adc_tmp0 = adc_tmp0 - ((adc_tmp0 + ADC_VOLTAGE_FILTER_VALUE/2) / ADC_VOLTAGE_FILTER_VALUE) + adc_read_value();
+            adc_voltage = ((adc_tmp0 + ADC_VOLTAGE_FILTER_VALUE/2) / ADC_VOLTAGE_FILTER_VALUE);
 #else
-                adc = adc_read_value();
-                PWR_ON;
+            adc_voltage = adc_read_value();
+#endif
+
+#ifdef HW_LEGACY
+            PWR_ON;
 #endif    
-                // read power supply status
-                if (adc > THRESHOLD_VOLTAGE_ADC_VALUE) {
-                    shutdown_counter = 0;
+            // read power supply status
+            if (adc_voltage > THRESHOLD_VOLTAGE_ADC_VALUE) {
+                shutdown_counter = 0;
+            } else {
+                if (shutdown_counter == 8) {
+                    shutdown_fl = 1; screen_refresh = 1;
                 } else {
-                    if (shutdown_counter == 8) {
-                        shutdown_fl = 1; screen_refresh = 1;
-                    } else {
-                        shutdown_counter++;
-                    }
+                    shutdown_counter++;
                 }
-#ifndef HW_LEGACY
             }
+#ifndef HW_LEGACY
             _adc_ch = 1;
             set_adc_channel(ADC_CHANNEL_BUTTONS);
         } else {
-            _adc = adc_read_value();
-            if (/*   _adc >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */_adc <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
-                adc_key = 2;
-            } else if (_adc >= (ADC_BUTTONS_1V * 1 - ADC_BUTTONS_THRESHOLD) && _adc <= (ADC_BUTTONS_1V * 1 + ADC_BUTTONS_THRESHOLD)) {
-                adc_key = 1;
-            } else if (_adc >= (ADC_BUTTONS_1V * 2 - ADC_BUTTONS_THRESHOLD) && _adc <= (ADC_BUTTONS_1V * 2 + ADC_BUTTONS_THRESHOLD)) {
-                adc_key = 3;
+            adc_key = adc_read_value();
+            if (/*   adc_key >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */adc_key <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
+                key_pressed = 2;
+            } else if (adc_key >= (ADC_BUTTONS_1V * 1 - ADC_BUTTONS_THRESHOLD) && adc_key <= (ADC_BUTTONS_1V * 1 + ADC_BUTTONS_THRESHOLD)) {
+                key_pressed = 1;
+            } else if (adc_key >= (ADC_BUTTONS_1V * 2 - ADC_BUTTONS_THRESHOLD) && adc_key <= (ADC_BUTTONS_1V * 2 + ADC_BUTTONS_THRESHOLD)) {
+                key_pressed = 3;
             } else {
-                adc_key = 0;
+                key_pressed = 0;
             }
             _adc_ch = 0;
             set_adc_channel(ADC_CHANNEL_POWER_SUPPLY);
@@ -1217,7 +1243,7 @@ void print_main_odo(align_t align) {
 #ifdef DS18B20_SUPPORT
 
 void print_temp(unsigned char index, bool header, align_t align) {
-    uint16_t _t = temps[index];
+    _t = temps[index];
     if (_t & 0x8000) // if the temperature is negative
     {
         buf[0] = '-'; // put minus sign (-)
@@ -1245,7 +1271,7 @@ void print_temp(unsigned char index, bool header, align_t align) {
 #endif
 
 void print_voltage(align_t align) {
-    len = print_fract(buf, (unsigned short) (adc << 5) / config.vcc_const);
+    len = print_fract(buf, (unsigned short) (adc_voltage << 5) / config.vcc_const);
 
     _print(len, POS_VOLT, align);
 }
@@ -1298,7 +1324,7 @@ unsigned char select_param(unsigned char* param, unsigned char total) {
 }
 
 void print_selected_param1(align_t align) {
-    switch (select_param(&config.selected_param1, 4)) {
+    switch (select_param(&config.selected_param1, 6)) {
         case 0:
             print_temp(TEMP_OUT, false, align);
             break;
@@ -1310,6 +1336,15 @@ void print_selected_param1(align_t align) {
             break;
         case 3:
             print_trip_average_fuel(&trips.tripC, align);
+            break;
+        case 4:
+            print_trip_average_speed(&trips.tripC, align);
+            break;
+        case 5:
+            print_trip_time(&trips.tripC, align);
+            break;
+        case 6:
+            print_trip_total_fuel(&trips.tripC, align);
             break;
     }
 }
@@ -1329,8 +1364,7 @@ void print_selected_param2(align_t align) {
             print_trip_time(&trips.tripC, align);
             break;
         case 4:
-            len = print_symbols_str(0, POS_MAXS);
-            print_speed(trips.tripC_max_speed, len, align);
+            print_speed(trips.tripC_max_speed, print_symbols_str(0, POS_MAXS), align);
             break;
     }
 }
@@ -1339,35 +1373,22 @@ void speed100_measurement(void) {
     LCD_CMD(0x80);
     LCD_Write_String16(buf, strcpy2(buf, (char *) &speed100_wait_string, 0), LCD_ALIGN_CENTER);
 
-    speed100_measure_fl = 0; speed100_ok_fl = 0; speed100_timer = 0;
-
-    // skip some pulses from speed sensor before start acceleration measurement
-    unsigned char _speed100_start = 2;
-
-    unsigned char _speed100_exit = 0;
+    speed100_measure_fl = 0; speed100_ok_fl = 0; speed100_timer = 0; speed100_final_fl = 0; _speed100_exit = 0;
 
     memset(buf, '=', 16);
-    counter_01sec_fl = 0;
 
     // 15 sec waiting for start
     start_timeout(1536);
 
+    counter_01sec_fl = 0;
     while (_speed100_exit == 0 && NO_KEY_PRESSED) {
-        if (_speed100_start != 0) {
+        if (timeout == 0 && drive_fl == 0) {
             if (counter_01sec_fl != 0) {
                 counter_01sec_fl = 0;
                 LCD_CMD(0xC0);
                 LCD_Write_String16(buf, (unsigned char) (timeout_timer / 91), LCD_ALIGN_LEFT);
             }
-            if (drive_fl != 0) {
-                drive_fl = 0;
-                _speed100_start--;
-            }
-            if (timeout == 1) {
-                _speed100_start = 0;
-            }
         } else {
-            
             if (timeout == 0) {
                 if (speed100_ok_fl == 0 && speed100_timer_fl == 0) {
                     // 30 sec for acceleration measurement
@@ -1381,8 +1402,9 @@ void speed100_measurement(void) {
 #ifdef PRINT_SPEED100                
                 add_leading_symbols(buf, ' ', len, 16);
                 if (speed100_fl != 0) {
-                    // print current speed
-                    len = print_fract((char*) buf, (uint16_t) ((360000UL * TIMER1_VALUE / config.odo_const) * 10UL / speed100));
+                    // print current speed 
+                    //len = print_fract((char*) buf, (uint16_t) ((360000UL * TIMER1_VALUE / config.odo_const) * 10UL / speed100)); // with fraction
+                    len = ultoa2((char*) buf, (uint16_t) ((360000UL * TIMER1_VALUE / config.odo_const) / speed100), 10); // integer
                 } else {
                     // no speed
                     len = strcpy2(buf, (char *) &empty_string, 0);
@@ -1397,16 +1419,21 @@ void speed100_measurement(void) {
             if (timeout == 0 && speed100_ok_fl == 0) {
                 counter_01sec_fl = 0; while (counter_01sec_fl == 0);
             } else {
-                // timeout or 100 km/h
-                speed100_timer_fl = 0;
-                if (timeout == 1) {
-                    // timeout
-                    LCD_CMD(0xC0);
-                    LCD_Write_String16(buf, strcpy2(buf, (char *) &timeout_string, 0), LCD_ALIGN_CENTER);
+                if (speed100_ok_fl != 0 && speed100_final_fl == 0) {
+                    // print final result
+                    speed100_final_fl = 1;
+                } else {
+                    // timeout or 100 km/h
+                    speed100_timer_fl = 0;
+                    if (timeout == 1) {
+                        // timeout
+                        LCD_CMD(0xC0);
+                        LCD_Write_String16(buf, strcpy2(buf, (char *) &timeout_string, 0), LCD_ALIGN_CENTER);
+                    }
+                    buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[BUZZER_WARN];
+                    start_timeout(512); while (timeout == 0 && NO_KEY_PRESSED);
+                    _speed100_exit = 1;
                 }
-                buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[BUZZER_WARN];
-                start_timeout(512); while (timeout == 0 && NO_KEY_PRESSED);
-                _speed100_exit = 1;
             }
         }
     }
@@ -1595,27 +1622,27 @@ void screen_service_counters() {
     }
 }
 
-void service_screen_fuel_constant(service_screen_item_t* item) {
+void service_screen_fuel_constant() {
     config.fuel_const = edit_value_char(config.fuel_const, CHAREDIT_MODE_NONE, 1, 255);
 }
 
-void service_screen_vss_constant(service_screen_item_t* item) {
+void service_screen_vss_constant() {
     config.odo_const = (uint16_t) edit_value_long(config.odo_const, 29999L);
 }
 
-void service_screen_total_trip(service_screen_item_t* item) {
+void service_screen_total_trip() {
     config.odo = edit_value_long(config.odo, 999999L);
 }
 
-void service_screen_settings_bits(service_screen_item_t* item) {
+void service_screen_settings_bits() {
     config.settings.byte = edit_value_bits(config.settings.byte, (char *) &settings_bits);
 }
 
-void service_screen_min_speed(service_screen_item_t* item) {
+void service_screen_min_speed() {
     config.min_speed = edit_value_char(config.min_speed, CHAREDIT_MODE_KMH, 1, 10);
 }
 
-void service_screen_temp_sensors(service_screen_item_t* item) {
+void service_screen_temp_sensors() {
     
     char tbuf[8];
     
@@ -1655,7 +1682,7 @@ void service_screen_temp_sensors(service_screen_item_t* item) {
     }
 }
 
-void service_screen_service_counters(service_screen_item_t* item) {
+void service_screen_service_counters() {
     // next service counter
     if (key1_press != 0) {
         c_sub_item++;
@@ -1706,7 +1733,7 @@ void service_screen_service_counters(service_screen_item_t* item) {
     
 }
 
-void service_screen_ua_const(service_screen_item_t* item) {
+void service_screen_ua_const() {
 
     if (key1_press != 0) {
         if (config.vcc_const >= 140) {
@@ -1731,7 +1758,7 @@ void service_screen_ua_const(service_screen_item_t* item) {
     
 }
 
-void service_screen_version(service_screen_item_t* item) {
+void service_screen_version() {
     LCD_CMD(0xC0);
     LCD_Write_String16(buf, strcpy2(buf, (char*) &version_str, 0), LCD_ALIGN_LEFT);
 }
@@ -1758,7 +1785,7 @@ void service_screen(unsigned char c_item) {
             LCD_CMD(0x80);
             LCD_Write_String16(buf, strcpy2(buf, (char *) service_menu_str, item.str_index), LCD_ALIGN_LEFT);
 
-            item.screen(&item);
+            item.screen();
 
             CLEAR_KEYS_STATE();
 
@@ -1811,6 +1838,18 @@ void power_off() {
     PWR_OFF; while (1);
 }
 
+uint16_t get_yday(uint8_t month, uint8_t day) {
+
+    const uint8_t ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273 - 256, 304 - 256, 334 - 256, 365 - 256};
+
+    unsigned char m = bcd8_to_bin(month);
+    unsigned short yday = ydayArray[m];
+    if (m >= 9) {
+        yday += 256;
+    }
+    return yday + bcd8_to_bin(day);
+}
+
 unsigned char check_tripC_time() {
     // clear trip C if diff between dates is more than TRIPC_PAUSE_MINUTES minutes
     short diff;
@@ -1818,29 +1857,39 @@ unsigned char check_tripC_time() {
     get_ds_time(&time);
 
 #ifndef SIMPLE_TRIPC_TIME_CHECK    
-    const unsigned short ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
 
     diff = bcd_subtract(time.year, trips.tripC_time.year);
     if (diff < 0 || diff > 1) return 1;
-    
+
+#if 1
+    unsigned short yday = get_yday(time.month, time.day);
+    unsigned short yday_c = get_yday(trips.tripC_time.month, trips.tripC_time.day);
+#else
+    const unsigned short ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
     unsigned short yday = ydayArray[bcd8_to_bin(time.month)] + bcd8_to_bin(time.day);
     unsigned short yday_c = ydayArray[bcd8_to_bin(trips.tripC_time.month)] + bcd8_to_bin(trips.tripC_time.day);
+#endif
+    
     diff = (short) ((diff == 1 ? 365 : 0) + yday - yday_c);
 #else    
     diff = bcd_subtract(time.day,trips.tripC_time.day);
 #endif    
     if (diff < 0 || diff > 1) return 1;
 
-    diff = (diff == 1 ? 24 : 0) + bcd_subtract(time.hour, trips.tripC_time.hour);
-    if (diff < 0) return 1;
-    
-    diff = 60 * diff + bcd_subtract(time.minute, trips.tripC_time.minute);
-    if (diff > TRIPC_PAUSE_MINUTES) return 1;
+    if (config.settings.daily_tripc == 0) {
+        diff = (diff == 1 ? 24 : 0) + bcd_subtract(time.hour, trips.tripC_time.hour);
+        if (diff < 0) return 1;
 
+        diff = 60 * diff + bcd_subtract(time.minute, trips.tripC_time.minute);
+        if (diff > TRIPC_PAUSE_MINUTES) return 1;
+    } else {
+       return (unsigned char) diff; 
+    }
+    
     return 0;
 }
 
-void power_on() {
+ void power_on() {
     HW_Init();
     
     read_eeprom();
@@ -1851,14 +1900,13 @@ void power_on() {
     fuel1_const = 65;
     fuel2_const = 28;
     odo_con4 = config.odo_const * 2 / 13;
-#ifdef TAHO_FIX_MAX_RPM    
-    taho_fix_rpm_const = (uint16_t) (TAHO_CONST*2 / TAHO_FIX_MAX_RPM);
+#ifdef TAHO_RPM_FIX_VALUE
+    taho_rpm_fix_const = (uint16_t) (TAHO_CONST*2 / TAHO_RPM_FIX_VALUE);
 #endif    
-    
     // const for dual injection
     if (config.settings.dual_injection != 0) {
-#ifdef TAHO_FIX_MAX_RPM    
-        taho_fix_rpm_const >>= 1;
+#ifdef TAHO_RPM_FIX_VALUE
+        taho_rpm_fix_const >>= 1;
 #endif
         fuel1_const <<= 1; // 130
         fuel2_const >>= 1; // 14
@@ -1974,14 +2022,10 @@ void main() {
 
     power_on();
 
-#if 0
-    
 #ifndef HW_LEGACY
     start_timer1();
     enable_interrupts();
     delay_ms(100);
-#endif    
-    
     if (KEY_SERVICE_PRESSED) {
         delay_ms(40);
         if (KEY_SERVICE_PRESSED) {
@@ -1994,12 +2038,6 @@ void main() {
         LCD_Write_String8(buf, strcpy2(buf, (char *) &service_menu_title, 0), LCD_ALIGN_LEFT);
         while (KEY_SERVICE_PRESSED);
     }
-
-#ifdef HW_LEGACY
-    start_timer1();
-    enable_interrupts();
-#endif    
-    
 #else
     start_timer1();
     enable_interrupts();
@@ -2013,8 +2051,12 @@ void main() {
         unsigned char warn = check_service_counters();
         print_warning_service_counters(warn);
     }
-    
+      
     CLEAR_KEYS_STATE();
+    
+    // wait first adc conversion
+    while (adc_voltage == 0 && screen_refresh == 0)
+        ;
     
     while (1) {
         screen_refresh = 0;

@@ -2,16 +2,6 @@
 #include "i2c.h"
 #include "version.h"
 
-// fallback time
-ds_time _time = {
-    VERSION_MINUTE_BCD,
-    VERSION_HOUR_BCD,
-    VERSION_DAY_OF_WEEK_BCD,
-    VERSION_DAY_OF_MONTH_BCD,
-    VERSION_MONTH_BCD,
-    VERSION_YEAR_BCD
-};
-
 void get_ds_time(ds_time* time) {
     I2C_Master_Start();
     I2C_Master_Write(0xD0);
@@ -27,7 +17,14 @@ void get_ds_time(ds_time* time) {
     time->year = I2C_Read_Byte(NACK);
     I2C_Master_Stop();
     if ((seconds & 0x80) != 0) {
-        set_ds_time(&_time);
+        // fallback time
+        time->minute = VERSION_MINUTE_BCD;
+        time->hour = VERSION_HOUR_BCD;
+        time->day_of_week = VERSION_DAY_OF_WEEK_BCD;
+        time->day = VERSION_DAY_OF_MONTH_BCD;
+        time->month = VERSION_MONTH_BCD;
+        time->year = VERSION_YEAR_BCD;
+        set_ds_time(time);
     }
 }
 

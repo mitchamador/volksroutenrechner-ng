@@ -28,8 +28,8 @@ typedef union {
     uint8_t byte;
 
     struct {
-        unsigned b0 : 1;
         unsigned alt_buttons : 1;
+        unsigned daily_tripc : 1;
         unsigned mh_rpm : 1;
         unsigned fast_refresh : 1;
         unsigned service_alarm : 1;
@@ -90,19 +90,14 @@ typedef struct {
 #define EEPROM_DS18B20_ADDRESS (((sizeof(config_t) - 1) / 8 + 1) * 8) + (((sizeof(trips_t) - 1) / 8 + 1) * 8) + (((sizeof(services_t) - 1) / 8 + 1) * 8)
 #define EEPROM_CUSTOM_CHARS_ADDRESS (EEPROM_DS18B20_ADDRESS + 8 * 3)
 
-typedef void (*screen_func) (void);
-
 typedef struct {
-    screen_func screen;
+    void (*screen)(void);
 } screen_item_t;
 
-typedef struct service_screen_item_t service_screen_item_t;
-typedef void (*service_screen_func) (service_screen_item_t *);
-
-struct service_screen_item_t {
+typedef struct {
     uint8_t str_index;
-    service_screen_func screen;
-};
+    void (*screen)(void);
+} service_screen_item_t;
 
 #endif	/* MAIN_H */
 

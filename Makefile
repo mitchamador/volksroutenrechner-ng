@@ -120,8 +120,14 @@ include nbproject/Makefile-local-${CONF}.mk
 .eeprom_PIC16F876A_legacy:
 	${MP_CC_DIR}/avr-objcopy -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_16F876A.bin
 
+.eeprom_PIC16F1936_legacy:
+	${MP_CC_DIR}/avr-objcopy -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_16F1936.bin
+
 .release_PIC16F876A_legacy:
 	${CP} ${CND_ARTIFACT_PATH_${CONF}} firmware/${PROJECTNAME}.pic16f876a.hex
+
+.release_PIC16F1936_legacy:
+	${CP} ${CND_ARTIFACT_PATH_${CONF}} firmware/${PROJECTNAME}.pic16f1936.hex
 
 .eeprom_ATMega328P:
 	${MP_CC_DIR}/avr-objcopy -O binary -I elf32-little -j .eeprom ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_ATmega328P.bin

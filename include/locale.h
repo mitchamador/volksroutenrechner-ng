@@ -64,7 +64,7 @@ typedef enum {
 #define SERVICE_MENU_TITLE "SERVICE MENU";
 #define SERVICE_COUNTERS "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
 
-#define SETTINGS_BITS "\0dual inj\0skip temp\0key sound\0serv alarm\0fast refresh\0mh rpm\0alt buttons\0";
+#define SETTINGS_BITS "\0dual inj\0skip temp\0key sound\0serv alarm\0fast refresh\0mh rpm\0daily trip\0alt but";
 
 #define TEMP_SENSORS "\0---\0out\0in\0eng";
 
