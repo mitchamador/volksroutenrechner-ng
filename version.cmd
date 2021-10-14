@@ -17,6 +17,7 @@ echo \#define VERSION_DAY_OF_WEEK_BCD 0x0${dayofweek} >>include/version.h
 echo \#define VERSION_DAY_OF_MONTH_BCD 0x$(date +%d) >>include/version.h
 echo \#define VERSION_MONTH_BCD 0x$(date +%m) >>include/version.h
 echo \#define VERSION_YEAR_BCD 0x$(date +%y) >>include/version.h
+echo \#define VERSION_YEAR $(date +%y) >>include/version.h
 echo >>include/version.h
 echo \#endif \/\* VERSION_H \*\/ >>include/version.h
 
@@ -42,6 +43,7 @@ echo #define VERSION_DAY_OF_WEEK_BCD 0x0%dayofweek% >>include\version.h
 echo #define VERSION_DAY_OF_MONTH_BCD 0x%date:~0,2% >>include\version.h
 echo #define VERSION_MONTH_BCD 0x%date:~3,2% >>include\version.h
 echo #define VERSION_YEAR_BCD 0x%date:~8,2% >>include\version.h
+echo #define VERSION_YEAR %date:~8,2% >>include\version.h
 echo. >>include\version.h
 echo #endif	/* VERSION_H */ >>include\version.h
 

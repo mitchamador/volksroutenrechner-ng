@@ -9,6 +9,7 @@ typedef struct {
 
 void get_ds_time(ds_time*);
 void set_ds_time(ds_time*);
+void set_day_of_week(ds_time* time);
 
 #endif	/* DS1307_H */
 

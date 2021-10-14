@@ -1,4 +1,5 @@
 #include "ds1307.h"
+#include "utils.h"
 #include "i2c.h"
 #include "version.h"
 
@@ -40,5 +41,22 @@ void set_ds_time(ds_time* time) {
 	I2C_Master_Write(time->month);
 	I2C_Master_Write(time->year);
     I2C_Master_Stop();
+}
+
+void set_day_of_week(ds_time* time) {
+    uint8_t dow;
+    uint8_t mArr[12] = {6, 2, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+
+    uint8_t tYear = bcd8_to_bin(time->year);
+    uint8_t tMonth = bcd8_to_bin(time->month);
+    dow = tYear;
+    dow += tYear / 4;
+    dow += bcd8_to_bin(time->day);
+    dow += mArr[tMonth - 1];
+    if (((tYear % 4) == 0) && (tMonth < 3))
+        dow -= 1;
+    while (dow >= 7)
+        dow -= 7;
+    time->day_of_week = dow + 1;
 }
 

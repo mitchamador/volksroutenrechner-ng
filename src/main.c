@@ -6,6 +6,7 @@
 #include "ds18b20.h"
 #include "utils.h"
 #include "i2c.h"
+#include "version.h"
 #include <stdbool.h>
 #include <string.h>
 #include <stdbool.h>
@@ -27,6 +28,12 @@
 // simple checking time difference (decrease memory usage)
 //#define SIMPLE_TRIPC_TIME_CHECK
 #endif
+
+// alt tripc screen
+#define ALT_TRIPC_SCREEN
+
+// auto calculate day of week
+#define AUTO_DAY_OF_WEEK
 
 // power supply threshold 
 // with default divider resistor's (8,2k (to Vcc) + 3,6k (to GND)) values
@@ -158,7 +165,7 @@ volatile __bit temperature_fl, temperature_conv_fl;
 #endif
 
 // misc flags
-volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, shutdown_fl, _timer1_overflow;
+volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, shutdown_fl, _timer1_overflow, drive_min_speed_fl;
 
 // speed100 flags and variables
 volatile __bit speed100_measure_fl, speed100_ok_fl, speed100_timer_fl, speed100_fl, speed100_final_fl, _speed100_exit;
@@ -182,7 +189,6 @@ uint16_t adc_tmp0, adc_tmp1;
 
 volatile __bit save_tripc_time_fl = 0;
 uint16_t speed;
-uint8_t min_speed;
 
 uint8_t mh_rpm_const;
 
@@ -846,12 +852,18 @@ void screen_time(void) {
                         time.month = BCD8_INCDEC(time.month, dir, 1, 12);
                         break;
                     case 4:
-                        time.year = BCD8_INCDEC(time.year, dir, 0, 99);
+                        time.year = BCD8_INCDEC(time.year, dir, VERSION_YEAR, VERSION_YEAR + 5);
                         break;
                     case 5:
                         time.day_of_week = BCD8_INCDEC(time.day_of_week, dir, 1, 7);
                         break;
                 }
+                
+#ifdef AUTO_DAY_OF_WEEK
+                if (c == 2 || c == 3 || c == 4) {
+                    set_day_of_week(&time);
+                }
+#endif                
                 start_timeout(500);
             }
             
@@ -1122,9 +1134,18 @@ void print_trip_time(trip_t* t, align_t align) {
 
     len = ultoa2(buf, (unsigned short) (time / 60), 10);
     buf[len++] = ':';
+
+#if 0
+    uint8_t _min = time % 60;
+    if (_min < 10) {
+        buf[len++] = '0';
+    }
+    len += ultoa2(&buf[len], (unsigned short) _min, 10);
+#else
     bcd8_to_str(&buf[len], bin8_to_bcd(time % 60));
     len += 2;
-
+#endif
+   
     LCD_Write_String8(buf, len, align);
 }
 
@@ -1341,14 +1362,12 @@ void print_selected_param1(align_t align) {
             print_trip_average_speed(&trips.tripC, align);
             break;
         case 5:
-            print_trip_time(&trips.tripC, align);
-            break;
-        case 6:
-            print_trip_total_fuel(&trips.tripC, align);
+            print_speed(trips.tripC_max_speed, print_symbols_str(0, POS_MAXS), align);
             break;
     }
 }
 
+#ifndef ALT_TRIPC_SCREEN
 void print_selected_param2(align_t align) {
     switch (select_param(&config.selected_param2, 5)) {
         case 0:
@@ -1368,6 +1387,7 @@ void print_selected_param2(align_t align) {
             break;
     }
 }
+#endif
 
 void speed100_measurement(void) {
     LCD_CMD(0x80);
@@ -1445,7 +1465,7 @@ void screen_main(void) {
 //; первый экран
 
     LCD_CMD(0x80);
-    if (drive_fl == 0 || speed < min_speed) {
+    if (drive_min_speed_fl == 0) {
 //; 1) на месте с заглушенным двигателем
 //; время текущее       общий пробег (км)
 //; нар.темп./пробег C  вольтметр
@@ -1491,42 +1511,11 @@ void clear_trip(trip_t* trip) {
     }
 }
 
-void screen_tripC(void) {
-//; второй экран
-    LCD_CMD(0x80);
-    if (drive_fl == 0 || speed < min_speed) {
-        print_trip_time(&trips.tripC, LCD_ALIGN_LEFT);
-        if (motor_fl == 0) {
-//; 1) на месте с заглушенным двигателем
-//; время поездки C             общий пробег
-//; пробег C (км)               selected_param2
-            print_main_odo(LCD_ALIGN_RIGHT);
-        } else {
-//; 2) на месте с работающим двигателем
-//; время поездки C             тахометр (об/мин)	
-//; пробег C (км)               selected_param2
-            print_taho(LCD_ALIGN_RIGHT);
-        }
-    } else {
-//; 3) в движении
-//; скорость (км/ч)             тахометр (об/мин)
-//; пробег C (км)               selected_param2
-        print_speed(speed, 0, LCD_ALIGN_LEFT);
-        print_taho(LCD_ALIGN_RIGHT);
-    }
-
-    LCD_CMD(0xC0);
-    print_trip_odometer(&trips.tripC, LCD_ALIGN_LEFT);
-    print_selected_param2(LCD_ALIGN_RIGHT);
-    
-    clear_trip(&trips.tripC);
-}
-
-void screen_tripAB(trip_t* trip, unsigned char ch) {
+void screen_trip(trip_t* trip, unsigned char trips_pos) {
     LCD_CMD(0x80);
 
     len = strcpy2(buf, (char *) &trip_string, 0);
-    buf[len++] = ch;
+    len += strcpy2(&buf[len], (char *) trips_str, trips_pos);
     LCD_Write_String8(buf, len, LCD_ALIGN_LEFT);
 
     print_trip_odometer(trip, LCD_ALIGN_RIGHT);
@@ -1545,14 +1534,55 @@ void screen_tripAB(trip_t* trip, unsigned char ch) {
     clear_trip(trip);
 }
 
+#ifdef ALT_TRIPC_SCREEN
+
+void screen_tripC() {
+    // второй экран - экран счетчика C
+    screen_trip(&trips.tripC, config.settings.daily_tripc ? TRIPS_POS_DAY : TRIPS_POS_CURR);
+}
+
+#else
+
+void screen_tripC(void) {
+    //; второй экран
+    LCD_CMD(0x80);
+    if (drive_min_speed_fl == 0) {
+        print_trip_time(&trips.tripC, LCD_ALIGN_LEFT);
+        if (motor_fl == 0) {
+            //; 1) на месте с заглушенным двигателем
+            //; время поездки C             общий пробег
+            //; пробег C (км)               selected_param2
+            print_main_odo(LCD_ALIGN_RIGHT);
+        } else {
+            //; 2) на месте с работающим двигателем
+            //; время поездки C             тахометр (об/мин)	
+            //; пробег C (км)               selected_param2
+            print_taho(LCD_ALIGN_RIGHT);
+        }
+    } else {
+        //; 3) в движении
+        //; скорость (км/ч)             тахометр (об/мин)
+        //; пробег C (км)               selected_param2
+        print_speed(speed, 0, LCD_ALIGN_LEFT);
+        print_taho(LCD_ALIGN_RIGHT);
+    }
+
+    LCD_CMD(0xC0);
+    print_trip_odometer(&trips.tripC, LCD_ALIGN_LEFT);
+    print_selected_param2(LCD_ALIGN_RIGHT);
+
+    clear_trip(&trips.tripC);
+}
+#endif
+
 void screen_tripA() {
     // экран счетчика A
-    screen_tripAB(&trips.tripA, 'A');
+    screen_trip(&trips.tripA, TRIPS_POS_A);
 }
 
 void screen_tripB() {
     // экран счетчика B
-    screen_tripAB(&trips.tripB, 'B');
+    screen_trip(&trips.tripB, TRIPS_POS_B);
 }
 
 void screen_temp() {
@@ -1989,13 +2019,13 @@ void handle_temp() {
 #endif
 
 void handle_misc_values() {
-    min_speed = config.min_speed * 10;
-
     mh_rpm_const = config.settings.dual_injection != 0 ? 1 : 2;
 
     speed100_const = (unsigned short) (SPEED100_CONST / config.odo_const);
 
     speed = (unsigned short) ((36000UL * (unsigned long) kmh) / (unsigned long) config.odo_const);
+
+    drive_min_speed_fl = speed >= config.min_speed * 10;
 
     if (config.settings.fast_refresh == 0) {
         speed >>= 1;
@@ -2108,7 +2138,7 @@ void main() {
                 } else if (key3_press != 0) {
                     c_item_dir = -1;
                     if (c_item-- == 0) {
-                        c_item = drive_fl == 1 ? DRIVE_MODE_MAX : (max_item - 1);
+                        c_item = drive_min_speed_fl != 0 ? DRIVE_MODE_MAX : (max_item - 1);
                     }
                 }
  #endif        
@@ -2121,7 +2151,7 @@ void main() {
         if (service_mode != 0) {
             service_screen(c_item);
         } else {
-            if (drive_fl != 0 && c_item > DRIVE_MODE_MAX) {
+            if (drive_min_speed_fl != 0 && c_item > DRIVE_MODE_MAX) {
                 c_item = 0;
                 LCD_Clear();
             }

@@ -6,6 +6,7 @@
 #endif
 
 PROGMEM const char symbols_str[] = SYMBOLS_STR;
+PROGMEM const char trips_str[] = TRIPS_STR;
 
 PROGMEM const char version_str[] = VERSION_STRING; 
 

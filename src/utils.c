@@ -38,7 +38,7 @@ unsigned char bcd8_incdec(unsigned char bcd, dir_t dir, unsigned char min, unsig
 unsigned char bcd8_inc(unsigned char bcd, unsigned char min, unsigned char max) {
     unsigned char _tmp = bcd8_to_bin(bcd);
     if (_tmp++ >= max) {
-        return min;
+        _tmp = min;
     }
     return bin8_to_bcd(_tmp);
 }

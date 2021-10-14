@@ -48,7 +48,16 @@ typedef enum {
         /* POS_MAXS=11 */ 0xFF, '<',              \
         /* POS_NONE=12 */ 0xFF,                   \
         0xFF,                                     \
-}                                                 \
+}
+
+typedef enum {
+    TRIPS_POS_CURR=1,
+    TRIPS_POS_DAY,
+    TRIPS_POS_A,
+    TRIPS_POS_B,
+} trips_name_t;
+
+#define TRIPS_STR "\0cur\0day\0A\0B"
 
 #define EMPTY_STRING "----";
 #define NO_TIME_STRING "-----'--";
@@ -95,6 +104,7 @@ typedef enum {
 #define MONTH_STR "\0jan\0feb\0mar\0apr\0may\0jun\0jul\0aug\0sep\0oct\0nov\0dec";
 
 extern const char symbols_str[];
+extern const char trips_str[];
 
 extern const char version_str[]; 
 
