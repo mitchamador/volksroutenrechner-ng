@@ -161,7 +161,7 @@ void ds18b20_serial_to_string(unsigned char *sn, unsigned char *p) {
           sn++;
         }
         t &= 0x0F;
-        if (t > 10) {
+        if (t >= 10) {
             *p++ = 'A' - 10 + t;
         } else {
             *p++ = '0' + t;
