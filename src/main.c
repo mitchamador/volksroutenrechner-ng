@@ -108,6 +108,7 @@ services_t services;
 #ifdef HW_LEGACY
 
 #define KEY_SERVICE_PRESSED KEY1_PRESSED
+#define KEY_SERVICE_LONGPRESSED (key1_longpress != 0)
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0)
 #define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
 
@@ -130,6 +131,7 @@ signed char c_item_dir;
 #define KEY3_PRESSED (key_pressed == 3)
 
 #define KEY_SERVICE_PRESSED KEY2_PRESSED
+#define KEY_SERVICE_LONGPRESSED (key2_longpress != 0)
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0 && key3_press == 0)
 #define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0
 
@@ -1868,11 +1870,11 @@ void power_off() {
     PWR_OFF; while (1);
 }
 
+const uint8_t ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273 - 256, 304 - 256, 334 - 256, 365 - 256};
+
 uint16_t get_yday(uint8_t month, uint8_t day) {
-
-    const uint8_t ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273 - 256, 304 - 256, 334 - 256, 365 - 256};
-
-    unsigned char m = bcd8_to_bin(month);
+    
+    unsigned char m = bcd8_to_bin(month) - 1;
     unsigned short yday = ydayArray[m];
     if (m >= 9) {
         yday += 256;
@@ -1887,23 +1889,17 @@ unsigned char check_tripC_time() {
     get_ds_time(&time);
 
 #ifndef SIMPLE_TRIPC_TIME_CHECK    
-
     diff = bcd_subtract(time.year, trips.tripC_time.year);
     if (diff < 0 || diff > 1) return 1;
 
-#if 1
     unsigned short yday = get_yday(time.month, time.day);
     unsigned short yday_c = get_yday(trips.tripC_time.month, trips.tripC_time.day);
-#else
-    const unsigned short ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
-    unsigned short yday = ydayArray[bcd8_to_bin(time.month)] + bcd8_to_bin(time.day);
-    unsigned short yday_c = ydayArray[bcd8_to_bin(trips.tripC_time.month)] + bcd8_to_bin(trips.tripC_time.day);
-#endif
     
     diff = (short) ((diff == 1 ? 365 : 0) + yday - yday_c);
 #else    
     diff = bcd_subtract(time.day,trips.tripC_time.day);
-#endif    
+#endif
+    
     if (diff < 0 || diff > 1) return 1;
 
     if (config.settings.daily_tripc == 0) {
@@ -2096,18 +2092,19 @@ void main() {
             power_off();
         }
 
-        if (key1_longpress) {
-            // long keypress for key1 - switch service mode and main mode
+        if (KEY_SERVICE_LONGPRESSED) {
+            // long keypress for service key - switch service mode and main mode
             if (service_mode == 0 && motor_fl == 0 && drive_fl == 0) {
                 prev_main_item  = c_item;
                 c_item = prev_service_item;
                 service_mode = 1;
+                CLEAR_KEYS_STATE();
             } else if (service_mode == 1) {
                 prev_service_item = c_item;
                 c_item = prev_main_item;
                 service_mode = 0;
+                CLEAR_KEYS_STATE();
             }
-            CLEAR_KEYS_STATE();
         }
         
         if (service_mode == 0) {
