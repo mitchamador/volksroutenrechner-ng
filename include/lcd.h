@@ -9,7 +9,6 @@
 // place custom chars data in eeprom/pgmspace
 #if defined(__PIC_MIDRANGE)
 #define EEPROM_CUSTOM_CHARS
-char buf[16];
 #endif
 
 #ifndef LCD_LEGACY
@@ -54,19 +53,12 @@ typedef enum {
 
 //---[ LCD Routines ]---
 
+void LCD_Init(void);
+void LCD_CMD(unsigned char CMD);
+void LCD_Clear(void);
+
 #define LCD_Write_String8(Str, len, align) __LCD_Write_String(Str, len, 8, align)
 #define LCD_Write_String16(Str, len, align) __LCD_Write_String(Str, len, 16, align)
-
-void LCD_Init(void);
-void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode);
-void LCD_CMD(unsigned char CMD);
-void LCD_Set_Cursor(unsigned char ROW, unsigned char COL);
-void LCD_Write_Char(char);
-void LCD_Write_String(char*);
-void LCD_Write_String_Len(char* Str, unsigned char len);
 void __LCD_Write_String(char*, unsigned char, unsigned char, align_t);
-void LCD_Write_String0_8(char*, align_t);
-void LCD_Write_String0_16(char*, align_t);
-void LCD_Clear(void);
 
 #endif

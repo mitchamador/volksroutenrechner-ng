@@ -14,6 +14,15 @@ DATA_LH_1,     // l/h[1]
 };
 #endif
 
+void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode);
+void LCD_Set_Cursor(unsigned char ROW, unsigned char COL);
+void LCD_Write_Char(char);
+void LCD_Write_String(char*);
+void LCD_Write_String_Len(char* Str, unsigned char len);
+void LCD_Write_String0_8(char*, align_t);
+void LCD_Write_String0_16(char*, align_t);
+
+
 void LCD_Init(void) {
 
 #ifdef LCD_LEGACY
@@ -41,12 +50,13 @@ void LCD_Init(void) {
     // LCD set custom characters
     unsigned char i = 0;
 #ifdef EEPROM_CUSTOM_CHARS
-    buf[8] = 0xFF;
+    char tbuf[8];
     for (i = 0; i < 64; i = i + 8) {
         LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
-        HW_read_eeprom_block((unsigned char*) buf, EEPROM_CUSTOM_CHARS_ADDRESS + i, 8);
-        char *ptr = &buf[0];
-        while (*ptr != 0xFF) {
+        HW_read_eeprom_block((unsigned char*) tbuf, EEPROM_CUSTOM_CHARS_ADDRESS + i, 8);
+        char *ptr = &tbuf[0];
+        unsigned char c = 8;
+        while (c--) {
             LCD_Write_Char(*ptr++);
         }
     }

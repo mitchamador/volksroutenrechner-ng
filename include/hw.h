@@ -393,5 +393,7 @@ void HW_Init(void);
 void HW_read_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length);
 void HW_write_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length);
 
+#include "i2c.h"
+
 #endif	/* HW_H */
 
