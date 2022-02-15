@@ -120,3 +120,40 @@ void str_center16(char * buf, unsigned char len) {
         buf[i] = ' ';
     }
 }
+
+// long long ptr to hex string (for printing ds18b20 serial number)
+void llptrtohex(unsigned char *sn, unsigned char *p) {
+    unsigned char i = 16, t;
+
+    while (--i != 0) {
+        t = *sn;
+        if ((i & 0x01) != 0) {
+            t >>= 4;
+        } else {
+            sn++;
+        }
+        t &= 0x0F;
+        if (t >= 10) {
+            *p++ = 'A' - 10 + t;
+        } else {
+            *p++ = '0' + t;
+        }
+    }
+}
+
+void set_day_of_week(ds_time* time) {
+    uint8_t dow;
+    uint8_t mArr[12] = {6, 2, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+
+    uint8_t tYear = bcd8_to_bin(time->year);
+    uint8_t tMonth = bcd8_to_bin(time->month);
+    dow = tYear;
+    dow += tYear / 4;
+    dow += bcd8_to_bin(time->day);
+    dow += mArr[tMonth - 1];
+    if (((tYear % 4) == 0) && (tMonth < 3))
+        dow -= 1;
+    while (dow >= 7)
+        dow -= 7;
+    time->day_of_week = dow + 1;
+}

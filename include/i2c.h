@@ -3,7 +3,7 @@
 
 #include "hw.h"
 
-#ifdef I2C_BITBANG
+#ifdef I2C_SOFTWARE
 #define ACK 0x00
 #define NACK 0x80
 #else
@@ -18,7 +18,7 @@
 
 void I2C_Master_Init(void);
 void I2C_Master_Start(void);
-#ifdef I2C_BITBANG
+#ifdef I2C_SOFTWARE
 #define I2C_Master_RepeatedStart() delay_us(3.5); I2C_Master_Start();
 #else
 void I2C_Master_RepeatedStart(void);

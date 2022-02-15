@@ -11,91 +11,6 @@
 #include <string.h>
 #include <stdbool.h>
 
-// disable ds18b20 support with external defines
-#ifndef NO_DS18B20
-#define DS18B20_SUPPORT
-#endif
-
-#ifdef DS18B20_SUPPORT
-#ifndef NO_DS18B20_CONFIG
-#define DS18B20_CONFIG
-#endif
-#endif
-
-// disable sound support with external defines
-#ifndef NO_SOUND
-#define SOUND_SUPPORT
-#endif
-
-// adc voltage filtering (power of 2)
-//#define ADC_VOLTAGE_FILTER_VALUE 2
-
-#ifdef HW_LEGACY
-// simple checking time difference (decrease memory usage)
-//#define SIMPLE_TRIPC_TIME_CHECK
-#endif
-
-// old tripc screen
-//#define OLD_TRIPC_SCREEN
-
-// auto calculate day of week
-#define AUTO_DAY_OF_WEEK
-
-// power supply threshold 
-// with default divider resistor's (8,2k (to Vcc) + 3,6k (to GND)) values
-// THRESHOLD_VOLTAGE * (3,6 / (3,6 + 8,2)) * (1024 / 5) = THRESHOLD_VOLTAGE_ADC_VALUE
-// 2,048V ~ 128
-#define THRESHOLD_VOLTAGE_ADC_VALUE 128
-// threshold for buttons +-0,1v
-#define ADC_BUTTONS_THRESHOLD 100
-#define ADC_BUTTONS_1V (1024/5)            
-
-// misc constants (in seconds)
-#define MAIN_INTERVAL ((uint8_t) (2.0f / TIMER1_PERIOD))
-#define DEBOUNCE ((uint8_t) (0.04f / TIMER1_PERIOD))
-#define SHORTKEY ((uint8_t) (0.5f / TIMER1_PERIOD))
-#define LONGKEY ((uint8_t) (1.0f / TIMER1_PERIOD))
-
-//show average speed (or fuel consumption) after distance AVERAGE_MIN_DIST * 0.1 km
-#define AVERAGE_MIN_DIST 3
-
-// show average fuel consumption after total consumption of AVERAGE_MIN_FUEL * 0,01 litres
-#define AVERAGE_MIN_FUEL 5
-
-// max value of trip A odometer
-#define MAX_ODO_TRIPA 2000
-
-// max value of trip B odometer
-#define MAX_ODO_TRIPB 6000
-
-// max pause for continuing trip C
-#define TRIPC_PAUSE_MINUTES 120
-
-// round taho
-#define TAHO_ROUND 10
-// min rpm
-#define TAHO_MIN_RPM 100UL
-// min rpm constant (1/(TAHO_MIN_RPM/60sec)/0.01s) 0.01s timer overflow
-#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / TIMER1_PERIOD))
-// taho const 
-#define TAHO_CONST ((uint32_t) (60 / TIMER1_PERIOD * TIMER1_VALUE))
-
-// print speed while acceleration's measurement 
-#define PRINT_SPEED100
-// timer1 counts between speed pulses when speed is 100 km/h
-// (1 / ((config.odo_const * 100) / 3600)) / (0.01f/TIMER1_VALUE) = (36 / (0.01f / TIMER1_VALUE) / config.odo_const
-#define SPEED100_CONST ((uint32_t) (36 / (TIMER1_PERIOD / TIMER1_VALUE)))
-
-// minimum pulse width for speed100 calculation (10 * 0.01s)
-#if (65536 / TIMER1_VALUE) >= 10
-#define SPEED100_OVERFLOW 10
-#else
-#define SPEED100_OVERFLOW (65536 / TIMER1_VALUE)
-#endif
-
-// temperature timeout
-#define TIMEOUT_TEMPERATURE (15 - 1)
-
 config_t config;
 trips_t trips;
 services_t services;
@@ -104,8 +19,6 @@ services_t services;
 
 #ifdef HW_LEGACY
 
-#define KEY_SERVICE_PRESSED KEY1_PRESSED
-#define KEY_SERVICE_LONGPRESSED (key1_longpress != 0)
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0)
 #define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
 
@@ -115,22 +28,23 @@ services_t services;
 
 #else
 
+#define ADC_KEY_OK 2
+#define ADC_KEY_NEXT 1
+#define ADC_KEY_PREV 3
+
 uint8_t _adc_ch;
-uint16_t adc_key;
-volatile uint8_t key_pressed;
+volatile uint8_t adc_key;
 
 uint8_t key3_counter;
-volatile __bit key3_press;
+volatile __bit key3_press, key3_longpress;
 signed char c_item_dir;
 
-#define KEY1_PRESSED (key_pressed == 1)
-#define KEY2_PRESSED (key_pressed == 2)
-#define KEY3_PRESSED (key_pressed == 3)
+#define KEY1_PRESSED (adc_key == ADC_KEY_NEXT)
+#define KEY2_PRESSED (adc_key == ADC_KEY_OK)
+#define KEY3_PRESSED (adc_key == ADC_KEY_PREV)
 
-#define KEY_SERVICE_PRESSED KEY2_PRESSED
-#define KEY_SERVICE_LONGPRESSED (key2_longpress != 0)
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0 && key3_press == 0)
-#define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0
+#define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0; key3_longpress = 0;
 
 #define KEY_NEXT ((key1_press != 0 && config.settings.alt_buttons == 0) || (key2_press != 0 && config.settings.alt_buttons != 0))
 #define KEY_CHANGEVALUE ((key2_press != 0 && config.settings.alt_buttons == 0) || (key1_press != 0 && config.settings.alt_buttons != 0) || (key3_press != 0 && config.settings.alt_buttons != 0))
@@ -158,11 +72,6 @@ volatile __bit timeout;
 
 #define start_timeout(timer) timeout = 0; timeout_timer = timer;
 
-#ifdef DS18B20_SUPPORT
-volatile uint8_t timeout_temperature;
-volatile __bit temperature_fl, temperature_conv_fl;
-#endif
-
 // misc flags
 volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, shutdown_fl, _timer1_overflow, drive_min_speed_fl;
 
@@ -181,20 +90,24 @@ volatile uint16_t kmh, fuel, adc_voltage;
 volatile uint24_t taho, _taho;
 volatile uint24_t taho_tmr1;
 
-uint16_t adc_tmp0, adc_tmp1;
+#ifdef ADC_VOLTAGE_FILTER_VALUE
+uint16_t adc_tmp0;
+#endif
 
 volatile __bit save_tripc_time_fl = 0;
 uint16_t speed;
 
 uint8_t mh_rpm_const;
 
-#ifdef DS18B20_SUPPORT
+#ifdef TEMPERATURE_SUPPORT
+volatile uint8_t timeout_temperature;
+volatile __bit temperature_fl, temperature_conv_fl;
 // ds18b20 temperatures and eeprom pointer
 #define TEMP_OUT 0
 #define TEMP_IN 1
 #define TEMP_ENGINE 2
 uint16_t _t;
-uint16_t temps[3] = {0, 0, 0};
+uint16_t temps[3] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE};
 #endif
 
 #ifdef SOUND_SUPPORT
@@ -263,10 +176,14 @@ void service_screen_fuel_constant(void);
 void service_screen_vss_constant(void);
 void service_screen_total_trip(void);
 void service_screen_settings_bits(void);
+#ifdef DS18B20_CONFIG
 void service_screen_temp_sensors(void);
+#endif
 void service_screen_service_counters(void);
 void service_screen_ua_const(void);
+#ifdef MIN_SPEED_CONFIG
 void service_screen_min_speed(void);
+#endif
 void service_screen_version(void);
 
 const service_screen_item_t items_service[] = {
@@ -275,7 +192,9 @@ const service_screen_item_t items_service[] = {
     {TOTAL_TRIP_INDEX, service_screen_total_trip},
     {VOLTAGE_ADJUST_INDEX, service_screen_ua_const},
     {SETTINGS_BITS_INDEX, service_screen_settings_bits},
+#ifdef MIN_SPEED_CONFIG
     {MIN_SPEED_INDEX, service_screen_min_speed},
+#endif
 #if defined(DS18B20_SUPPORT) && defined(DS18B20_CONFIG)
     {TEMP_SENSOR_INDEX, service_screen_temp_sensors},
 #endif
@@ -289,6 +208,38 @@ uint8_t service_mode = 0;
 uint8_t max_item = 0;
 
 uint8_t request_screen(char *);
+
+#ifdef ENCODER_SUPPORT
+// A valid CW or CCW move returns 1, invalid returns 0.
+void read_rotary() {
+  static int8_t rot_enc_table[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
+  static uint8_t prevNextCode = 0;
+  static uint8_t store = 0;
+
+  prevNextCode <<= 2;
+  if (ENCODER_DATA) prevNextCode |= 0x02;
+  if (ENCODER_CLK) prevNextCode |= 0x01;
+  prevNextCode &= 0x0f;
+
+  // If valid then store as 16 bit data.
+  if  (rot_enc_table[prevNextCode] ) {
+    store <<= 4;
+    store |= prevNextCode;
+    if (store == 0x2b) {
+        key3_press = 1;
+    }
+    if (store == 0x17) {
+        key1_press = 1;
+    }
+    if (key1_press != 0 || key3_press != 0) {
+        screen_refresh = 1;
+#ifdef SOUND_SUPPORT
+        key_sound = BUZZER_KEY;
+#endif
+    }
+  }
+}
+#endif
 
 #ifndef HW_LEGACY
 void inc_fuel(trip_t* trip) {
@@ -308,46 +259,94 @@ void inc_odo(trip_t* trip) {
     }
 }
 
-// A valid CW or CCW move returns 1, invalid returns 0.
-void read_rotary() {
-  static int8_t rot_enc_table[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
-  static uint8_t prevNextCode = 0;
-  static uint8_t store = 0;
+typedef void (*handle)(uint16_t adc_value);
 
-  prevNextCode <<= 2;
-  if (ENCODER_DATA) prevNextCode |= 0x02;
-  if (ENCODER_CLK) prevNextCode |= 0x01;
-  prevNextCode &= 0x0f;
+typedef struct {
+    void (*handle)(uint16_t adc_value);
+    uint16_t tmp;
+    uint8_t filter; // filter value
+} adc_item_t;
 
-  int8_t encoder_key = 0;
-  // If valid then store as 16 bit data.
-  if  (rot_enc_table[prevNextCode] ) {
-    store <<= 4;
-    store |= prevNextCode;
-    if (store == 0x2b) {
-        encoder_key = -1;
-    }
-    if (store == 0x17) {
-        encoder_key = 1;
-    }
-  }
+void adc_handler_voltage(uint16_t adc_value);
+void adc_handler_buttons(uint16_t adc_value);
+void adc_handler_fuel_tank(uint16_t adc_value);
 
-  if (encoder_key != 0) {
-    if (encoder_key == 1) {
-        key1_press = 1;
-    } else if (encoder_key == -1) {
-        key3_press = 1;
+adc_item_t adc_items[] = {
+    {adc_handler_voltage, 0xFFFF, 4},
+    {adc_handler_buttons, 0xFFFF, 1},
+    //{adc_handler_fuel_tank, 0xFFFF, 16},
+};
+
+void adc_handler(uint8_t adc_ch) {
+#ifdef ADC_VOLTAGE_FILTERING
+    adc_item_t* h = &adc_items[adc_ch];
+    if (h->filter == 1) {
+        h->handle(adc_read_value());
+    } else {
+#if 1
+        if (h->tmp == 0xFFFF) {
+            h->tmp = adc_read_value() * h->filter;
+        } else {
+            h->tmp = h->tmp - ((h->tmp + h->filter / 2) / h->filter) + adc_read_value();
+        }
+        h->handle((h->tmp + h->filter / 2) / h->filter);
+#else
+        // lower precision        
+        if (h->tmp == 0xFFFF) {
+            h->tmp = adc_read_value();
+        } else {
+            h->tmp = (adc_read_value() + h->tmp * h->filter - h->tmp) / h->filter;
+        }
+        h->handle(h->tmp);
+#endif
     }
-    screen_refresh = 1;
-    key_sound = BUZZER_KEY;
-  }
+#else
+    adc_items[adc_ch].handle(adc_read_value());
+#endif    
+}
+
+void adc_handler_voltage(uint16_t adc_value) {
+    adc_voltage = adc_value;
+    // read power supply status
+    if (adc_voltage > THRESHOLD_VOLTAGE_ADC_VALUE) {
+        shutdown_counter = 0;
+    } else {
+        if (shutdown_counter == 8) {
+            shutdown_fl = 1;
+            screen_refresh = 1;
+        } else {
+            shutdown_counter++;
+        }
+    }
+    _adc_ch = 1;
+    set_adc_channel(ADC_CHANNEL_BUTTONS);
+};
+
+void adc_handler_buttons(uint16_t adc_value) {
+    if (/*   adc_key >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */adc_value <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
+        if (adc_key == 0 || adc_key == ADC_KEY_OK)
+            adc_key = ADC_KEY_OK;
+    } else if (adc_value >= (ADC_BUTTONS_1V * 1 - ADC_BUTTONS_THRESHOLD) && adc_value <= (ADC_BUTTONS_1V * 1 + ADC_BUTTONS_THRESHOLD)) {
+        if (adc_key == 0 || adc_key == ADC_KEY_NEXT)
+            adc_key = ADC_KEY_NEXT;
+    } else if (adc_value >= (ADC_BUTTONS_1V * 2 - ADC_BUTTONS_THRESHOLD) && adc_value <= (ADC_BUTTONS_1V * 2 + ADC_BUTTONS_THRESHOLD)) {
+        if (adc_key == 0 || adc_key == ADC_KEY_PREV)
+            adc_key = ADC_KEY_PREV;
+    } else {
+        adc_key = 0;
+    }
+    _adc_ch = 0;
+    set_adc_channel(ADC_CHANNEL_POWER_SUPPLY);
+}
+
+void adc_handler_fuel_tank(uint16_t adc_value) {
 }
 
 #endif
 
 int_handler_GLOBAL_begin
 
-#if !defined(HW_LEGACY) && defined(int_handler_encoder_begin)
+#if defined(ENCODER_SUPPORT) && defined(int_handler_encoder_begin)
     int_handler_encoder_begin
         // handle encoder
         read_rotary();
@@ -362,10 +361,6 @@ int_handler_GLOBAL_begin
             _timer1_overflow = 1;
         }
 
-#if !defined(HW_LEGACY) && !defined(int_handler_encoder_begin)
-        // handle encoder
-        read_rotary();
-#endif
         // fuel injector
         if (FUEL_ACTIVE) {
             if (fuel_fl == 0) {
@@ -605,8 +600,16 @@ int_handler_GLOBAL_begin
 #ifndef HW_LEGACY
         if (KEY3_PRESSED) // key pressed
         {
-            if (key3_counter <= SHORTKEY) {
+            if (key3_counter <= LONGKEY) {
                 key3_counter++;
+            }
+            if (key3_counter == LONGKEY) {
+                // long keypress
+                key3_longpress = 1;
+                screen_refresh = 1;
+#ifdef SOUND_SUPPORT
+                key_sound = BUZZER_LONGKEY;
+#endif
             }
         } else // key released
         {
@@ -614,11 +617,13 @@ int_handler_GLOBAL_begin
                 // key press
                 key3_press = 1;
                 screen_refresh = 1;
+#ifdef SOUND_SUPPORT
                 key_sound = BUZZER_KEY;
+#endif
             }
             key3_counter = 0;
         }
-#endif    
+#endif
 
 #ifdef SOUND_SUPPORT    
         if (key_sound != BUZZER_NONE) {
@@ -650,9 +655,9 @@ int_handler_GLOBAL_begin
                      trips.tripA.time++;
                      trips.tripB.time++;
                      trips.tripC.time++;
-                }
+        }
 
-#ifdef DS18B20_SUPPORT
+#ifdef TEMPERATURE_SUPPORT
                 if (timeout_temperature > 0) {
                    if (--timeout_temperature == 0) {
                        temperature_fl = 1;
@@ -720,48 +725,34 @@ int_handler_GLOBAL_begin
 
     int_handler_adc_begin
 
-#ifndef HW_LEGACY
-        if (_adc_ch == 0) {
-#endif
-
-#ifdef ADC_VOLTAGE_FILTER_VALUE            
-            adc_tmp0 = adc_tmp0 - ((adc_tmp0 + ADC_VOLTAGE_FILTER_VALUE/2) / ADC_VOLTAGE_FILTER_VALUE) + adc_read_value();
-            adc_voltage = ((adc_tmp0 + ADC_VOLTAGE_FILTER_VALUE/2) / ADC_VOLTAGE_FILTER_VALUE);
-#else
-            adc_voltage = adc_read_value();
-#endif
-
 #ifdef HW_LEGACY
-            PWR_ON;
-#endif    
-            // read power supply status
-            if (adc_voltage > THRESHOLD_VOLTAGE_ADC_VALUE) {
-                shutdown_counter = 0;
-            } else {
-                if (shutdown_counter == 8) {
-                    shutdown_fl = 1; screen_refresh = 1;
-                } else {
-                    shutdown_counter++;
-                }
-            }
-#ifndef HW_LEGACY
-            _adc_ch = 1;
-            set_adc_channel(ADC_CHANNEL_BUTTONS);
+
+#ifdef ADC_VOLTAGE_FILTER_VALUE
+        //adc_tmp0 = adc_tmp0 - ((adc_tmp0 + ADC_VOLTAGE_FILTER_VALUE/2) / ADC_VOLTAGE_FILTER_VALUE) + adc_read_value();
+        //adc_voltage = ((adc_tmp0 + ADC_VOLTAGE_FILTER_VALUE/2) / ADC_VOLTAGE_FILTER_VALUE);
+        adc_voltage = (adc_read_value() + adc_voltage * ADC_VOLTAGE_FILTER_VALUE - adc_voltage) / ADC_VOLTAGE_FILTER_VALUE;
+#else
+        adc_voltage = adc_read_value();
+#endif
+
+        // RA0 is configured as analog pin
+        PWR_ON;
+
+        // read power supply status
+        if (adc_voltage > THRESHOLD_VOLTAGE_ADC_VALUE) {
+            shutdown_counter = 0;
         } else {
-            adc_key = adc_read_value();
-            if (/*   adc_key >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */adc_key <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
-                key_pressed = 2;
-            } else if (adc_key >= (ADC_BUTTONS_1V * 1 - ADC_BUTTONS_THRESHOLD) && adc_key <= (ADC_BUTTONS_1V * 1 + ADC_BUTTONS_THRESHOLD)) {
-                key_pressed = 1;
-            } else if (adc_key >= (ADC_BUTTONS_1V * 2 - ADC_BUTTONS_THRESHOLD) && adc_key <= (ADC_BUTTONS_1V * 2 + ADC_BUTTONS_THRESHOLD)) {
-                key_pressed = 3;
+            if (shutdown_counter == 8) {
+                shutdown_fl = 1; screen_refresh = 1;
             } else {
-                key_pressed = 0;
+                shutdown_counter++;
             }
-            _adc_ch = 0;
-            set_adc_channel(ADC_CHANNEL_POWER_SUPPLY);
         }
-#endif    
+
+#else
+        adc_handler(_adc_ch);
+#endif
+
 
 #if defined(restart_adc_event)
         restart_adc_event();
@@ -979,29 +970,57 @@ void print_main_odo(align_t align) {
     _print(len, POS_KM, align);
 }
 
-#ifdef DS18B20_SUPPORT
-
+#if defined(DS18B20_SUPPORT)
 void print_temp(unsigned char index, bool header, align_t align) {
     _t = temps[index];
-    if (_t & 0x8000) // if the temperature is negative
-    {
-        buf[0] = '-'; // put minus sign (-)
-        _t = (~_t) + 1; // change temperature value to positive form
-    } else {
-        buf[0] = '+';
-    }
-    _t = (unsigned short) ((_t >> 4) * 10 + (((_t & 0x000F) * 10) >> 4));
-
-    if (index == 2) {
-        len = ultoa2(buf, _t / 10, 10);
-        len += print_symbols_str(len, POS_CELS);
-    } else {
-        len = print_fract(&buf[1], _t) + 1;
-        if (header) {
-            add_leading_symbols(buf, ' ', len, 8);
-            strcpy2(buf, (char *) &temp_sensors, (index + 1) + 1);
-            len = 8;
+    if (_t == DS18B20_TEMP_NONE) {
+        if (index == TEMP_ENGINE) {
+            buf[0] = '-'; buf[1] = '-';
+            len = 2;
+        } else {
+            len = strcpy2(buf, (char *) &empty_string, 0);
         }
+    } else {
+        if (_t & 0x8000) // if the temperature is negative
+        {
+            buf[0] = '-'; // put minus sign (-)
+            _t = (~_t) + 1; // change temperature value to positive form
+        } else {
+            buf[0] = '+';
+        }
+        _t = (unsigned short) ((_t >> 4) * 10 + (((_t & 0x000F) * 10) >> 4));
+
+        if (index == TEMP_ENGINE) {
+            len = ultoa2(buf, _t / 10, 10);
+        } else {
+            len = print_fract(&buf[1], _t) + 1;
+        }
+    }
+
+    if (header && index != TEMP_ENGINE) {
+        add_leading_symbols(buf, ' ', len, 8);
+        strcpy2(buf, (char *) &temp_sensors, (index + 1) + 1);
+        len = 8;
+    } else if (!header) {
+        len += print_symbols_str(len, POS_CELS);
+    }
+    LCD_Write_String8(buf, len, align);
+}
+#elif defined(DS3231_TEMP)
+void print_temp(unsigned char index, bool header, align_t align) {
+    _t = temps[index];
+    if (_t == DS18B20_TEMP_NONE) {
+        len = strcpy2(buf, (char *) &empty_string, 0);
+    } else {
+        if (_t & 0x8000) // if the temperature is negative
+        {
+            buf[0] = '-'; // put minus sign (-)
+            _t = (~_t) + 1; // change temperature value to positive form
+        } else {
+            buf[0] = '+';
+        }
+        _t = (unsigned short) ((_t >> 8) * 10 + (((_t & 0x00FF) * 10) >> 8));
+        len = print_fract(&buf[1], _t) + 1;
     }
     LCD_Write_String8(buf, len, align);
 }
@@ -1119,12 +1138,11 @@ unsigned char edit_value_char(unsigned char v, edit_value_char_t mode, unsigned 
             }
             start_timeout(300);
         }
+#ifdef HW_LEGACY    
         if (key2_press != 0) {
-#ifndef HW_LEGACY
-            timeout = 1;
-        }
-        if (key3_press != 0) {
-#endif            
+#else
+        if (key2_press != 0 || key3_press != 0) {
+#endif
             if (v-- == min_value) {
                 v = max_value;
             }
@@ -1331,7 +1349,7 @@ unsigned char select_param(unsigned char* param, unsigned char total) {
 }
 
 void print_selected_param1(align_t align) {
-    switch (select_param(&config.selected_param1, 6)) {
+    switch (select_param(&config.selected_param1, 7)) {
         case 0:
             print_temp(TEMP_OUT, false, align);
             break;
@@ -1339,41 +1357,22 @@ void print_selected_param1(align_t align) {
             print_voltage(align);
             break;
         case 2:
-            print_trip_odometer(&trips.tripC, align);
-            break;
-        case 3:
-            print_trip_average_fuel(&trips.tripC, align);
-            break;
-        case 4:
-            print_trip_average_speed(&trips.tripC, align);
-            break;
-        case 5:
-            print_speed(trips.tripC_max_speed, print_symbols_str(0, POS_MAXS), align);
-            break;
-    }
-}
-
-#ifdef OLD_TRIPC_SCREEN
-void print_selected_param2(align_t align) {
-    switch (select_param(&config.selected_param2, 5)) {
-        case 0:
-            print_trip_average_fuel(&trips.tripC, align);
-            break;
-        case 1:
-            print_trip_total_fuel(&trips.tripC, align);
-            break;
-        case 2:
-            print_trip_average_speed(&trips.tripC, align);
-            break;
-        case 3:
             print_trip_time(&trips.tripC, align);
             break;
+        case 3:
+            print_trip_odometer(&trips.tripC, align);
+            break;
         case 4:
+            print_trip_average_fuel(&trips.tripC, align);
+            break;
+        case 5:
+            print_trip_average_speed(&trips.tripC, align);
+            break;
+        case 6:
             print_speed(trips.tripC_max_speed, print_symbols_str(0, POS_MAXS), align);
             break;
     }
 }
-#endif
 
 void speed100_measurement(void) {
     LCD_CMD(0x80);
@@ -1493,8 +1492,8 @@ void screen_main(void) {
 }
 
 
-void clear_trip(trip_t* trip) {
-    if (request_screen((char *) &reset_string) != 0) {
+void clear_trip(bool force, trip_t* trip) {
+    if (force || request_screen((char *) &reset_string) != 0) {
         memset(trip, 0, sizeof(trip_t));
     }
 }
@@ -1519,50 +1518,13 @@ void screen_trip(trip_t* trip, unsigned char trips_pos) {
             print_trip_total_fuel(trip, LCD_ALIGN_RIGHT);
             break;
     }
-    clear_trip(trip);
+    clear_trip(false, trip);
 }
-
-#ifdef OLD_TRIPC_SCREEN
-
-void screen_tripC(void) {
-    //; второй экран
-    LCD_CMD(0x80);
-    if (drive_min_speed_fl == 0) {
-        print_trip_time(&trips.tripC, LCD_ALIGN_LEFT);
-        if (motor_fl == 0) {
-            //; 1) на месте с заглушенным двигателем
-            //; время поездки C             общий пробег
-            //; пробег C (км)               selected_param2
-            print_main_odo(LCD_ALIGN_RIGHT);
-        } else {
-            //; 2) на месте с работающим двигателем
-            //; время поездки C             тахометр (об/мин)	
-            //; пробег C (км)               selected_param2
-            print_taho(LCD_ALIGN_RIGHT);
-        }
-    } else {
-        //; 3) в движении
-        //; скорость (км/ч)             тахометр (об/мин)
-        //; пробег C (км)               selected_param2
-        print_speed(speed, 0, LCD_ALIGN_LEFT);
-        print_taho(LCD_ALIGN_RIGHT);
-    }
-
-    LCD_CMD(0xC0);
-    print_trip_odometer(&trips.tripC, LCD_ALIGN_LEFT);
-    print_selected_param2(LCD_ALIGN_RIGHT);
-
-    clear_trip(&trips.tripC);
-}
-
-#else
 
 void screen_tripC() {
     // второй экран - экран счетчика C
     screen_trip(&trips.tripC, config.settings.daily_tripc ? TRIPS_POS_DAY : TRIPS_POS_CURR);
 }
-
-#endif
 
 void screen_tripA() {
     // экран счетчика A
@@ -1589,7 +1551,7 @@ void screen_temp() {
         print_temp(TEMP_IN, true, LCD_ALIGN_RIGHT);
         LCD_CMD(0xC8);
         print_temp(TEMP_ENGINE, false, LCD_ALIGN_RIGHT);
-#ifdef DS18B20_SUPPORT
+#ifdef TEMPERATURE_SUPPORT
         // force temperature update
         temperature_fl = 1;
 #endif        
@@ -1671,17 +1633,20 @@ void service_screen_settings_bits() {
     config.settings.byte = edit_value_bits(config.settings.byte, (char *) &settings_bits);
 }
 
+#ifdef MIN_SPEED_CONFIG
 void service_screen_min_speed() {
     config.min_speed = edit_value_char(config.min_speed, CHAREDIT_MODE_KMH, 1, 10);
 }
+#endif
 
+#ifdef DS18B20_CONFIG
 void service_screen_temp_sensors() {
     
     char tbuf[8];
     
     memset(tbuf, 0xFF, 8);
     ds18b20_read_rom((unsigned char*) tbuf);
-    ds18b20_serial_to_string((unsigned char*) tbuf, (unsigned char*) buf);
+    llptrtohex((unsigned char*) tbuf, (unsigned char*) buf);
     
     unsigned char t_num = 0;
     
@@ -1714,6 +1679,7 @@ void service_screen_temp_sensors() {
         HW_write_eeprom_block((unsigned char *) tbuf, EEPROM_DS18B20_ADDRESS + (t_num - 1) * 8, 8);
     }
 }
+#endif
 
 void service_screen_service_counters() {
     // next service counter
@@ -1774,12 +1740,11 @@ void service_screen_ua_const() {
         }
         start_timeout(300);
     }
+#ifdef HW_LEGACY    
     if (key2_press != 0) {
-#ifndef HW_LEGACY
-        timeout = 1;
-    }
-    if (key3_press != 0) {
-#endif    
+#else
+    if (key2_press != 0 || key3_press != 0) {
+#endif
         if (config.vcc_const < 230) {
             config.vcc_const++;
         }
@@ -1830,6 +1795,23 @@ void service_screen(unsigned char c_item) {
 
 void read_eeprom() {
     unsigned char ee_addr = 0;
+
+#if defined(__AVR)
+    // check eeprom special mark and save default eeprom content if mark not exists
+    unsigned char tbuf[8];
+#ifndef FORCE_EEPROM_OVERWRITE
+    HW_read_eeprom_block((unsigned char*) &tbuf, sizeof(eedata) - 8, 8);
+#else
+    memset(tbuf, 0xFF, sizeof(tbuf));
+#endif
+    if (memcmp_P((unsigned char*) &tbuf, &eedata[sizeof(eedata) - 8], 8) != 0) {
+        uint8_t c;
+        for (c = 0; c < sizeof(eedata); c += 8) {
+            memcpy_P(&tbuf, &eedata[c], 8);
+            HW_write_eeprom_block((unsigned char*) &tbuf, c, 8);
+        }
+    }
+#endif
     
     HW_read_eeprom_block((unsigned char*) &config, ee_addr, sizeof(config_t));
     ee_addr += ((sizeof(config_t) - 1) / 8 + 1) * 8;
@@ -1853,6 +1835,7 @@ void save_eeprom() {
 }
 
 void power_off() {
+    LCD_Clear();
     // save and shutdown;
     disable_interrupts();
     
@@ -1917,7 +1900,7 @@ unsigned char check_tripC_time() {
 
  void power_on() {
     HW_Init();
-    
+
     read_eeprom();
     
     LCD_Init();
@@ -1943,9 +1926,10 @@ unsigned char check_tripC_time() {
     
     if (check_tripC_time() != 0) {
         // clear tripC
-        memset(&trips.tripC, 0, sizeof(trip_t));
+        clear_trip(true, &trips.tripC);
         trips.tripC_max_speed = 0;
     }
+    
 }
 
 unsigned char check_service_counters() {
@@ -1988,7 +1972,10 @@ void print_warning_service_counters(unsigned char warn) {
     }
 }
 
-#ifdef DS18B20_SUPPORT
+#if defined(DS18B20_SUPPORT)
+
+uint8_t t_error[3] = {0, 0, 0};
+
 void handle_temp() {
     temperature_fl = 0;
     if (temperature_conv_fl != 0) {
@@ -1998,7 +1985,15 @@ void handle_temp() {
         unsigned char _temps_ee_addr = EEPROM_DS18B20_ADDRESS;
         for (unsigned char i = 0; i < 3; i++) {
             HW_read_eeprom_block((unsigned char *) &buf, _temps_ee_addr, 8);
-            ds18b20_read_temp_matchrom((unsigned char *) &buf, &temps[i]);
+            if (ds18b20_read_temp_matchrom((unsigned char *) &buf, &temps[i]) == 0) {
+                if (t_error[i] >= 5) { // max sequential crc errors
+                    temps[i] = DS18B20_TEMP_NONE;
+                } else {
+                    t_error[i]++;
+                }
+            } else {
+                t_error[i] = 0;
+            }
             _temps_ee_addr += 8;
         }
     } else {
@@ -2006,6 +2001,21 @@ void handle_temp() {
         temperature_conv_fl = 1;
         timeout_temperature = 1;
         ds18b20_start_conversion();
+    }
+}
+#elif defined(DS3231_TEMP)
+void handle_temp() {
+    if (temperature_conv_fl != 0) {
+        temperature_conv_fl = 0;
+        temperature_fl = 0;
+        // read temperature for ds3231
+        timeout_temperature = TIMEOUT_TEMPERATURE;
+        get_ds_temp(&temps[TEMP_OUT]);
+    } else {
+        // start conversion for ds3231
+        temperature_conv_fl = 1;
+        timeout_temperature = 1;
+        start_ds_temp();
     }
 }
 #endif
@@ -2032,11 +2042,11 @@ void handle_misc_values() {
     }
 
     if (trips.tripA.odo > MAX_ODO_TRIPA) {
-        memset(&trips.tripA, 0, sizeof (trip_t));
+        clear_trip(true, &trips.tripA);
     }
 
     if (trips.tripB.odo > MAX_ODO_TRIPB) {
-        memset(&trips.tripB, 0, sizeof (trip_t));
+        clear_trip(true, &trips.tripB);
     }
 }
 
@@ -2044,28 +2054,10 @@ void main() {
 
     power_on();
 
-#ifndef HW_LEGACY
     start_timer1();
     enable_interrupts();
-    delay_ms(100);
-    if (KEY_SERVICE_PRESSED) {
-        delay_ms(40);
-        if (KEY_SERVICE_PRESSED) {
-            service_mode = 1;
-        }
-    }
-
-    if (service_mode != 0) {
-        LCD_CMD(0x80);
-        LCD_Write_String8(buf, strcpy2(buf, (char *) &service_menu_title, 0), LCD_ALIGN_LEFT);
-        while (KEY_SERVICE_PRESSED);
-    }
-#else
-    start_timer1();
-    enable_interrupts();
-#endif
     
-#ifdef DS18B20_SUPPORT
+#ifdef TEMPERATURE_SUPPORT
     temperature_fl = 1;
 #endif        
 
@@ -2088,9 +2080,9 @@ void main() {
             power_off();
         }
 
-        if (KEY_SERVICE_LONGPRESSED) {
+        if (key2_longpress != 0) {
             // long keypress for service key - switch service mode and main mode
-            if (service_mode == 0 && motor_fl == 0 && drive_fl == 0) {
+            if (service_mode == 0 && motor_fl == 0 && drive_fl == 0 && c_item == 0) {
                 prev_main_item  = c_item;
                 c_item = prev_service_item;
                 service_mode = 1;
@@ -2107,7 +2099,7 @@ void main() {
         
         if (service_mode == 0) {
             max_item = sizeof (items_main) / sizeof (screen_item_t);
-#ifdef DS18B20_SUPPORT
+#ifdef TEMPERATURE_SUPPORT
             if (temperature_fl != 0) {
                 handle_temp();
             }

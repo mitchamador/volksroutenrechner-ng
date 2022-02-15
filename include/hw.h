@@ -55,7 +55,7 @@ typedef uint32_t uint24_t;
 #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
 
 // i2c software bit bang
-#define I2C_BITBANG
+#define I2C_SOFTWARE
 // lcd parallel interface
 #define LCD_LEGACY
 
@@ -70,49 +70,51 @@ typedef uint32_t uint24_t;
 #pragma config CP = OFF         // Flash Program Memory Code Protection bit (Code protection off)
 #pragma config CPD = OFF        // Data EEPROM Memory Code Protection bit (Data EEPROM code protection off)
 
-#if defined(_16F1936)
+#if defined(_16F1936) || defined(_16F1938)
 #pragma config PLLEN = OFF
 #endif
 
-// PORTA definitions (analog input)
-// pwr control
+// PORTA definitions (a/d channels)
+// RA0 as digital power control pin (need to set in adc interrupt routine)
+// RA1 as analog voltage input
+// RA3 as analog fuel tank input (instead of RA2 with legacy hw)
+// RA5 as digital 1wire pin
+
 #define PWR PORTAbits.RA0
 #define PWR_MASK  (1 << _PORTA_RA0_POSITION)
+
 // adc power
 #define POWER_SUPPLY_TRIS_MASK (1 << _TRISA_TRISA1_POSITION)
+
+// fuel tank
+#define FUEL_TANK_TRIS_MASK (1 << _TRISA_TRISA3_POSITION)
+
+// DS18B20 data pin (RA5)
+#define ONEWIRE_PIN      PORTAbits.RA5
+#define ONEWIRE_PIN_Dir  TRISAbits.TRISA5
+#define ONEWIRE_TRIS_MASK (1 << _TRISA_TRISA5_POSITION)
 
 #if defined(_16F876A)
 #define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION))
+// PORTA A/D configuration (AN0/RA0, AN1/RA1, AN3/RA3 as analog input)
 #define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (0 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
-#elif defined(_16F1936)
+#define ADC_CHANNEL_FUEL_TANK ((0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#elif defined(_16F1936) || defined(_16F1938)
 #define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS4_POSITION) | (1 << _ADCON0_CHS3_POSITION) | (1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADCON0_INIT 0
 #define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADCS1_POSITION) | (0 << _ADCON1_ADCS0_POSITION))
 #endif
 
-#define set_adc_channel(ch) ADCON0 = (ADCON0 & ~ADC_CHANNEL_MASK) | ch
+#define set_adc_channel(ch) ADCON0 = ADCON0_INIT | ch
 
 // PORTB definitions
-// key1 and key2 (active ground) (legacy hardware)
-#define KEY1 PORTBbits.RB2
-#define KEY2 PORTBbits.RB3
-#define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
-
-// speed sensor and injector
-#define TX PORTBbits.RB6
-#define TX_TRIS_MASK (1 << _TRISB_TRISB6_POSITION)
-#define FUEL PORTBbits.RB7
-#define FUEL_TRIS_MASK (1 << _TRISB_TRISB7_POSITION)
-
-// DS18B20 data pin is connected to pin RA5
-#define ONEWIRE_PIN      RA5
-#define ONEWIRE_PIN_Dir  TRISA5
-
-#define SND     RC0
-#define SND_TRIS (1 << _TRISC_TRISC0_POSITION)
+// RB0, RB1 - SCL/SDA for software i2c
+// RB2, RB3 - keys
+// RB6 - speed sensor
+// RB7 - fuel injector
 
 #define SDA       PORTBbits.RB0
 #define SDA_MASK  (1 << _PORTB_RB0_POSITION)
@@ -135,6 +137,25 @@ typedef uint32_t uint24_t;
 #define SCL_HIGH SCL = 1
 #define SCL_LOW SCL = 0
 
+// key1 and key2 (active ground) (legacy hardware)
+#define KEY1 PORTBbits.RB2
+#define KEY2 PORTBbits.RB3
+#define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
+
+// speed sensor and injector
+#define TX PORTBbits.RB6
+#define TX_TRIS_MASK (1 << _TRISB_TRISB6_POSITION)
+#define FUEL PORTBbits.RB7
+#define FUEL_TRIS_MASK (1 << _TRISB_TRISB7_POSITION)
+
+
+// PORTC definitions
+// RC0 - sound
+// RC1, RC3, RC4..RC7 - LCD RS,EN,data
+
+#define SND     PORTCbits.RC0
+#define SND_TRIS (1 << _TRISC_TRISC0_POSITION)
+
 // RS - RC1
 // EN - RC3
 // data - RC4..RC7
@@ -146,7 +167,7 @@ typedef uint32_t uint24_t;
 #endif
 
 // init values for port's data direction
-#define TRISA_INIT POWER_SUPPLY_TRIS_MASK
+#define TRISA_INIT ONEWIRE_TRIS_MASK | POWER_SUPPLY_TRIS_MASK | FUEL_TANK_TRIS_MASK
 #define TRISB_INIT KEY_TRIS_MASK | TX_TRIS_MASK | FUEL_TRIS_MASK | SCL_TRIS_MASK | SDA_TRIS_MASK
 #define TRISC_INIT 0
 
@@ -172,7 +193,7 @@ typedef uint32_t uint24_t;
 
 #if defined(_16F876A)
 #define timer1_overflow() CCP2IF
-#elif defined(_16F1936)
+#elif defined(_16F1936) || defined(_16F1938)
 #define timer1_overflow() CCP5IF
 #endif
 
@@ -196,7 +217,7 @@ typedef uint32_t uint24_t;
 #define int_handler_fuel_speed_end                         \
     }                                                      \
 
-#elif defined(_16F1936)
+#elif defined(_16F1936) || defined(_16F1938)
 
 #define int_handler_fuel_speed_begin                       \
     /* Was it interrupt on change?*/                       \
@@ -228,7 +249,7 @@ typedef uint32_t uint24_t;
         CCP2IF = 0;                                        \
     }                                                      \
 
-#elif defined(_16F1936)
+#elif defined(_16F1936) || defined(_16F1938)
 
 #define int_handler_timer1_begin                           \
     /* Timer1 interrupt */                                 \
@@ -269,10 +290,22 @@ typedef uint32_t uint24_t;
 
 #define ONEWIRE_CLEAR    (ONEWIRE_PIN = 0)
 #define ONEWIRE_SET      (ONEWIRE_PIN = 1)
-#define ONEWIRE_VALUE(v) (ONEWIRE_PIN = v)
 #define ONEWIRE_GET      (ONEWIRE_PIN)
 
 #elif defined(__AVR_ATMEGA)
+
+//#define ENCODER_SUPPORT
+
+#if !defined(ENCODER_SUPPORT)
+#define ENCODER_ENABLED 0
+#else
+#define ENCODER_ENABLED 1
+// encoder data (PC1/PCINT9) and clk (PC2/PCINT10)
+#define ENCODER_DATA ((PINC & _BV(PINC1)) != 0 ? 1 : 0)
+#define ENCODER_CLK  ((PINC & _BV(PINC2)) != 0 ? 1 : 0)
+#endif
+
+#define PCINT_ENCODER (ENCODER_ENABLED << PCINT9) | (ENCODER_ENABLED << PCINT10)
 
 #define __bit unsigned char
 #define __bank0
@@ -311,7 +344,7 @@ typedef uint32_t uint24_t;
 
 #define int_handler_fuel_speed_end }                        \
 
-#define int_handler_encoder_begin ISR(PCINT2_vect) {        \
+#define int_handler_encoder_begin ISR(PCINT1_vect) {        \
 
 #define int_handler_encoder_end }                           \
 
@@ -346,52 +379,53 @@ typedef uint32_t uint24_t;
 #define ADC_VREF_TYPE ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR))
 // clear OCF1B for ADC Auto Trigger
 #define restart_adc_event() TIFR1 = (1 << OCF1B)
-// mux for power supply pin (PC1/ADC1)
-#define ADC_CHANNEL_POWER_SUPPLY ((0 << MUX3) | (0 << MUX2) | (0 << MUX1) | (1 << MUX0))
+// mux for power supply pin (PC3/ADC3)
+#define ADC_CHANNEL_POWER_SUPPLY ((0 << MUX3) | (0 << MUX2) | (1 << MUX1) | (1 << MUX0))
 // mux for buttons pin (PC0/ADC0)
 #define ADC_CHANNEL_BUTTONS ((0 << MUX3) | (0 << MUX2) | (0 << MUX1) | (0 << MUX0))
 
-#define PWR_ON  (PORTC |=  _BV(PORTD3))
-#define PWR_OFF (PORTC &= ~_BV(PORTD3))
+// power pin settings
+#define PWR_ON  (PORTD |=  _BV(PORTD3))
+#define PWR_OFF (PORTD &= ~_BV(PORTD3))
 
-#define SND_ON  (PORTD |=  _BV(PORTD4))
-#define SND_OFF (PORTD &= ~_BV(PORTD4))
+// buzzer pin settings
+#define SND_ON  (PORTD |=  _BV(PORTD6))
+#define SND_OFF (PORTD &= ~_BV(PORTD6))
 
-#define ONEWIRE_CLEAR    (PORTD &= ~_BV(PORTD5))
-#define ONEWIRE_SET      (PORTD |= _BV(PORTD5))
+// onewire pin settings
+#define ONEWIRE_CLEAR    (PORTD &= ~_BV(PORTD7))
+#define ONEWIRE_SET      (PORTD |= _BV(PORTD7))
 
-#define ONEWIRE_GET      ((PIND & _BV(PIND5)) != 0 ? 1 : 0)
+#define ONEWIRE_GET      ((PIND & _BV(PIND7)) != 0 ? 1 : 0)
 // configure DS18B20_PIN pin as output
-#define ONEWIRE_OUTPUT   (DDRD |= _BV(DDD5))
+#define ONEWIRE_OUTPUT   (DDRD |= _BV(DDD7))
 // configure DS18B20_PIN pin as input
-#define ONEWIRE_INPUT    ONEWIRE_CLEAR; DDRD &= ~_BV(DDD5)
-
-#define ONEWIRE_VALUE(v)                        \
-    if ((v & 0x01) != 0) {                      \
-        ONEWIRE_INPUT;                          \
-    } else {                                    \
-        ONEWIRE_CLEAR;                          \
-    }                                           \
-
-// encoder data (PD6/PCINT22) and clk (PD7/PCINT23)
-#define ENCODER_DATA ((PIND & _BV(PIND6)) != 0 ? 1 : 0)
-#define ENCODER_CLK  ((PIND & _BV(PIND7)) != 0 ? 1 : 0)
+#define ONEWIRE_INPUT    (DDRD &= ~_BV(DDD7))
 
 // init values for port's data direction
 #define DDRB_INIT 0
 #define DDRC_INIT 0
-#define DDRD_INIT _BV(DDD3) | _BV(DDD4)
+#define DDRD_INIT _BV(DDD3) | _BV(DDD6)
 
 // init values for port's data 
-#define PORTB_INIT _BV(PORTB1) | _BV(PORTB0)
-#define PORTC_INIT _BV(PORTC0) | _BV(PORTC1)
-#define PORTD_INIT 0
+#define PORTB_INIT _BV(PORTB0) | _BV(PORTB1)
+#define PORTC_INIT _BV(PORTC0) | _BV(PORTC3)
+#define PORTD_INIT _BV(PORTD3)
+
+// force overwrite eeprom with default values
+//#define FORCE_EEPROM_OVERWRITE
 
 #endif
 
+#if defined(__AVR)
+typedef unsigned int eeaddr_t;
+#else
+typedef unsigned char eeaddr_t;
+#endif
+
 void HW_Init(void);
-void HW_read_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length);
-void HW_write_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length);
+void HW_read_eeprom_block(unsigned char* p, eeaddr_t ee_addr, unsigned char length);
+void HW_write_eeprom_block(unsigned char* p, eeaddr_t ee_addr, unsigned char length);
 
 #include "i2c.h"
 

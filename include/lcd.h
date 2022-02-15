@@ -6,11 +6,6 @@
 
 #define LCD_I2C_ADDRESS 0x4E
 
-// place custom chars data in eeprom/pgmspace
-#if defined(__PIC_MIDRANGE)
-#define EEPROM_CUSTOM_CHARS
-#endif
-
 #ifndef LCD_LEGACY
 #define RS (1 << 0)
 #define EN (1 << 2)

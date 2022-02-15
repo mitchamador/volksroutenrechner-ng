@@ -1,4 +1,5 @@
 #include "ds1307.h"
+#include "ds18b20.h"
 #include "utils.h"
 #include "i2c.h"
 #include "version.h"
@@ -43,20 +44,27 @@ void set_ds_time(ds_time* time) {
     I2C_Master_Stop();
 }
 
-void set_day_of_week(ds_time* time) {
-    uint8_t dow;
-    uint8_t mArr[12] = {6, 2, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+void get_ds_temp(uint16_t* raw_temp_value) {
+    I2C_Master_Start();
+    I2C_Master_Write(0xD0);
+    I2C_Master_Write(DS3231_REG_TEMP); // start reading from 0x11 - temp
+    I2C_Master_RepeatedStart();
+    I2C_Master_Write(0xD1);
+    uint8_t msb = I2C_Read_Byte(ACK);
+    uint8_t lsb = I2C_Read_Byte(NACK);
+    if (msb != 0xFF) {
+        *raw_temp_value = (((uint16_t) (msb << 8)) | lsb);
+    } else {
+        *raw_temp_value = DS18B20_TEMP_NONE;
+    }
+    I2C_Master_Stop();
+}
 
-    uint8_t tYear = bcd8_to_bin(time->year);
-    uint8_t tMonth = bcd8_to_bin(time->month);
-    dow = tYear;
-    dow += tYear / 4;
-    dow += bcd8_to_bin(time->day);
-    dow += mArr[tMonth - 1];
-    if (((tYear % 4) == 0) && (tMonth < 3))
-        dow -= 1;
-    while (dow >= 7)
-        dow -= 7;
-    time->day_of_week = dow + 1;
+void start_ds_temp() {
+    I2C_Master_Start();
+    I2C_Master_Write(0xD0);
+    I2C_Master_Write(DS3231_REG_CTRL);                          // 0x0E - control register
+    I2C_Master_Write(DS3231_CTRL_DEFAULT | DS3231_CTRL_CONV);   // start conversion
+    I2C_Master_Stop();
 }
 

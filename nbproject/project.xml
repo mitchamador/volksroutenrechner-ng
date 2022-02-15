@@ -21,6 +21,10 @@
                     <type>2</type>
                 </confElem>
                 <confElem>
+                    <name>PIC16F1936_legacy</name>
+                    <type>2</type>
+                </confElem>
+                <confElem>
                     <name>ATMega328P</name>
                     <type>2</type>
                 </confElem>

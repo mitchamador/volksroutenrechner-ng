@@ -1,19 +1,5 @@
 #include "lcd.h"
 
-#ifndef EEPROM_CUSTOM_CHARS
-#include "locale.h"
-PROGMEM const unsigned char custom_chars[] = {
-DATA_KMH_0,    // kmh[0]
-DATA_KMH_1,    // kmh[1]
-DATA_OMIN_0,   // omin[0]
-DATA_OMIN_1,   // omin[1]
-DATA_L100_0,   // L100[0]
-DATA_L100_1,   // L100[1]
-DATA_LH_0,     // l/h[0]
-DATA_LH_1,     // l/h[1]
-};
-#endif
-
 void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode);
 void LCD_Set_Cursor(unsigned char ROW, unsigned char COL);
 void LCD_Write_Char(char);
@@ -48,27 +34,18 @@ void LCD_Init(void) {
     LCD_CMD(LCD_ENTRY_MODE_SET | LCD_INCREMENT | LCD_NOSHIFT);
 
     // LCD set custom characters
-    unsigned char i = 0;
-#ifdef EEPROM_CUSTOM_CHARS
     char tbuf[8];
-    for (i = 0; i < 64; i = i + 8) {
-        LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
-        HW_read_eeprom_block((unsigned char*) tbuf, EEPROM_CUSTOM_CHARS_ADDRESS + i, 8);
-        char *ptr = &tbuf[0];
-        unsigned char c = 8;
-        while (c--) {
-            LCD_Write_Char(*ptr++);
-        }
-    }
-#else        
+    char *ptr;
+
+    unsigned char i = 0;
     for (i = 0; i < 64; i++) {
-        // LCD_SETCGRAMADDR | (location << 3)
-        if ((i & 0x07) == 0) {
+        if ((i & 0x07) == 0) { 
             LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
+            HW_read_eeprom_block((unsigned char*) tbuf, EEPROM_CUSTOM_CHARS_ADDRESS + i, 8);
+            ptr = (char*) tbuf;
         }
-        LCD_Write_Char(pgm_read_byte(&custom_chars[i]));
+        LCD_Write_Char(*ptr++);
     }
-#endif
 }
 
 

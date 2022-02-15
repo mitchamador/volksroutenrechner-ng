@@ -14,6 +14,7 @@
       <itemPath>include/version.h</itemPath>
       <itemPath>include/eeprom.h</itemPath>
       <itemPath>include/main.h</itemPath>
+      <itemPath>include/onewire.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -25,14 +26,13 @@
       <itemPath>src/ds18b20.c</itemPath>
       <itemPath>src/ds1307.c</itemPath>
       <itemPath>src/hw-pic.c</itemPath>
-      <itemPath>src/i2c-pic.c</itemPath>
       <itemPath>src/lcd.c</itemPath>
       <itemPath>src/main.c</itemPath>
       <itemPath>src/utils.c</itemPath>
       <itemPath>src/hw-avr.c</itemPath>
-      <itemPath>src/i2c-avr.c</itemPath>
       <itemPath>src/locale.c</itemPath>
-      <itemPath>src/i2c-soft.c</itemPath>
+      <itemPath>src/i2c.c</itemPath>
+      <itemPath>src/onewire.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -633,7 +633,7 @@
         <targetDevice>PIC16F1936</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>VSMViewerPlatformTool</platformTool>
+        <platformTool>noID</platformTool>
         <languageToolchain>XC8</languageToolchain>
         <languageToolchainVersion>2.32</languageToolchainVersion>
         <platform>3</platform>
@@ -1188,10 +1188,7 @@
         <property key="target.ip.port" value="8001"/>
       </Tool>
       <VSMViewerPlatformTool>
-        <property key="debugoptions.debug-startup" value="Use system settings"/>
-        <property key="debugoptions.reset-behaviour" value="Use system settings"/>
         <property key="design.file" value="proteus/mk-pic16f1936-legacy.pdsprj"/>
-        <property key="lastid" value=""/>
         <property key="target.ip.address" value="localhost"/>
         <property key="target.ip.port" value="8001"/>
       </VSMViewerPlatformTool>

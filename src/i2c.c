@@ -1,6 +1,6 @@
 #include "i2c.h"
 
-#ifdef I2C_BITBANG
+#ifdef I2C_SOFTWARE
 
 void I2C_Master_Init()
 {

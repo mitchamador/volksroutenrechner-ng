@@ -26,12 +26,12 @@ void HW_Init(void) {
     // State: Bit7=P Bit6=P Bit5=T Bit4=0 Bit3=T Bit2=T Bit1=T Bit0=T 
     //PORTD = (1 << PORTD7) | (1 << PORTD6) | (0 << PORTD5) | (0 << PORTD4) | (0 << PORTD3) | (0 << PORTD2) | (0 << PORTD1) | (0 << PORTD0);
 
-    DDRB = DDRC_INIT;
-    PORTB = PORTC_INIT;
+    DDRB = DDRB_INIT;
+    PORTB = PORTB_INIT;
     DDRC = DDRC_INIT;
     PORTC = PORTC_INIT;
-    DDRC = DDRC_INIT;
-    PORTC = PORTC_INIT;
+    DDRD = DDRD_INIT;
+    PORTD = PORTD_INIT;
 
     // Timer/Counter 0 initialization
     // Clock source: System Clock
@@ -96,15 +96,16 @@ void HW_Init(void) {
     // External Interrupt(s) initialization
     // INT0: Off
     // INT1: Off
-    // Interrupt on any change on pins PCINT0-7: On (PB0/PCINT0, PB1/PCINT1)
-    // Interrupt on any change on pins PCINT8-14: Off
-    // Interrupt on any change on pins PCINT16-23: On (PD6/PCINT22, PD7/PCINT23)
+    // Interrupt on any change on pins PCINT0-7: On (PB0/PCINT0, PB1/PCINT1) - fuel and speed sensor
+    // Interrupt on any change on pins PCINT8-14: On (PCx/PCINTx, PCx/PCINTx) - encoder
+    // Interrupt on any change on pins PCINT16-23: Off
     EICRA = (0 << ISC11) | (0 << ISC10) | (0 << ISC01) | (0 << ISC00);
     EIMSK = (0 << INT1) | (0 << INT0);
-    PCICR = (1 << PCIE2) | (0 << PCIE1) | (1 << PCIE0);
-    PCMSK0 = (0 << PCINT7) | (0 << PCINT6) | (0 << PCINT5) | (0 << PCINT4) | (0 << PCINT3) | (0 << PCINT2) | (1 << PCINT1) | (1 << PCINT0);
-    PCMSK2 = (1 << PCINT23) | (1 << PCINT22) | (0 << PCINT21) | (0 << PCINT20) | (0 << PCINT19) | (0 << PCINT18) | (0 << PCINT17) | (0 << PCINT16);
-    PCIFR = (1 << PCIF2) | (0 << PCIF1) | (1 << PCIF0);
+    PCMSK0 = (1 << PCINT1) | (1 << PCINT0);
+    PCMSK1 = PCINT_ENCODER;
+    PCMSK2 = 0;
+    PCICR = (0 << PCIE2) | (ENCODER_ENABLED << PCIE1) | (1 << PCIE0);
+    PCIFR = (0 << PCIF2) | (ENCODER_ENABLED << PCIF1) | (1 << PCIF0);
 
     // USART initialization
     // USART disabled
@@ -139,24 +140,15 @@ void HW_Init(void) {
     I2C_Master_Init();
 }
 
-void HW_read_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length) {
-    unsigned char i;
-    for (i = 0; i < length; i++) {
-        *p++ = eeprom_read_byte((uint8_t *) (ee_addr + i));
-    }
+inline void HW_read_eeprom_block(unsigned char* p, eeaddr_t ee_addr, unsigned char length) {
+    eeprom_read_block((void *)p, (void *) ee_addr, length);
 }
 
-void HW_write_eeprom_block(unsigned char* p, unsigned char ee_addr, unsigned char length) {
-    unsigned char int_state = SREG;
-    disable_interrupts();
-    unsigned char i;
-    for (i = 0; i < length; i++) {
-        eeprom_write_byte((uint8_t *) (ee_addr + i), *p++);
-    }
-    SREG = int_state;
+inline void HW_write_eeprom_block(unsigned char* p, eeaddr_t ee_addr, unsigned char length) {
+    eeprom_write_block((void *)p, (void *) ee_addr, length);
 }
 
-#if !defined(I2C_BITBANG)
+#if !defined(I2C_SOFTWARE)
 
 //---------------[ I2C Routines ]-------------------
 //--------------------------------------------------
