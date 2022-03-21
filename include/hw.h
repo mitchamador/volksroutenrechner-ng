@@ -3,8 +3,11 @@
 
 #if defined(__XC8)
 #include <xc.h>
-#if defined(_16F876A) || defined(_16F1936)
+#if defined(_16F876A) || defined(_16F1936) || defined(_16F1938)
 #define __PIC_MIDRANGE
+#if defined(_16F876A)
+#define LOW_MEM_DEVICE
+#endif
 #elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 #define __AVR_ATMEGA
 #endif

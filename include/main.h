@@ -43,21 +43,18 @@
 // min speed settings
 #define MIN_SPEED_CONFIG
 
-#ifdef HW_LEGACY
-// adc voltage filtering value (power of 2)
-//#define ADC_VOLTAGE_FILTER_VALUE 2
+#if defined(HW_LEGACY)
+#if defined(LOW_MEM_DEVICE)
 // simple checking time difference (decrease memory usage)
 #define SIMPLE_TRIPC_TIME_CHECK
 // auto calculate day of week
 //#undef AUTO_DAY_OF_WEEK
 // min speed settings
 //#undef MIN_SPEED_CONFIG
+#else
+// adc voltage filtering value (power of 2)
+//#define ADC_VOLTAGE_FILTER_VALUE 2
 #endif
-
-
-#if !defined(HW_LEGACY) || !defined(DS18B20_CONFIG)
-// auto calculate day of week
-#define AUTO_DAY_OF_WEEK
 #endif
 
 // power supply threshold 

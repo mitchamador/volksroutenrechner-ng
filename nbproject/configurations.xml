@@ -627,13 +627,13 @@
         <property key="wpo-lto" value="false"/>
       </XC8-config-global>
     </conf>
-    <conf name="PIC16F1936_legacy" type="2">
+    <conf name="PIC16F1938_legacy" type="2">
       <toolsSet>
         <developmentServer>localhost</developmentServer>
-        <targetDevice>PIC16F1936</targetDevice>
+        <targetDevice>PIC16F1938</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
-        <platformTool>noID</platformTool>
+        <platformTool>VSMViewerPlatformTool</platformTool>
         <languageToolchain>XC8</languageToolchain>
         <languageToolchainVersion>2.32</languageToolchainVersion>
         <platform>3</platform>
@@ -1182,13 +1182,13 @@
       <Tool>
         <property key="debugoptions.debug-startup" value="Use system settings"/>
         <property key="debugoptions.reset-behaviour" value="Use system settings"/>
-        <property key="design.file" value="proteus/mk-pic16f1936-legacy.pdsprj"/>
+        <property key="design.file" value="proteus/mk-pic16f1938-legacy.pdsprj"/>
         <property key="lastid" value=""/>
         <property key="target.ip.address" value="localhost"/>
         <property key="target.ip.port" value="8001"/>
       </Tool>
       <VSMViewerPlatformTool>
-        <property key="design.file" value="proteus/mk-pic16f1936-legacy.pdsprj"/>
+        <property key="design.file" value="proteus/mk-pic16f1938-legacy.pdsprj"/>
         <property key="target.ip.address" value="localhost"/>
         <property key="target.ip.port" value="8001"/>
       </VSMViewerPlatformTool>
