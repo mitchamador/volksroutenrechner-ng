@@ -415,9 +415,6 @@ typedef uint32_t uint24_t;
 #define PORTC_INIT _BV(PORTC0) | _BV(PORTC3)
 #define PORTD_INIT _BV(PORTD3)
 
-// force overwrite eeprom with default values
-//#define FORCE_EEPROM_OVERWRITE
-
 #endif
 
 #if defined(__AVR)

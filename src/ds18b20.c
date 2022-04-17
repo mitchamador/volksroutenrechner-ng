@@ -1,6 +1,6 @@
 #include "ds18b20.h"
 
-#ifdef DS18B20_SUPPORT
+#ifdef DS18B20_TEMP
 
 __bit ds18b20_start_conversion() {
     if (!onewire_start()) // send start pulse

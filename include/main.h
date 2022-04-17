@@ -4,25 +4,23 @@
 #include "hw.h"
 
 // use temp sensor from ds3231
-//#define DS3231_TEMP
-
-#ifdef DS3231_TEMP
-#define NO_DS18B20
+#ifndef NO_DS3231
+#define DS3231_TEMP
 #endif
 
 // disable ds18b20 support with external defines
 #ifndef NO_DS18B20
-#define DS18B20_SUPPORT
+#define DS18B20_TEMP
 #endif
 
-#ifdef DS18B20_SUPPORT
+#ifdef DS18B20_TEMP
 // disable ds18b20 config screen with external defines
 #ifndef NO_DS18B20_CONFIG
 #define DS18B20_CONFIG
 #endif
 #endif
 
-#if defined(DS18B20_SUPPORT) || defined(DS3231_TEMP)
+#if defined(DS18B20_TEMP) || defined(DS3231_TEMP)
 #define TEMPERATURE_SUPPORT
 #endif
 
@@ -45,6 +43,10 @@
 
 #if defined(HW_LEGACY)
 #if defined(LOW_MEM_DEVICE)
+// undef DS18B20 config (temporary solution)
+#if defined(DS3231_TEMP)
+#undef DS3231_TEMP
+#endif
 // simple checking time difference (decrease memory usage)
 #define SIMPLE_TRIPC_TIME_CHECK
 // auto calculate day of week
@@ -129,11 +131,13 @@ typedef struct {
 } srv_mh_t;
 
 typedef union {
-    // a structure with 8 single bit bit-field objects, overlapping the union member "byte"
-    uint8_t byte;
+    // a structure with 16 single bit bit-field objects, overlapping the union member "byte"
+    uint16_t word;
 
     struct {
-        unsigned alt_buttons : 1;
+        unsigned dummy : 7;
+        unsigned ds3231_temp : 1;
+        unsigned show_inner_temp : 1;
         unsigned daily_tripc : 1;
         unsigned mh_rpm : 1;
         unsigned fast_refresh : 1;
@@ -156,27 +160,30 @@ typedef struct {
     uint8_t minute, hour, day, month, year;
 } trip_time_t;
 
-// service counters limits
-
+// settings (16 bytes)
 typedef struct {
     // main odometer
     uint32_t odo;
+    // fractional part of main odometer
     uint16_t odo_temp;
 
+    // odo const
     uint16_t odo_const;
+    // fuel const
     uint8_t fuel_const;
+    // vcc const
     uint8_t vcc_const;
 
+    // settings (uint16_t)
     settings_u settings;
 
     // param counter for main screen
     uint8_t selected_param1;
-    // param counter for tripC screen
-    uint8_t selected_param2;
 
     // min speed for drive mode
     uint8_t min_speed;
 
+    // dummy bytes
     uint8_t dummy[2];
 
 } config_t;

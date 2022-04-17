@@ -53,7 +53,7 @@ void get_ds_temp(uint16_t* raw_temp_value) {
     uint8_t msb = I2C_Read_Byte(ACK);
     uint8_t lsb = I2C_Read_Byte(NACK);
     if (msb != 0xFF) {
-        *raw_temp_value = (((uint16_t) (msb << 8)) | lsb);
+        *raw_temp_value = (((uint16_t) (msb << 4)) | (lsb >> 4));
     } else {
         *raw_temp_value = DS18B20_TEMP_NONE;
     }

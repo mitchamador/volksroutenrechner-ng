@@ -46,9 +46,12 @@ signed char c_item_dir;
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0 && key3_press == 0)
 #define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0; key3_longpress = 0;
 
-#define KEY_NEXT ((key1_press != 0 && config.settings.alt_buttons == 0) || (key2_press != 0 && config.settings.alt_buttons != 0))
-#define KEY_CHANGEVALUE ((key2_press != 0 && config.settings.alt_buttons == 0) || (key1_press != 0 && config.settings.alt_buttons != 0) || (key3_press != 0 && config.settings.alt_buttons != 0))
-#define KEY_PREV (key3_press != 0 && config.settings.alt_buttons == 0)
+// todo config.settings.alt_buttons
+#define ALT_BUTTONS 0
+
+#define KEY_NEXT ((key1_press != 0 && ALT_BUTTONS == 0) || (key2_press != 0 && ALT_BUTTONS != 0))
+#define KEY_CHANGEVALUE ((key2_press != 0 && ALT_BUTTONS == 0) || (key1_press != 0 && ALT_BUTTONS != 0) || (key3_press != 0 && ALT_BUTTONS != 0))
+#define KEY_PREV (key3_press != 0 && ALT_BUTTONS == 0)
 
 #endif
 
@@ -195,7 +198,7 @@ const service_screen_item_t items_service[] = {
 #ifdef MIN_SPEED_CONFIG
     {MIN_SPEED_INDEX, service_screen_min_speed},
 #endif
-#if defined(DS18B20_SUPPORT) && defined(DS18B20_CONFIG)
+#if defined(DS18B20_TEMP) && defined(DS18B20_CONFIG)
     {TEMP_SENSOR_INDEX, service_screen_temp_sensors},
 #endif
     {SERVICE_COUNTERS_INDEX, service_screen_service_counters},
@@ -970,7 +973,7 @@ void print_main_odo(align_t align) {
     _print(len, POS_KM, align);
 }
 
-#if defined(DS18B20_SUPPORT)
+#if defined(TEMPERATURE_SUPPORT)
 void print_temp(unsigned char index, bool header, align_t align) {
     _t = temps[index];
     if (_t == DS18B20_TEMP_NONE) {
@@ -1003,24 +1006,6 @@ void print_temp(unsigned char index, bool header, align_t align) {
         len = 8;
     } else if (!header) {
         len += print_symbols_str(len, POS_CELS);
-    }
-    LCD_Write_String8(buf, len, align);
-}
-#elif defined(DS3231_TEMP)
-void print_temp(unsigned char index, bool header, align_t align) {
-    _t = temps[index];
-    if (_t == DS18B20_TEMP_NONE) {
-        len = strcpy2(buf, (char *) &empty_string, 0);
-    } else {
-        if (_t & 0x8000) // if the temperature is negative
-        {
-            buf[0] = '-'; // put minus sign (-)
-            _t = (~_t) + 1; // change temperature value to positive form
-        } else {
-            buf[0] = '+';
-        }
-        _t = (unsigned short) ((_t >> 8) * 10 + (((_t & 0x00FF) * 10) >> 8));
-        len = print_fract(&buf[1], _t) + 1;
     }
     LCD_Write_String8(buf, len, align);
 }
@@ -1248,11 +1233,11 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
     return strtoul2(buf);
 }
 
-unsigned char edit_value_bits(unsigned char v, char* str) {
+uint16_t edit_value_bits(uint16_t v, char* str) {
 
-#define cursor_pos 0xC4
+#define cursor_pos 0xC0
 
-    unsigned char pos = 0;
+    uint8_t pos = 0;
 
     start_timeout(300);
     while (timeout == 0) {
@@ -1260,7 +1245,7 @@ unsigned char edit_value_bits(unsigned char v, char* str) {
 
         // change cursor to next position
         if (key1_press != 0) {
-            if (++pos == 8) {
+            if (pos++ == 15) {
                 pos = 0;
             }
             start_timeout(300);
@@ -1269,28 +1254,27 @@ unsigned char edit_value_bits(unsigned char v, char* str) {
 #ifndef HW_LEGACY
         // change cursor to prev position
         if (key3_press != 0) {
-            if (pos == 0) {
-                pos = 7;
-            } else {
-                pos--;
+            if (pos-- == 0) {
+                pos = 15;
             }
             start_timeout(300);
         }
-#endif        
+#endif  
+
         // edit number in cursor position
         if (key2_press != 0) {
-            v ^= (1 << (7 - pos));
+            v ^= (1 << (15 - pos));
             start_timeout(300);
         }
 
         LCD_CMD(LCD_CURSOR_OFF);
 
-        add_leading_symbols(buf, '0', ultoa2(buf, v, 2), 8);
+        add_leading_symbols(buf, '0', ultoa2(buf, v, 2), 16);
 
         unsigned char _onoff = (buf[pos] - '0') + 1;
 
         LCD_CMD(cursor_pos);
-        LCD_Write_String8(buf, 8, LCD_ALIGN_LEFT);
+        LCD_Write_String16(buf, 16, LCD_ALIGN_LEFT);
 
         memset(buf, ' ', 16);
         len = strcpy2((char*) buf, (char *) str, pos + 1);
@@ -1349,9 +1333,9 @@ unsigned char select_param(unsigned char* param, unsigned char total) {
 }
 
 void print_selected_param1(align_t align) {
-    switch (select_param(&config.selected_param1, 7)) {
+    switch (select_param(&config.selected_param1, 8)) {
         case 0:
-            print_temp(TEMP_OUT, false, align);
+            print_temp(config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT, false, align);
             break;
         case 1:
             print_voltage(align);
@@ -1369,6 +1353,9 @@ void print_selected_param1(align_t align) {
             print_trip_average_speed(&trips.tripC, align);
             break;
         case 6:
+            print_trip_total_fuel(&trips.tripC, align);
+            break;
+        case 7:
             print_speed(trips.tripC_max_speed, print_symbols_str(0, POS_MAXS), align);
             break;
     }
@@ -1463,7 +1450,7 @@ void screen_main(void) {
             print_main_odo(LCD_ALIGN_RIGHT);
 
             LCD_CMD(0xC0);
-            print_temp(TEMP_OUT, false, LCD_ALIGN_LEFT);
+            print_temp(config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT, false, LCD_ALIGN_LEFT);
             print_voltage(LCD_ALIGN_RIGHT);
         } else {
 //; 2) на месте с работающим двигателем
@@ -1630,7 +1617,7 @@ void service_screen_total_trip() {
 }
 
 void service_screen_settings_bits() {
-    config.settings.byte = edit_value_bits(config.settings.byte, (char *) &settings_bits);
+    config.settings.word = edit_value_bits(config.settings.word, (char *) &settings_bits);
 }
 
 #ifdef MIN_SPEED_CONFIG
@@ -1972,16 +1959,19 @@ void print_warning_service_counters(unsigned char warn) {
     }
 }
 
-#if defined(DS18B20_SUPPORT)
+#if defined(TEMPERATURE_SUPPORT)
 
+#if defined(DS18B20_TEMP)
 uint8_t t_error[3] = {0, 0, 0};
+#endif
 
 void handle_temp() {
     temperature_fl = 0;
     if (temperature_conv_fl != 0) {
-        // read temperature for ds18b20
+        // read temperature for ds18b20/ds3231
         timeout_temperature = TIMEOUT_TEMPERATURE;
         temperature_conv_fl = 0;
+#if defined(DS18B20_TEMP)
         unsigned char _temps_ee_addr = EEPROM_DS18B20_ADDRESS;
         for (unsigned char i = 0; i < 3; i++) {
             HW_read_eeprom_block((unsigned char *) &buf, _temps_ee_addr, 8);
@@ -1996,28 +1986,33 @@ void handle_temp() {
             }
             _temps_ee_addr += 8;
         }
+#endif
+#if defined(DS3231_TEMP)
+#if defined(DS18B20_TEMP)
+        if (config.settings.ds3231_temp)
+#endif
+        {
+          get_ds_temp(&temps[TEMP_IN]);
+        }
+#endif        
     } else {
-        // start conversion for ds18b20
+        // start conversion for ds18b20/ds3231
         temperature_conv_fl = 1;
         timeout_temperature = 1;
+#if defined(DS18B20_TEMP)
         ds18b20_start_conversion();
+#endif
+#if defined(DS3231_TEMP)
+#if defined(DS18B20_TEMP)
+        if (config.settings.ds3231_temp)
+#endif
+        {
+          start_ds_temp();
+        }
+#endif        
     }
 }
-#elif defined(DS3231_TEMP)
-void handle_temp() {
-    if (temperature_conv_fl != 0) {
-        temperature_conv_fl = 0;
-        temperature_fl = 0;
-        // read temperature for ds3231
-        timeout_temperature = TIMEOUT_TEMPERATURE;
-        get_ds_temp(&temps[TEMP_OUT]);
-    } else {
-        // start conversion for ds3231
-        temperature_conv_fl = 1;
-        timeout_temperature = 1;
-        start_ds_temp();
-    }
-}
+
 #endif
 
 void handle_misc_values() {
@@ -2148,4 +2143,3 @@ void main() {
         while (screen_refresh == 0);
     }
 }
-
