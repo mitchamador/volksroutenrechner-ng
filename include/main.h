@@ -131,7 +131,7 @@ typedef struct {
 } srv_mh_t;
 
 typedef union {
-    // a structure with 16 single bit bit-field objects, overlapping the union member "byte"
+    // a structure with 16 single bit bit-field objects, overlapping the union member "word"
     uint16_t word;
 
     struct {
@@ -160,6 +160,15 @@ typedef struct {
     uint8_t minute, hour, day, month, year;
 } trip_time_t;
 
+typedef union {
+    uint8_t byte;
+    
+    struct {
+        uint8_t main_param : 4;
+        uint8_t service_param : 4;
+    };
+} param_u;
+
 // settings (16 bytes)
 typedef struct {
     // main odometer
@@ -177,8 +186,8 @@ typedef struct {
     // settings (uint16_t)
     settings_u settings;
 
-    // param counter for main screen
-    uint8_t selected_param1;
+    // selected params
+    param_u selected_param;
 
     // min speed for drive mode
     uint8_t min_speed;

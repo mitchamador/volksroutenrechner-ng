@@ -386,6 +386,8 @@ typedef uint32_t uint24_t;
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << MUX3) | (0 << MUX2) | (1 << MUX1) | (1 << MUX0))
 // mux for buttons pin (PC0/ADC0)
 #define ADC_CHANNEL_BUTTONS ((0 << MUX3) | (0 << MUX2) | (0 << MUX1) | (0 << MUX0))
+// digital button read PC0
+#define BUTTON_ACTIVE ((PINC & _BV(PINC0)) == 0)
 
 // power pin settings
 #define PWR_ON  (PORTD |=  _BV(PORTD3))

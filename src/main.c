@@ -140,7 +140,7 @@ buzzer_t buzzer[3] = {
 };
 #endif
 
-uint8_t tmp_param = 0, service_param = 0;
+uint8_t tmp_param = 0, service_param = 0, main_param = 0;
 
 // buffer for strings
 char buf[16];
@@ -326,7 +326,7 @@ void adc_handler_voltage(uint16_t adc_value) {
 };
 
 void adc_handler_buttons(uint16_t adc_value) {
-    if (/*   adc_key >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */adc_value <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
+    if (/*   adc_value >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */adc_value <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
         if (adc_key == 0 || adc_key == ADC_KEY_OK)
             adc_key = ADC_KEY_OK;
     } else if (adc_value >= (ADC_BUTTONS_1V * 1 - ADC_BUTTONS_THRESHOLD) && adc_value <= (ADC_BUTTONS_1V * 1 + ADC_BUTTONS_THRESHOLD)) {
@@ -1333,7 +1333,7 @@ unsigned char select_param(unsigned char* param, unsigned char total) {
 }
 
 void print_selected_param1(align_t align) {
-    switch (select_param(&config.selected_param1, 8)) {
+    switch (select_param(&main_param, 8)) {
         case 0:
             print_temp(config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT, false, align);
             break;
@@ -1783,14 +1783,19 @@ void service_screen(unsigned char c_item) {
 void read_eeprom() {
     unsigned char ee_addr = 0;
 
-#if defined(__AVR)
+#if defined(__AVR) && defined(PROGMEM_EEPROM)
     // check eeprom special mark and save default eeprom content if mark not exists
     unsigned char tbuf[8];
-#ifndef FORCE_EEPROM_OVERWRITE
-    HW_read_eeprom_block((unsigned char*) &tbuf, sizeof(eedata) - 8, 8);
-#else
-    memset(tbuf, 0xFF, sizeof(tbuf));
-#endif
+    // checking key ok pressed for 1 sec for overwriting eeprom
+    uint8_t c;
+    while (BUTTON_ACTIVE && ++c < 25) {
+        delay_ms(40);
+    }
+    if (c == 25) {
+        memset(tbuf, 0xFF, sizeof(tbuf));
+    } else {
+        HW_read_eeprom_block((unsigned char*) &tbuf, sizeof(eedata) - 8, 8);
+    }       
     if (memcmp_P((unsigned char*) &tbuf, &eedata[sizeof(eedata) - 8], 8) != 0) {
         uint8_t c;
         for (c = 0; c < sizeof(eedata); c += 8) {
@@ -1835,6 +1840,9 @@ void power_off() {
         trips.tripC_time.month = time.month;
         trips.tripC_time.year = time.year;
     }
+    
+    config.selected_param.main_param = main_param;
+    config.selected_param.service_param = service_param;
     
     save_eeprom();
     
@@ -1910,6 +1918,9 @@ unsigned char check_tripC_time() {
         main_interval >>= 1;
         fuel2_const <<= 1;
     }
+
+    main_param = config.selected_param.main_param;
+    service_param = config.selected_param.service_param;
     
     if (check_tripC_time() != 0) {
         // clear tripC
