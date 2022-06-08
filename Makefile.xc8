@@ -37,13 +37,12 @@ usage:
 	$(info TARGET_CPU is one of 16F876A, 16F1936, 16F1938 (default))
 
 all: $(TARGET)
-
-release: clean version all
 	${CP} ${OBJECTDIR}/${OUTPUTNAME}.${OUTPUT_SUFFIX} firmware/${OUTPUTNAME}.pic${MP_PROCESSOR_OPTION}.${OUTPUT_SUFFIX}
 
-rebuild:
-	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean
-	$(MAKE) -f $(lastword $(MAKEFILE_LIST)) all
+release: version
+	MP_PROCESSOR_OPTION=16F876A $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean all
+	MP_PROCESSOR_OPTION=16F1936 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean all
+	MP_PROCESSOR_OPTION=16F1938 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean all
 
 $(TARGET): $(OBJS)
 	@${MKDIR} ${OBJECTDIR} 
