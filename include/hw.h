@@ -78,19 +78,20 @@ typedef uint32_t uint24_t;
 #endif
 
 // PORTA definitions (a/d channels)
-// RA0 as digital power control pin (need to set in adc interrupt routine)
+// RA0 as digital power control pin
 // RA1 as analog voltage input
-// RA3 as analog fuel tank input (instead of RA2 with legacy hw)
+// RA2 as analog fuel tank input
 // RA5 as digital 1wire pin
 
+// power control pin (RA0)
 #define PWR PORTAbits.RA0
 #define PWR_MASK  (1 << _PORTA_RA0_POSITION)
 
-// adc power
+// adc power (AN1/RA1)
 #define POWER_SUPPLY_TRIS_MASK (1 << _TRISA_TRISA1_POSITION)
 
-// fuel tank
-#define FUEL_TANK_TRIS_MASK (1 << _TRISA_TRISA3_POSITION)
+// fuel tank (AN2/RA2)
+#define FUEL_TANK_TRIS_MASK (1 << _TRISA_TRISA2_POSITION)
 
 // DS18B20 data pin (RA5)
 #define ONEWIRE_PIN      PORTAbits.RA5
@@ -100,15 +101,20 @@ typedef uint32_t uint24_t;
 #if defined(_16F876A)
 #define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#define ADC_CHANNEL_FUEL_TANK ((0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
 #define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION))
-// PORTA A/D configuration (AN0/RA0, AN1/RA1, AN3/RA3 as analog input)
-#define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (0 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
-#define ADC_CHANNEL_FUEL_TANK ((0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+// PORTA A/D configuration (AN0-AN4 as analog input)
+#define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (0 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
 #elif defined(_16F1936) || defined(_16F1938)
 #define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS4_POSITION) | (1 << _ADCON0_CHS3_POSITION) | (1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#define ADC_CHANNEL_FUEL_TANK ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
 #define ADCON0_INIT 0
 #define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADCS1_POSITION) | (0 << _ADCON1_ADCS0_POSITION))
+// PORTA AN1/RA1 (adc power) and AN2/RA2 as analog input (fuel tank)
+#define ANSELA_INIT ((1 << _ANSELA_ANSA1_POSITION) | (1 << _ANSELA_ANSA2_POSITION))
+#define ANSELB_INIT 0
+
 #endif
 
 #define set_adc_channel(ch) ADCON0 = ADCON0_INIT | ch
@@ -154,19 +160,27 @@ typedef uint32_t uint24_t;
 
 // PORTC definitions
 // RC0 - sound
-// RC1, RC3, RC4..RC7 - LCD RS,EN,data
 
 #define SND     PORTCbits.RC0
 #define SND_TRIS (1 << _TRISC_TRISC0_POSITION)
 
-// RS - RC1
-// EN - RC3
-// data - RC4..RC7
 #ifdef LCD_LEGACY
-#define LCD_PORT    PORTC
-#define RS (1 << 1)
-#define EN (1 << 3)
-#define LCD_PORT_MASK (0xF0 | RS | EN )
+// LCD definitions
+// rs - RC1
+// rw - RC2
+// en - RC3
+// data - RC4..RC7
+
+#define LCD_PORT PORTC
+#define LCD_PORT_DATA_MASK (0xF0)
+
+#define RS_LOW  PORTCbits.RC1=0
+#define RS_HIGH PORTCbits.RC1=1
+#define RW_LOW  PORTCbits.RC2=0
+#define RW_HIGH PORTCbits.RC2=1
+#define EN_LOW  PORTCbits.RC3=0
+#define EN_HIGH PORTCbits.RC3=1
+
 #endif
 
 // init values for port's data direction
@@ -386,8 +400,8 @@ typedef uint32_t uint24_t;
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << MUX3) | (0 << MUX2) | (1 << MUX1) | (1 << MUX0))
 // mux for buttons pin (PC0/ADC0)
 #define ADC_CHANNEL_BUTTONS ((0 << MUX3) | (0 << MUX2) | (0 << MUX1) | (0 << MUX0))
-// digital button read PC0
-#define BUTTON_ACTIVE ((PINC & _BV(PINC0)) == 0)
+// mux for fuel tank pin (PC6/ADC6)
+#define ADC_CHANNEL_FUEL_TANK ((0 << MUX3) | (1 << MUX2) | (1 << MUX1) | (0 << MUX0))
 
 // power pin settings
 #define PWR_ON  (PORTD |=  _BV(PORTD3))
@@ -414,8 +428,17 @@ typedef uint32_t uint24_t;
 
 // init values for port's data 
 #define PORTB_INIT _BV(PORTB0) | _BV(PORTB1)
-#define PORTC_INIT _BV(PORTC0) | _BV(PORTC3)
+#define PORTC_INIT _BV(PORTC0) | _BV(PORTC1) | _BV(PORTC2) | _BV(PORTC3)
 #define PORTD_INIT _BV(PORTD3)
+
+#ifndef ADC_BUTTONS
+// digital button read
+#define KEY1_PRESSED ((PINC & _BV(PINC1)) == 0)
+#define KEY2_PRESSED ((PINC & _BV(PINC0)) == 0)
+#define KEY3_PRESSED ((PINC & _BV(PINC2)) == 0)
+#endif
+
+#define KEY_OK_PRESSED ((PINC & _BV(PINC0)) == 0)
 
 #endif
 

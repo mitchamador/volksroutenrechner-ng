@@ -1,7 +1,20 @@
 #ifndef MAIN_H
 #define	MAIN_H
 
-#include "hw.h"
+#if defined(__AVR)
+//#define GPIO_BUTTONS
+
+#ifndef GPIO_BUTTONS
+#define ADC_BUTTONS
+#define ENCODER_SUPPORT
+#endif
+
+#define KEY3_SUPPORT
+#endif
+
+#include <hw.h>
+
+#if !defined(NO_TEMPERATURE_SUPPORT)
 
 // use temp sensor from ds3231
 #ifndef NO_DS3231
@@ -27,13 +40,12 @@
 // temperature timeout
 #define TIMEOUT_TEMPERATURE (15 - 1)
 
+#endif
+
 // disable sound support with external defines
 #ifndef NO_SOUND
 #define SOUND_SUPPORT
 #endif
-
-// adc voltage filtering (no legacy)
-#define ADC_VOLTAGE_FILTERING
 
 // auto calculate day of week
 #define AUTO_DAY_OF_WEEK
@@ -42,31 +54,43 @@
 #define MIN_SPEED_CONFIG
 
 #if defined(HW_LEGACY)
+
+// simple adc handler
+#define SIMPLE_ADC
+
 #if defined(LOW_MEM_DEVICE)
-// undef DS18B20 config (temporary solution)
+
+// skip oled lcd reset sequence (works ok after power up with EH1602 REV.J)
+#define NO_LCD_OLED_RESET
+
 #if defined(DS3231_TEMP)
 #undef DS3231_TEMP
 #endif
+
 // simple checking time difference (decrease memory usage)
 #define SIMPLE_TRIPC_TIME_CHECK
+
 // auto calculate day of week
 //#undef AUTO_DAY_OF_WEEK
+
 // min speed settings
 //#undef MIN_SPEED_CONFIG
-#else
-// adc voltage filtering value (power of 2)
-//#define ADC_VOLTAGE_FILTER_VALUE 2
+
 #endif
+
 #endif
+
 
 // power supply threshold 
 // with default divider resistor's (8,2k (to Vcc) + 3,6k (to GND)) values
 // THRESHOLD_VOLTAGE * (3,6 / (3,6 + 8,2)) * (1024 / 5) = THRESHOLD_VOLTAGE_ADC_VALUE
 // 2,048V ~ 128
 #define THRESHOLD_VOLTAGE_ADC_VALUE 128
+#ifdef ADC_BUTTONS
 // threshold for buttons +-0,2v
 #define ADC_BUTTONS_THRESHOLD 40
 #define ADC_BUTTONS_1V (1024/5)            
+#endif
 
 // misc constants (in seconds)
 #define MAIN_INTERVAL ((uint8_t) (2.0f / TIMER1_PERIOD))

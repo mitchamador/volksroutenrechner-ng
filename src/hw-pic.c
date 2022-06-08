@@ -64,9 +64,8 @@ void HW_Init(void) {
 
     // init ADC
 #if defined(_16F1936) || defined(_16F1938)
-    // set POWER_SUPPLY and FUEL_TANK pin as analog
-    ANSELA = (1 << _ANSELA_ANSA1_POSITION) | (1 << _ANSELA_ANSA3_POSITION);
-    ANSELB = 0;
+    ANSELA = ANSELA_INIT;
+    ANSELB = ANSELB_INIT;
 #endif    
     ADCON0 = ADCON0_INIT | ADC_CHANNEL_POWER_SUPPLY;
     ADCON1 = ADCON1_INIT;

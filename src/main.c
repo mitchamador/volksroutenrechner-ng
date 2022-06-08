@@ -17,27 +17,15 @@ services_t services;
 
 //========================================================================================
 
-#ifdef HW_LEGACY
+uint8_t _adc_ch;
 
-#define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0)
-#define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
-
-#define KEY_NEXT (key1_press != 0)
-#define KEY_CHANGEVALUE (key2_press != 0)
-#define KEY_PREV (0)
-
-#else
+#ifdef ADC_BUTTONS
 
 #define ADC_KEY_OK 2
 #define ADC_KEY_NEXT 1
 #define ADC_KEY_PREV 3
 
-uint8_t _adc_ch;
 volatile uint8_t adc_key;
-
-uint8_t key3_counter;
-volatile __bit key3_press, key3_longpress;
-signed char c_item_dir;
 
 #define KEY1_PRESSED (adc_key == ADC_KEY_NEXT)
 #define KEY2_PRESSED (adc_key == ADC_KEY_OK)
@@ -50,14 +38,36 @@ signed char c_item_dir;
 #define ALT_BUTTONS 0
 
 #define KEY_NEXT ((key1_press != 0 && ALT_BUTTONS == 0) || (key2_press != 0 && ALT_BUTTONS != 0))
-#define KEY_CHANGEVALUE ((key2_press != 0 && ALT_BUTTONS == 0) || (key1_press != 0 && ALT_BUTTONS != 0) || (key3_press != 0 && ALT_BUTTONS != 0))
+#define KEY_OK ((key2_press != 0 && ALT_BUTTONS == 0) || (key1_press != 0 && ALT_BUTTONS != 0) || (key3_press != 0 && ALT_BUTTONS != 0))
 #define KEY_PREV (key3_press != 0 && ALT_BUTTONS == 0)
 
+#else
+
+#define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0)
+#define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
+
+#define KEY_NEXT (key1_press != 0)
+#define KEY_OK (key2_press != 0)
+#ifdef KEY3_SUPPORT
+#define KEY_PREV (key3_press != 0)
+#else
+#define KEY_PREV (0)
+#endif
+
+#endif
+
+#ifdef KEY3_SUPPORT
+signed char c_item_dir;
 #endif
 
 // key variables and flags
 uint8_t key1_counter, key2_counter, shutdown_counter;
 volatile __bit key1_press, key2_press, key1_longpress, key2_longpress;
+
+#if defined(KEY3_SUPPORT)
+uint8_t key3_counter;
+volatile __bit key3_press, key3_longpress;
+#endif
 
 // 0.1s flag and counter
 uint8_t counter_01sec;
@@ -179,7 +189,7 @@ void service_screen_fuel_constant(void);
 void service_screen_vss_constant(void);
 void service_screen_total_trip(void);
 void service_screen_settings_bits(void);
-#ifdef DS18B20_CONFIG
+#if defined(DS18B20_CONFIG)
 void service_screen_temp_sensors(void);
 #endif
 void service_screen_service_counters(void);
@@ -244,7 +254,7 @@ void read_rotary() {
 }
 #endif
 
-#ifndef HW_LEGACY
+#if !defined(HW_LEGACY)
 void inc_fuel(trip_t* trip) {
     if (--trip->fuel_tmp1 == 0) {
         trip->fuel_tmp1 = fuel1_const;
@@ -261,51 +271,51 @@ void inc_odo(trip_t* trip) {
         trip->odo++;
     }
 }
+#endif
+
+#if !defined(SIMPLE_ADC)
 
 typedef void (*handle)(uint16_t adc_value);
+
+void adc_handler_voltage(uint16_t adc_value);
+#ifdef ADC_BUTTONS
+void adc_handler_buttons(uint16_t adc_value);
+#endif
+void adc_handler_fuel_tank(uint16_t adc_value);
 
 typedef struct {
     void (*handle)(uint16_t adc_value);
     uint16_t tmp;
-    uint8_t filter; // filter value
+    uint8_t filter; // filter value (power of 2)
+    uint8_t channel; // adc channel
+    uint16_t dummy; // align to 8 byte
 } adc_item_t;
 
-void adc_handler_voltage(uint16_t adc_value);
-void adc_handler_buttons(uint16_t adc_value);
-void adc_handler_fuel_tank(uint16_t adc_value);
-
 adc_item_t adc_items[] = {
-    {adc_handler_voltage, 0xFFFF, 4},
-    {adc_handler_buttons, 0xFFFF, 1},
-    //{adc_handler_fuel_tank, 0xFFFF, 16},
+    {adc_handler_voltage, 0xFFFF, 2, ADC_CHANNEL_POWER_SUPPLY},
+#ifdef ADC_BUTTONS
+    {adc_handler_buttons, 0xFFFF, 0, ADC_CHANNEL_BUTTONS},
+#endif
+    //{adc_handler_fuel_tank, 0xFFFF, 4, ADC_CHANNEL_FUEL_TANK},
 };
 
 void adc_handler(uint8_t adc_ch) {
-#ifdef ADC_VOLTAGE_FILTERING
     adc_item_t* h = &adc_items[adc_ch];
-    if (h->filter == 1) {
+    if (h->filter == 0) {
         h->handle(adc_read_value());
     } else {
-#if 1
         if (h->tmp == 0xFFFF) {
-            h->tmp = adc_read_value() * h->filter;
+            h->tmp = adc_read_value() << h->filter;
         } else {
-            h->tmp = h->tmp - ((h->tmp + h->filter / 2) / h->filter) + adc_read_value();
+            h->tmp = h->tmp - ((h->tmp + (1 << (h->filter - 1))) >> h->filter) + adc_read_value();
         }
-        h->handle((h->tmp + h->filter / 2) / h->filter);
-#else
-        // lower precision        
-        if (h->tmp == 0xFFFF) {
-            h->tmp = adc_read_value();
-        } else {
-            h->tmp = (adc_read_value() + h->tmp * h->filter - h->tmp) / h->filter;
-        }
-        h->handle(h->tmp);
-#endif
+        h->handle((h->tmp + (1 << (h->filter - 1))) >> h->filter);
     }
-#else
-    adc_items[adc_ch].handle(adc_read_value());
-#endif    
+    _adc_ch++;
+    if (_adc_ch >= sizeof(adc_items)/sizeof(adc_item_t)) {
+        _adc_ch = 0;
+    }
+    set_adc_channel(adc_items[_adc_ch].channel);
 }
 
 void adc_handler_voltage(uint16_t adc_value) {
@@ -315,16 +325,14 @@ void adc_handler_voltage(uint16_t adc_value) {
         shutdown_counter = 0;
     } else {
         if (shutdown_counter == 8) {
-            shutdown_fl = 1;
-            screen_refresh = 1;
+            shutdown_fl = 1; screen_refresh = 1;
         } else {
             shutdown_counter++;
         }
     }
-    _adc_ch = 1;
-    set_adc_channel(ADC_CHANNEL_BUTTONS);
 };
 
+#ifdef ADC_BUTTONS
 void adc_handler_buttons(uint16_t adc_value) {
     if (/*   adc_value >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */adc_value <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
         if (adc_key == 0 || adc_key == ADC_KEY_OK)
@@ -338,9 +346,8 @@ void adc_handler_buttons(uint16_t adc_value) {
     } else {
         adc_key = 0;
     }
-    _adc_ch = 0;
-    set_adc_channel(ADC_CHANNEL_POWER_SUPPLY);
 }
+#endif
 
 void adc_handler_fuel_tank(uint16_t adc_value) {
 }
@@ -448,9 +455,9 @@ int_handler_GLOBAL_begin
                     services.srv[1].counter++;
                     services.srv[2].counter++;
                     services.srv[3].counter++;
-                }
+        }
 
-#ifdef HW_LEGACY                
+#if defined(HW_LEGACY)
                 // eliminate possible stack overflow with pic16f876a
 
                 // trip A
@@ -600,7 +607,7 @@ int_handler_GLOBAL_begin
             key2_counter = 0;
         }
     
-#ifndef HW_LEGACY
+#ifdef KEY3_SUPPORT
         if (KEY3_PRESSED) // key pressed
         {
             if (key3_counter <= LONGKEY) {
@@ -658,7 +665,7 @@ int_handler_GLOBAL_begin
                      trips.tripA.time++;
                      trips.tripB.time++;
                      trips.tripC.time++;
-        }
+                }
 
 #ifdef TEMPERATURE_SUPPORT
                 if (timeout_temperature > 0) {
@@ -728,18 +735,14 @@ int_handler_GLOBAL_begin
 
     int_handler_adc_begin
 
-#ifdef HW_LEGACY
+#if defined(SIMPLE_ADC)
 
-#ifdef ADC_VOLTAGE_FILTER_VALUE
-        //adc_tmp0 = adc_tmp0 - ((adc_tmp0 + ADC_VOLTAGE_FILTER_VALUE/2) / ADC_VOLTAGE_FILTER_VALUE) + adc_read_value();
-        //adc_voltage = ((adc_tmp0 + ADC_VOLTAGE_FILTER_VALUE/2) / ADC_VOLTAGE_FILTER_VALUE);
-        adc_voltage = (adc_read_value() + adc_voltage * ADC_VOLTAGE_FILTER_VALUE - adc_voltage) / ADC_VOLTAGE_FILTER_VALUE;
-#else
         adc_voltage = adc_read_value();
-#endif
 
+#if defined(__DEBUG)
         // RA0 is configured as analog pin
         PWR_ON;
+#endif
 
         // read power supply status
         if (adc_voltage > THRESHOLD_VOLTAGE_ADC_VALUE) {
@@ -1050,8 +1053,8 @@ void screen_time(void) {
                 start_timeout(500);
             }
 #endif            
-            if (KEY_CHANGEVALUE) {
-#ifdef HW_LEGACY
+            if (KEY_OK) {
+#if !defined(KEY3_SUPPORT)
 #define BCD8_INCDEC(value, dummy, min, max) bcd8_inc(value, min, max)
 #else
                 dir_t dir = key3_press != 0 ? FORWARD : BACKWARD;
@@ -1123,7 +1126,7 @@ unsigned char edit_value_char(unsigned char v, edit_value_char_t mode, unsigned 
             }
             start_timeout(300);
         }
-#ifdef HW_LEGACY    
+#if !defined(KEY3_SUPPORT)
         if (key2_press != 0) {
 #else
         if (key2_press != 0 || key3_press != 0) {
@@ -1194,8 +1197,8 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
         }
 #endif
         // edit number in cursor position
-        if (KEY_CHANGEVALUE) {
-#ifndef HW_LEGACY
+        if (KEY_OK) {
+#if defined(KEY3_SUPPORT)
             if (key3_press != 0) {
                 if (--buf[pos] < '0') {
                     buf[pos] = pos == 0 ? _max_symbol_pos0 : '9';
@@ -1251,7 +1254,7 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
             start_timeout(300);
         }
 
-#ifndef HW_LEGACY
+#if defined(KEY3_SUPPORT)
         // change cursor to prev position
         if (key3_press != 0) {
             if (pos-- == 0) {
@@ -1525,7 +1528,7 @@ void screen_tripB() {
 
 void screen_temp() {
     if (config.settings.skip_temp_screen) {
-#ifdef HW_LEGACY
+#if !defined(ADC_BUTTONS) && !defined(ENCODER_SUPPORT)
         c_item++;
 #else
         c_item += c_item_dir;
@@ -1626,7 +1629,7 @@ void service_screen_min_speed() {
 }
 #endif
 
-#ifdef DS18B20_CONFIG
+#if defined(DS18B20_CONFIG)
 void service_screen_temp_sensors() {
     
     char tbuf[8];
@@ -1640,7 +1643,7 @@ void service_screen_temp_sensors() {
     start_timeout(300);
     while (timeout == 0) {
         screen_refresh = 0;
-#ifndef HW_LEGACY
+#if defined(KEY3_SUPPORT)
         if (key1_press != 0 || key2_press != 0 || key3_press != 0) {
 #else        
         if (key1_press != 0 || key2_press != 0) {
@@ -1679,8 +1682,8 @@ void service_screen_service_counters() {
 
         start_timeout(300);
     }
-    
-#ifndef HW_LEGACY
+
+#if defined(KEY3_SUPPORT)
     // prev service counter
     if (key3_press != 0) {
 
@@ -1727,7 +1730,7 @@ void service_screen_ua_const() {
         }
         start_timeout(300);
     }
-#ifdef HW_LEGACY    
+#if !defined(KEY3_SUPPORT)
     if (key2_press != 0) {
 #else
     if (key2_press != 0 || key3_press != 0) {
@@ -1788,7 +1791,7 @@ void read_eeprom() {
     unsigned char tbuf[8];
     // checking key ok pressed for 1 sec for overwriting eeprom
     uint8_t c;
-    while (BUTTON_ACTIVE && ++c < 25) {
+    while (KEY_OK_PRESSED && ++c < 25) {
         delay_ms(40);
     }
     if (c == 25) {
@@ -2059,7 +2062,7 @@ void handle_misc_values() {
 void main() {
 
     power_on();
-
+    
     start_timer1();
     enable_interrupts();
     
@@ -2092,13 +2095,13 @@ void main() {
                 prev_main_item  = c_item;
                 c_item = prev_service_item;
                 service_mode = 1;
-                LCD_Clear();
+                //LCD_Clear();
                 CLEAR_KEYS_STATE();
             } else if (service_mode == 1) {
                 prev_service_item = c_item;
                 c_item = prev_main_item;
                 service_mode = 0;
-                LCD_Clear();
+                //LCD_Clear();
                 CLEAR_KEYS_STATE();
             }
         }
@@ -2116,7 +2119,7 @@ void main() {
         }
         
         // show next/prev screen
-#ifdef HW_LEGACY
+#if !defined(KEY3_SUPPORT)
         if (key1_press != 0) {
             if (++c_item >= max_item) {
                 c_item = 0;
@@ -2136,7 +2139,7 @@ void main() {
                 }
  #endif        
             tmp_param = 0;
-            LCD_Clear();
+            //LCD_Clear();
             CLEAR_KEYS_STATE();
         }
         
@@ -2146,7 +2149,7 @@ void main() {
         } else {
             if (drive_min_speed_fl != 0 && c_item > DRIVE_MODE_MAX) {
                 c_item = 0;
-                LCD_Clear();
+                //LCD_Clear();
             }
             items_main[c_item].screen();
         }

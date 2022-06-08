@@ -7,12 +7,12 @@
 #define LCD_I2C_ADDRESS 0x4E
 
 #ifndef LCD_LEGACY
-#define RS (1 << 0)
-#define EN (1 << 2)
+#define RS            (1 << 0)
+#define RW            (1 << 1)
+#define EN            (1 << 2)
+#define LCD_BACKLIGHT (1 << 3)
 #endif
 
-#define LCD_BACKLIGHT          0x08
-#define LCD_NOBACKLIGHT        0x00
 #define LCD_FIRST_ROW          0x80
 #define LCD_SECOND_ROW         0xC0
 #define LCD_THIRD_ROW          0x94
@@ -48,8 +48,19 @@ typedef enum {
 
 //---[ LCD Routines ]---
 
+// max delays for 190kHz
+#define LCD_DELAY_CMD 53
+#define LCD_DELAY_CLEAR 2160
+
+#define LCD_Check_Busy() delay_us(LCD_DELAY_CMD)
+
+// delay en strobe delay
+#define LCD_delay_en_strobe()
+// delay between 4 bits
+#define LCD_delay_4bits()
+
 void LCD_Init(void);
-void LCD_CMD(unsigned char CMD);
+void LCD_CMD(char CMD);
 void LCD_Clear(void);
 
 #define LCD_Write_String8(Str, len, align) __LCD_Write_String(Str, len, 8, align)
