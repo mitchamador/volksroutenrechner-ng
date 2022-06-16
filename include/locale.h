@@ -13,6 +13,7 @@ typedef enum {
     POS_SEC,        
     POS_CELS,        
     POS_MAXS,        
+    POS_MS,        
     POS_NONE,
 } symbols_t;
 
@@ -28,7 +29,8 @@ typedef enum {
         /* POS_SEC=9   */ 0xFF, 's',              \
         /* POS_CELS=10 */ 0xFF, 0xDF,             \
         /* POS_MAXS=11 */ 0xFF, '<',              \
-        /* POS_NONE=12 */ 0xFF,                   \
+        /* POS_MAXS=12 */ 0xFF, 'm', 's',         \
+        /* POS_NONE=13 */ 0xFF,                   \
         0xFF,                                     \
 }
 
@@ -52,7 +54,7 @@ typedef enum {
 #define TIMEOUT_STRING "timeout"; 
 #define WARNING_STR "WARNING"; 
 
-#define SERVICE_MENU_TITLE "SERVICE MENU";
+#define CONFIG_MENU_TITLE "CONFIG MENU";
 #define SERVICE_COUNTERS "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
 
 #define SETTINGS_BITS "\0dual inj\0skip temp\0key sound\0serv alarm\0fast refresh\0mh rpm\0daily trip\0in/out temp\0ds3231 temp\0\0\0\0\0\0\0";
@@ -65,7 +67,7 @@ typedef enum {
     TOTAL_TRIP_INDEX,        
     VOLTAGE_ADJUST_INDEX,        
     SETTINGS_BITS_INDEX,        
-    TEMP_SENSOR_INDEX,        
+    TEMP_SENSOR_INDEX,
     SERVICE_COUNTERS_INDEX,        
     MIN_SPEED_INDEX,        
     VERSION_INFO_INDEX,        

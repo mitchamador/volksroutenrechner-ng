@@ -171,8 +171,9 @@ typedef uint32_t uint24_t;
 // en - RC3
 // data - RC4..RC7
 
-#define LCD_PORT PORTC
-#define LCD_PORT_DATA_MASK (0xF0)
+#define LCD_DATA_PORT       PORTC
+#define LCD_DATA_PORT_SHIFT 0
+#define LCD_DATA_PORT_MASK  (0xF0 >> LCD_DATA_PORT_SHIFT)
 
 #define RS_LOW  PORTCbits.RC1=0
 #define RS_HIGH PORTCbits.RC1=1
@@ -311,19 +312,6 @@ typedef uint32_t uint24_t;
 
 #elif defined(__AVR_ATMEGA)
 
-//#define ENCODER_SUPPORT
-
-#if !defined(ENCODER_SUPPORT)
-#define ENCODER_ENABLED 0
-#else
-#define ENCODER_ENABLED 1
-// encoder data (PC1/PCINT9) and clk (PC2/PCINT10)
-#define ENCODER_DATA ((PINC & _BV(PINC1)) != 0 ? 1 : 0)
-#define ENCODER_CLK  ((PINC & _BV(PINC2)) != 0 ? 1 : 0)
-#endif
-
-#define PCINT_ENCODER (ENCODER_ENABLED << PCINT9) | (ENCODER_ENABLED << PCINT10)
-
 #define __bit unsigned char
 #define __bank0
 #define __bank1
@@ -400,12 +388,12 @@ typedef uint32_t uint24_t;
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << MUX3) | (0 << MUX2) | (1 << MUX1) | (1 << MUX0))
 // mux for buttons pin (PC0/ADC0)
 #define ADC_CHANNEL_BUTTONS ((0 << MUX3) | (0 << MUX2) | (0 << MUX1) | (0 << MUX0))
-// mux for fuel tank pin (PC6/ADC6)
+// mux for fuel tank pin (ADC6)
 #define ADC_CHANNEL_FUEL_TANK ((0 << MUX3) | (1 << MUX2) | (1 << MUX1) | (0 << MUX0))
 
 // power pin settings
-#define PWR_ON  (PORTD |=  _BV(PORTD3))
-#define PWR_OFF (PORTD &= ~_BV(PORTD3))
+#define PWR_ON  (PORTD |=  _BV(PORTD5))
+#define PWR_OFF (PORTD &= ~_BV(PORTD5))
 
 // buzzer pin settings
 #define SND_ON  (PORTD |=  _BV(PORTD6))
@@ -422,23 +410,64 @@ typedef uint32_t uint24_t;
 #define ONEWIRE_INPUT    (DDRD &= ~_BV(DDD7))
 
 // init values for port's data direction
-#define DDRB_INIT 0
+#define DDRB_INIT _BV(DDB2) | _BV(DDB3) | _BV(DDB4)
 #define DDRC_INIT 0
-#define DDRD_INIT _BV(DDD3) | _BV(DDD6)
+#define DDRD_INIT _BV(DDD0) | _BV(DDD1) | _BV(DDD2) | _BV(DDD3) | _BV(DDD5) | _BV(DDD6)
 
 // init values for port's data 
 #define PORTB_INIT _BV(PORTB0) | _BV(PORTB1)
-#define PORTC_INIT _BV(PORTC0) | _BV(PORTC1) | _BV(PORTC2) | _BV(PORTC3)
-#define PORTD_INIT _BV(PORTD3)
+#ifdef ADC_BUTTONS
+#define PORTC_INIT 0
+#else
+#define PORTC_INIT _BV(PORTC0) | _BV(PORTC1) | _BV(PORTC2)
+#endif
+#define PORTD_INIT _BV(PORTD5)
 
 #ifndef ADC_BUTTONS
 // digital button read
-#define KEY1_PRESSED ((PINC & _BV(PINC1)) == 0)
+// PC0 - OK, PC1 - NEXT, PC2 - prev
 #define KEY2_PRESSED ((PINC & _BV(PINC0)) == 0)
+#ifndef ENCODER_SUPPORT
+#define KEY1_PRESSED ((PINC & _BV(PINC1)) == 0)
 #define KEY3_PRESSED ((PINC & _BV(PINC2)) == 0)
 #endif
+#endif
 
+// analog/digital button OK
 #define KEY_OK_PRESSED ((PINC & _BV(PINC0)) == 0)
+
+// encoder support
+#if !defined(ENCODER_SUPPORT)
+#define ENCODER_ENABLED 0
+#else
+#define ENCODER_ENABLED 1
+// encoder data (PC1/PCINT9) and clk (PC2/PCINT10)
+#define ENCODER_DATA ((PINC & _BV(PINC1)) != 0 ? 1 : 0)
+#define ENCODER_CLK  ((PINC & _BV(PINC2)) != 0 ? 1 : 0)
+#endif
+
+#define PCINT_ENCODER (ENCODER_ENABLED << PCINT9) | (ENCODER_ENABLED << PCINT10)
+
+#ifdef LCD_LEGACY
+
+// 4-bit 1602 LCD definitions
+// rs - PB2
+// rw - PB3
+// en - PB4
+// data - PD0..PD3
+
+#define LCD_DATA_PORT       PORTD
+#define LCD_DATA_PORT_SHIFT 4
+#define LCD_DATA_PORT_MASK  (0xF0 >> LCD_DATA_PORT_SHIFT)
+
+#define RS_LOW  (PORTB &= ~_BV(PORTB2))
+#define RS_HIGH (PORTB |=  _BV(PORTB2))
+#define RW_LOW  (PORTB &= ~_BV(PORTB3))
+#define RW_HIGH (PORTB |=  _BV(PORTB3))
+#define EN_LOW  (PORTB &= ~_BV(PORTB4))
+#define EN_HIGH (PORTB |=  _BV(PORTB4))
+
+#endif
 
 #endif
 

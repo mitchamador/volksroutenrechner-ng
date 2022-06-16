@@ -1,3 +1,4 @@
+#include "main.h"
 #include "ds1307.h"
 #include "ds18b20.h"
 #include "utils.h"
@@ -44,6 +45,7 @@ void set_ds_time(ds_time* time) {
     I2C_Master_Stop();
 }
 
+#ifdef DS3231_TEMP
 void get_ds_temp(uint16_t* raw_temp_value) {
     I2C_Master_Start();
     I2C_Master_Write(0xD0);
@@ -67,4 +69,4 @@ void start_ds_temp() {
     I2C_Master_Write(DS3231_CTRL_DEFAULT | DS3231_CTRL_CONV);   // start conversion
     I2C_Master_Stop();
 }
-
+#endif

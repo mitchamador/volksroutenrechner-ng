@@ -40,9 +40,9 @@ all: $(TARGET)
 	${CP} ${OBJECTDIR}/${OUTPUTNAME}.${OUTPUT_SUFFIX} firmware/${OUTPUTNAME}.pic${MP_PROCESSOR_OPTION}.${OUTPUT_SUFFIX}
 
 release: version
-	MP_PROCESSOR_OPTION=16F876A $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean all
-	MP_PROCESSOR_OPTION=16F1936 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean all
-	MP_PROCESSOR_OPTION=16F1938 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean all
+	MP_PROCESSOR_OPTION=16F876A $(MAKE) MP_EXTRA_CC_PRE="-DNO_SERVICE_COUNTERS_CONFIG" -f $(lastword $(MAKEFILE_LIST)) clean all eeprom
+	MP_PROCESSOR_OPTION=16F1936 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean all eeprom
+	MP_PROCESSOR_OPTION=16F1938 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean all eeprom
 
 $(TARGET): $(OBJS)
 	@${MKDIR} ${OBJECTDIR} 
@@ -50,7 +50,7 @@ $(TARGET): $(OBJS)
 
 ${OBJECTDIR}/%.p1 : %.c
 	@${MKDIR} "${OBJECTDIR}/src" 
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -DHW_LEGACY -xassembler-with-cpp -I"include" -mwarn=-3 -Wa,-a -DXPRJ_PIC16F876A_legacy=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall $(COMPARISON_BUILD)  -std=c99 -gcoff -mstack=compiled:auto:auto     -o $@ -c $<
+	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -DHW_LEGACY -xassembler-with-cpp -I"include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall $(COMPARISON_BUILD)  -std=c99 -gcoff -mstack=compiled:auto:auto     -o $@ -c $<
 
 clean:
 	@rm -rf $(OBJECTDIR)

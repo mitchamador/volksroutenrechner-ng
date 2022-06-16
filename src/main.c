@@ -43,15 +43,18 @@ volatile uint8_t adc_key;
 
 #else
 
+#ifdef KEY3_SUPPORT
+#define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0 && key3_press == 0)
+#define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0; key3_longpress = 0
+#else
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0)
 #define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
+#endif
 
 #define KEY_NEXT (key1_press != 0)
 #define KEY_OK (key2_press != 0)
 #ifdef KEY3_SUPPORT
 #define KEY_PREV (key3_press != 0)
-#else
-#define KEY_PREV (0)
 #endif
 
 #endif
@@ -103,8 +106,11 @@ volatile uint16_t kmh, fuel, adc_voltage;
 volatile uint24_t taho, _taho;
 volatile uint24_t taho_tmr1;
 
-#ifdef ADC_VOLTAGE_FILTER_VALUE
-uint16_t adc_tmp0;
+#ifdef FUEL_DURATION
+volatile __bit fuel_duration_fl;
+volatile uint24_t _fuel_duration;
+// uint16_t - max ~26 ms for pic16f targets (* 2.5 for atmega)
+volatile uint16_t fuel_duration;
 #endif
 
 volatile __bit save_tripc_time_fl = 0;
@@ -150,8 +156,11 @@ buzzer_t buzzer[3] = {
 };
 #endif
 
-uint8_t tmp_param = 0, service_param = 0, main_param = 0;
-
+uint8_t tmp_param = 0, main_param = 0;
+#ifdef SERVICE_COUNTERS_SUPPORT
+uint8_t service_param = 0;
+#endif
+        
 // buffer for strings
 char buf[16];
 //char buf2[16];
@@ -170,7 +179,9 @@ void screen_max(void);
 void screen_tripA(void);
 void screen_tripB(void);
 void screen_time(void);
+#ifdef SERVICE_COUNTERS_SUPPORT
 void screen_service_counters(void);
+#endif
 
 // max screen in drive mode
 #define DRIVE_MODE_MAX 2
@@ -182,42 +193,49 @@ const screen_item_t items_main[] = {
     {screen_tripA},
     {screen_tripB},
     {screen_time},
+#ifdef SERVICE_COUNTERS_SUPPORT   
     {screen_service_counters},
+#endif
 };
 
-void service_screen_fuel_constant(void);
-void service_screen_vss_constant(void);
-void service_screen_total_trip(void);
-void service_screen_settings_bits(void);
+void config_screen_fuel_constant(void);
+void config_screen_vss_constant(void);
+void config_screen_total_trip(void);
+void config_screen_settings_bits(void);
 #if defined(DS18B20_CONFIG)
-void service_screen_temp_sensors(void);
+void config_screen_temp_sensors(void);
 #endif
-void service_screen_service_counters(void);
-void service_screen_ua_const(void);
+#ifdef SERVICE_COUNTERS_CONFIG_SUPPORT
+void config_screen_service_counters(void);
+#endif
+void config_screen_ua_const(void);
 #ifdef MIN_SPEED_CONFIG
-void service_screen_min_speed(void);
+void config_screen_min_speed(void);
 #endif
-void service_screen_version(void);
+void config_screen_version(void);
 
-const service_screen_item_t items_service[] = {
-    {FUEL_CONSTANT_INDEX, service_screen_fuel_constant},
-    {VSS_CONSTANT_INDEX, service_screen_vss_constant},
-    {TOTAL_TRIP_INDEX, service_screen_total_trip},
-    {VOLTAGE_ADJUST_INDEX, service_screen_ua_const},
-    {SETTINGS_BITS_INDEX, service_screen_settings_bits},
+const config_screen_item_t items_service[] = {
+    {FUEL_CONSTANT_INDEX, config_screen_fuel_constant},
+    {VSS_CONSTANT_INDEX, config_screen_vss_constant},
+    {TOTAL_TRIP_INDEX, config_screen_total_trip},
+    {VOLTAGE_ADJUST_INDEX, config_screen_ua_const},
+    {SETTINGS_BITS_INDEX, config_screen_settings_bits},
 #ifdef MIN_SPEED_CONFIG
-    {MIN_SPEED_INDEX, service_screen_min_speed},
+    {MIN_SPEED_INDEX, config_screen_min_speed},
 #endif
 #if defined(DS18B20_TEMP) && defined(DS18B20_CONFIG)
-    {TEMP_SENSOR_INDEX, service_screen_temp_sensors},
+    {TEMP_SENSOR_INDEX, config_screen_temp_sensors},
 #endif
-    {SERVICE_COUNTERS_INDEX, service_screen_service_counters},
-    {VERSION_INFO_INDEX, service_screen_version},
+#ifdef SERVICE_COUNTERS_CONFIG_SUPPORT
+    {SERVICE_COUNTERS_INDEX, config_screen_service_counters},
+#endif
+    {VERSION_INFO_INDEX, config_screen_version},
 };
 
+__bit config_mode = 0;
+
 uint8_t c_item = 0, c_sub_item = 0;
-uint8_t prev_main_item = 0, prev_service_item = 0;
-uint8_t service_mode = 0;
+uint8_t prev_main_item = 0, prev_config_item = 0;
 uint8_t max_item = 0;
 
 uint8_t request_screen(char *);
@@ -379,8 +397,10 @@ int_handler_GLOBAL_begin
                 fuel_fl = 1;
                 motor_fl = 1;
                 save_tripc_time_fl = 1;
-                
+
+#ifdef SERVICE_COUNTERS_SUPPORT
                 services.mh.counter_rpm += mh_rpm_const;
+#endif
 
 // new taho calculation based on captured value of 0.01s timer
                 if (taho_measure_fl == 0) {
@@ -409,6 +429,17 @@ int_handler_GLOBAL_begin
                 // stop timer0
                 stop_timer_fuel();
                 fuel_fl = 0;
+#ifdef FUEL_DURATION
+                // measure fuel duration                
+                if (taho_measure_fl != 0) {
+                    _fuel_duration = taho_tmr1 + _timer1 - taho_tmr1_prev;
+                    if (_timer1_overflow != 0) {
+                        _fuel_duration += TIMER1_VALUE;
+                    }
+                    fuel_duration = (uint16_t) _fuel_duration;
+                    fuel_duration_fl = 1;
+                }
+#endif                
             }
         }
         
@@ -537,6 +568,9 @@ int_handler_GLOBAL_begin
                     taho_measure_fl = 0;
                     stop_timer_fuel();
                     taho_fl = 0;
+#ifdef FUEL_DURATION
+                    fuel_duration_fl = 0;
+#endif
                     motor_fl = 0;
                 } else {
                     taho_tmr1 += TIMER1_VALUE;
@@ -555,6 +589,7 @@ int_handler_GLOBAL_begin
             _timer1_overflow = 0;
         }
 
+#ifndef ENCODER_SUPPORT
         if (KEY1_PRESSED) // key pressed
         {
             if (key1_counter <= LONGKEY) {
@@ -580,7 +615,8 @@ int_handler_GLOBAL_begin
             }
             key1_counter = 0;
         }
-          
+#endif
+
         if (KEY2_PRESSED) // key pressed
         {
             if (key2_counter <= LONGKEY) {
@@ -607,7 +643,7 @@ int_handler_GLOBAL_begin
             key2_counter = 0;
         }
     
-#ifdef KEY3_SUPPORT
+#if defined(KEY3_SUPPORT) && !defined(ENCODER_SUPPORT)
         if (KEY3_PRESSED) // key pressed
         {
             if (key3_counter <= LONGKEY) {
@@ -818,6 +854,7 @@ void _print(unsigned char len, unsigned char pos, align_t align) {
     LCD_Write_String8(buf, len, align);
 }
 
+#if (defined(LOW_MEM_DEVICE) && !defined(FUEL_DURATION)) || defined (FUEL_DURATION_SMALL_FRACTION)
 /**
  * print fractional number [num/10].[num%10]
  * @param buf
@@ -833,11 +870,41 @@ unsigned char print_fract(char * buf, uint16_t num) {
         len++;
     }
     
-    //buf[len + 1] = 0;
     buf[len] = buf[len - 1];
     buf[len - 1] = '.';
     return len + 1;
 }
+#else
+#define print_fract(buf, num) print_fract2(buf, num, 1)
+
+/**
+ * print fractional number [num/10^frac].[num%10^frac]
+ * @param buf
+ * @param num
+ * @param frac numbers after '.'
+ * @return 
+ */
+unsigned char print_fract2(char * buf, uint16_t num, uint8_t frac) {
+    unsigned char len = ultoa2(buf, num, 10);
+
+    // add leading zeroes
+    if (len < frac + 1) {
+        add_leading_symbols(buf, '0', len, frac + 1);
+        len = frac + 1;
+    }
+
+    // shift right and add '.'
+    unsigned char tmp = len;
+    while (frac--) {
+        buf[tmp] = buf[tmp - 1];
+        tmp--;
+    }
+    buf[tmp] = '.';
+
+    return len + 1;
+}
+
+#endif
 
 /**
  * show trip time
@@ -955,6 +1022,23 @@ void print_taho(align_t align) {
 
     _print(len, POS_OMIN, align);
 }
+
+#ifdef FUEL_DURATION
+void print_fuel_duration(align_t align) {
+    if (fuel_duration_fl == 0) {
+        len = strcpy2(buf, (char *) &empty_string, 0);
+    } else {
+#if defined(FUEL_DURATION_SMALL_FRACTION)
+        uint16_t res = (uint16_t) (fuel_duration * (100 / 25) / (TIMER1_VALUE / 25));
+        len = print_fract(buf, res);
+#else        
+        uint16_t res = (uint16_t) (fuel_duration * (1000 / 250) / (TIMER1_VALUE / 250));
+        len = print_fract2(buf, res, 2);
+#endif
+    }
+    _print(len, POS_MS, align);
+}
+#endif
 
 void print_current_fuel_km(align_t align) {
     unsigned short t = (unsigned short) ((((unsigned long) fuel * (unsigned long) odo_con4) / (unsigned long) kmh) / (unsigned char) config.fuel_const);
@@ -1335,8 +1419,14 @@ unsigned char select_param(unsigned char* param, unsigned char total) {
     return *param;
 }
 
+#ifdef FUEL_DURATION
+#define NUM_PARAMS 9
+#else
+#define NUM_PARAMS 8
+#endif
+
 void print_selected_param1(align_t align) {
-    switch (select_param(&main_param, 8)) {
+    switch (select_param(&main_param, NUM_PARAMS)) {
         case 0:
             print_temp(config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT, false, align);
             break;
@@ -1361,6 +1451,11 @@ void print_selected_param1(align_t align) {
         case 7:
             print_speed(trips.tripC_max_speed, print_symbols_str(0, POS_MAXS), align);
             break;
+#ifdef FUEL_DURATION
+        case 8:
+            print_fuel_duration(align);
+            break;
+#endif
     }
 }
 
@@ -1548,6 +1643,7 @@ void screen_temp() {
     }
 }
 
+#ifdef SERVICE_COUNTERS_SUPPORT
 /**
  * get motor hours (based on rpm or time)
  * @return 
@@ -1606,31 +1702,32 @@ void screen_service_counters() {
         srv->time.year = time.year;
     }
 }
+#endif
 
-void service_screen_fuel_constant() {
+void config_screen_fuel_constant() {
     config.fuel_const = edit_value_char(config.fuel_const, CHAREDIT_MODE_NONE, 1, 255);
 }
 
-void service_screen_vss_constant() {
+void config_screen_vss_constant() {
     config.odo_const = (uint16_t) edit_value_long(config.odo_const, 29999L);
 }
 
-void service_screen_total_trip() {
+void config_screen_total_trip() {
     config.odo = edit_value_long(config.odo, 999999L);
 }
 
-void service_screen_settings_bits() {
+void config_screen_settings_bits() {
     config.settings.word = edit_value_bits(config.settings.word, (char *) &settings_bits);
 }
 
 #ifdef MIN_SPEED_CONFIG
-void service_screen_min_speed() {
+void config_screen_min_speed() {
     config.min_speed = edit_value_char(config.min_speed, CHAREDIT_MODE_KMH, 1, 10);
 }
 #endif
 
 #if defined(DS18B20_CONFIG)
-void service_screen_temp_sensors() {
+void config_screen_temp_sensors() {
     
     char tbuf[8];
     
@@ -1671,7 +1768,8 @@ void service_screen_temp_sensors() {
 }
 #endif
 
-void service_screen_service_counters() {
+#ifdef SERVICE_COUNTERS_CONFIG_SUPPORT
+void config_screen_service_counters() {
     // next service counter
     if (key1_press != 0) {
         c_sub_item++;
@@ -1721,8 +1819,9 @@ void service_screen_service_counters() {
     }
     
 }
+#endif
 
-void service_screen_ua_const() {
+void config_screen_ua_const() {
 
     if (key1_press != 0) {
         if (config.vcc_const >= 140) {
@@ -1746,13 +1845,13 @@ void service_screen_ua_const() {
     
 }
 
-void service_screen_version() {
+void config_screen_version() {
     LCD_CMD(0xC0);
     LCD_Write_String16(buf, strcpy2(buf, (char*) &version_str, 0), LCD_ALIGN_LEFT);
 }
 
-void service_screen(unsigned char c_item) {
-    service_screen_item_t item = items_service[c_item];
+void config_screen(unsigned char c_item) {
+    config_screen_item_t item = items_service[c_item];
     
     LCD_CMD(0x80);
     LCD_Write_String16(buf, strcpy2(buf, (char *) &service_menu_title, 0), LCD_ALIGN_LEFT);
@@ -1813,9 +1912,10 @@ void read_eeprom() {
     
     HW_read_eeprom_block((unsigned char*) &trips, ee_addr, sizeof(trips_t));
     ee_addr += ((sizeof(trips_t) - 1) / 8 + 1) * 8;
-    
-    HW_read_eeprom_block((unsigned char*) &services, ee_addr, sizeof(services_t));
 
+#ifdef SERVICE_COUNTERS_SUPPORT
+    HW_read_eeprom_block((unsigned char*) &services, ee_addr, sizeof(services_t));
+#endif
 }
 
 void save_eeprom() {
@@ -1825,8 +1925,10 @@ void save_eeprom() {
     
     HW_write_eeprom_block((unsigned char*) &trips, ee_addr, sizeof(trips_t));
     ee_addr += ((sizeof(trips_t) - 1) / 8 + 1) * 8;
-    
+
+#ifdef SERVICE_COUNTERS_SUPPORT
     HW_write_eeprom_block((unsigned char*) &services, ee_addr, sizeof(services_t));
+#endif
 }
 
 void power_off() {
@@ -1845,7 +1947,9 @@ void power_off() {
     }
     
     config.selected_param.main_param = main_param;
+#ifdef SERVICE_COUNTERS_SUPPORT
     config.selected_param.service_param = service_param;
+#endif
     
     save_eeprom();
     
@@ -1923,7 +2027,9 @@ unsigned char check_tripC_time() {
     }
 
     main_param = config.selected_param.main_param;
+#ifdef SERVICE_COUNTERS_SUPPORT
     service_param = config.selected_param.service_param;
+#endif
     
     if (check_tripC_time() != 0) {
         // clear tripC
@@ -1933,6 +2039,7 @@ unsigned char check_tripC_time() {
     
 }
 
+#ifdef SERVICE_COUNTERS_CONFIG_SUPPORT
 unsigned char check_service_counters() {
     unsigned char i;
     unsigned char warn = 0;
@@ -1972,6 +2079,7 @@ void print_warning_service_counters(unsigned char warn) {
         warn >>= 1;
     }
 }
+#endif
 
 #if defined(TEMPERATURE_SUPPORT)
 
@@ -2030,8 +2138,9 @@ void handle_temp() {
 #endif
 
 void handle_misc_values() {
+#ifdef SERVICE_COUNTERS_SUPPORT
     mh_rpm_const = config.settings.dual_injection != 0 ? 1 : 2;
-
+#endif
     speed100_const = (unsigned short) (SPEED100_CONST / config.odo_const);
 
     speed = (unsigned short) ((36000UL * (unsigned long) kmh) / (unsigned long) config.odo_const);
@@ -2070,11 +2179,13 @@ void main() {
     temperature_fl = 1;
 #endif        
 
-    if (service_mode == 0 && config.settings.service_alarm) {
+#ifdef SERVICE_COUNTERS_CONFIG_SUPPORT
+    if (config_mode == 0 && config.settings.service_alarm) {
         unsigned char warn = check_service_counters();
         print_warning_service_counters(warn);
     }
-      
+#endif
+    
     CLEAR_KEYS_STATE();
     
     // wait first adc conversion
@@ -2091,22 +2202,24 @@ void main() {
 
         if (key2_longpress != 0) {
             // long keypress for service key - switch service mode and main mode
-            if (service_mode == 0 && motor_fl == 0 && drive_fl == 0 && c_item == 0) {
+            if (config_mode == 0 && motor_fl == 0 && drive_fl == 0 && c_item == 0) {
                 prev_main_item  = c_item;
-                c_item = prev_service_item;
-                service_mode = 1;
+                c_item = prev_config_item;
+                config_mode = 1;
                 //LCD_Clear();
                 CLEAR_KEYS_STATE();
-            } else if (service_mode == 1) {
-                prev_service_item = c_item;
+            } else if (config_mode == 1) {
+                prev_config_item = c_item;
                 c_item = prev_main_item;
-                service_mode = 0;
+                config_mode = 0;
                 //LCD_Clear();
                 CLEAR_KEYS_STATE();
+                // save config
+                HW_write_eeprom_block((unsigned char*) &config, 0, sizeof(config_t));
             }
         }
         
-        if (service_mode == 0) {
+        if (config_mode == 0) {
             max_item = sizeof (items_main) / sizeof (screen_item_t);
 #ifdef TEMPERATURE_SUPPORT
             if (temperature_fl != 0) {
@@ -2115,7 +2228,7 @@ void main() {
 #endif            
             handle_misc_values();
         } else {
-            max_item = sizeof (items_service) / sizeof (service_screen_item_t);
+            max_item = sizeof (items_service) / sizeof (config_screen_item_t);
         }
         
         // show next/prev screen
@@ -2143,9 +2256,8 @@ void main() {
             CLEAR_KEYS_STATE();
         }
         
-        
-        if (service_mode != 0) {
-            service_screen(c_item);
+        if (config_mode != 0) {
+            config_screen(c_item);
         } else {
             if (drive_min_speed_fl != 0 && c_item > DRIVE_MODE_MAX) {
                 c_item = 0;
