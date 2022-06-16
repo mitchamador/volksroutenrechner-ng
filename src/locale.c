@@ -1,5 +1,5 @@
+#include "main.h"
 #include "locale.h"
-#include "hw.h"
 #include "version.h"
 #ifndef __AVR_ATMEGA
 #define PROGMEM
@@ -21,7 +21,7 @@ PROGMEM const char speed100_wait_string[] = SPEED100_WAIT_STRING;
 PROGMEM const char timeout_string[] = TIMEOUT_STRING; 
 PROGMEM const char warning_str[] = WARNING_STR; 
 
-PROGMEM const char service_menu_title[] = SERVICE_MENU_TITLE;
+PROGMEM const char service_menu_title[] = CONFIG_MENU_TITLE;
 PROGMEM const char service_menu_str[] = SERVICES_STR;
 PROGMEM const char service_counters[] = SERVICE_COUNTERS;
 

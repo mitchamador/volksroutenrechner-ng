@@ -82,7 +82,7 @@ void LCD_Init(void) {
 
 #ifdef LCD_LEGACY
 void LCD_Write_4Bit(unsigned char data) {
-    LCD_PORT = (LCD_PORT & ~LCD_PORT_DATA_MASK) | (data & 0xF0);
+    LCD_DATA_PORT = (LCD_DATA_PORT & ~LCD_DATA_PORT_MASK) | ((data >> LCD_DATA_PORT_SHIFT) & LCD_DATA_PORT_MASK);
     EN_HIGH;
     LCD_delay_en_strobe();
     EN_LOW;
@@ -91,29 +91,17 @@ void LCD_Write_4Bit(unsigned char data) {
 void LCD_CMD(char data) 
 {
     RS_LOW;
-    LCD_PORT = (LCD_PORT & ~LCD_PORT_DATA_MASK) | (data & 0xF0);
-    EN_HIGH;
-    LCD_delay_en_strobe();
-    EN_LOW;
+    LCD_Write_4Bit(data);
     LCD_delay_4bits();
-    LCD_PORT = (LCD_PORT & ~LCD_PORT_DATA_MASK) | ((data << 4) & 0xF0);
-    EN_HIGH;
-    LCD_delay_en_strobe();
-    EN_LOW;
+    LCD_Write_4Bit((unsigned char) (data << 4));
     LCD_Check_Busy();
 }
 
 void LCD_Write_Char(char data) {
     RS_HIGH;
-    LCD_PORT = (LCD_PORT & ~LCD_PORT_DATA_MASK) | (data & 0xF0);
-    EN_HIGH;
-    LCD_delay_en_strobe();
-    EN_LOW;
+    LCD_Write_4Bit(data);
     LCD_delay_4bits();
-    LCD_PORT = (LCD_PORT & ~LCD_PORT_DATA_MASK) | ((data << 4) & 0xF0);
-    EN_HIGH;
-    LCD_delay_en_strobe();
-    EN_LOW;
+    LCD_Write_4Bit((unsigned char) (data << 4));
     LCD_Check_Busy();
 }
 #else
@@ -144,18 +132,6 @@ void LCD_Write_Char(char Data)
 }
 #endif
 
-void LCD_Write_String(char* Str) {
-    for (unsigned char i = 0; Str[i] != '\0'; i++) {
-        LCD_Write_Char(Str[i]); 
-    }
-}
-
-void LCD_Write_String_Len(char* Str, unsigned char len) {
-    for (unsigned char i = 0; i < len; i++) {
-        LCD_Write_Char(Str[i]); 
-    }
-}
-
 void __LCD_Write_String(char* Str, unsigned char len, unsigned char max, align_t align) {
     unsigned char i;
     unsigned char p = 0;
@@ -178,6 +154,19 @@ void __LCD_Write_String(char* Str, unsigned char len, unsigned char max, align_t
         while (++p <= max) {
             LCD_Write_Char(' '); 
         }
+    }
+}
+
+/*
+void LCD_Write_String(char* Str) {
+    for (unsigned char i = 0; Str[i] != '\0'; i++) {
+        LCD_Write_Char(Str[i]); 
+    }
+}
+
+void LCD_Write_String_Len(char* Str, unsigned char len) {
+    for (unsigned char i = 0; i < len; i++) {
+        LCD_Write_Char(Str[i]); 
     }
 }
 
@@ -217,6 +206,7 @@ void LCD_Set_Cursor(unsigned char ROW, unsigned char COL)
       LCD_CMD(0x80 + COL-1);
   }
 }
+*/
 
 void LCD_Clear(void)
 {

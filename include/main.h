@@ -2,18 +2,25 @@
 #define	MAIN_H
 
 #if defined(__AVR)
-//#define GPIO_BUTTONS
 
-#ifndef GPIO_BUTTONS
+#ifdef ARDUINO
+// 1602 lcd i2c
+#define LCD_1602_I2C
+// adc buttons connected to PC0/ADC0
 #define ADC_BUTTONS
-#define ENCODER_SUPPORT
+#else
+// 1602 lcd 4bit
+#define LCD_LEGACY
 #endif
 
+// support for prev key
 #define KEY3_SUPPORT
+
 #endif
 
 #include <hw.h>
 
+// disable temperature support
 #if !defined(NO_TEMPERATURE_SUPPORT)
 
 // use temp sensor from ds3231
@@ -21,13 +28,13 @@
 #define DS3231_TEMP
 #endif
 
-// disable ds18b20 support with external defines
+// disable ds18b20 support
 #ifndef NO_DS18B20
 #define DS18B20_TEMP
 #endif
 
 #ifdef DS18B20_TEMP
-// disable ds18b20 config screen with external defines
+// disable ds18b20 config screen
 #ifndef NO_DS18B20_CONFIG
 #define DS18B20_CONFIG
 #endif
@@ -42,10 +49,25 @@
 
 #endif
 
-// disable sound support with external defines
+// disable all service counters support
+#ifndef NO_SERVICE_COUNTERS
+#define SERVICE_COUNTERS_SUPPORT
+#endif
+
+// disable service counters' configuration and checking
+#ifndef NO_SERVICE_COUNTERS_CONFIG
+#define SERVICE_COUNTERS_CONFIG_SUPPORT
+#endif
+
+// disable sound support
 #ifndef NO_SOUND
 #define SOUND_SUPPORT
 #endif
+
+// fuel duration measurement
+#define FUEL_DURATION
+// 1/10 rounding
+//#define FUEL_DURATION_SMALL_FRACTION
 
 // auto calculate day of week
 #define AUTO_DAY_OF_WEEK
@@ -58,20 +80,32 @@
 // simple adc handler
 #define SIMPLE_ADC
 
-#if defined(LOW_MEM_DEVICE)
+// pic16f876a undefs
+#if defined(LOW_MEM_DEVICE) && defined(SERVICE_COUNTERS_SUPPORT)
 
-// skip oled lcd reset sequence (works ok after power up with EH1602 REV.J)
-#define NO_LCD_OLED_RESET
-
-#if defined(DS3231_TEMP)
+#if defined(DS18B20_TEMP) && defined(DS3231_TEMP)
+// ds3231 temperature sensor support
 #undef DS3231_TEMP
 #endif
 
+#if defined(DS18B20_TEMP) && defined(SERVICE_COUNTERS_CONFIG_SUPPORT)
+
+// skip oled lcd reset sequence (though works ok without it after power up with EH1602 REV.J)
+#define NO_LCD_OLED_RESET
 // simple checking time difference (decrease memory usage)
 #define SIMPLE_TRIPC_TIME_CHECK
 
+#endif
+
+// fuel duration measurement
+#if defined(DS18B20_CONFIG) && defined(SERVICE_COUNTERS_CONFIG_SUPPORT)
+#undef FUEL_DURATION
+#endif
+
 // auto calculate day of week
+#if defined(FUEL_DURATION) && defined(DS18B20_TEMP)
 //#undef AUTO_DAY_OF_WEEK
+#endif
 
 // min speed settings
 //#undef MIN_SPEED_CONFIG
@@ -242,7 +276,7 @@ typedef struct {
 typedef struct {
     uint8_t str_index;
     void (*screen)(void);
-} service_screen_item_t;
+} config_screen_item_t;
 
 #endif	/* MAIN_H */
 
