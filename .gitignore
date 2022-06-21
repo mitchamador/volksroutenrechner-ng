@@ -2,7 +2,7 @@ nbproject/*.mk
 nbproject/*.properties
 nbproject/*.bash
 nbproject/private/*
-build/*
+build/*/*
 dist/*
 proteus/*/*
 proteus/*.pdsbak
@@ -12,3 +12,5 @@ proteus/*.workspace
 .vscode/*
 .generated_files/*
 *.code-workspace
+*.txt
+*.bat

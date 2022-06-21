@@ -8,6 +8,8 @@
 #define LCD_1602_I2C
 // adc buttons connected to PC0/ADC0
 #define ADC_BUTTONS
+// save default eeprom in progmem
+#define PROGMEM_EEPROM
 #else
 // 1602 lcd 4bit
 #define LCD_LEGACY
@@ -49,8 +51,12 @@
 
 #endif
 
-// disable all service counters support
-#ifndef NO_SERVICE_COUNTERS
+// disable all service counters' support
+#ifdef NO_SERVICE_COUNTERS
+#ifndef NO_SERVICE_COUNTERS_CONFIG
+#define NO_SERVICE_COUNTERS_CONFIG
+#endif
+#else
 #define SERVICE_COUNTERS_SUPPORT
 #endif
 
@@ -66,8 +72,6 @@
 
 // fuel duration measurement
 #define FUEL_DURATION
-// 1/10 rounding
-//#define FUEL_DURATION_SMALL_FRACTION
 
 // auto calculate day of week
 #define AUTO_DAY_OF_WEEK
@@ -110,6 +114,11 @@
 // min speed settings
 //#undef MIN_SPEED_CONFIG
 
+#endif
+
+#if defined(FUEL_DURATION)
+// 1/10 rounding
+//#define FUEL_DURATION_SMALL_FRACTION
 #endif
 
 #endif

@@ -1,0 +1,29 @@
+FLOAT PERIOD=1000m
+FLOAT v=0
+FLOAT t=0
+FLOAT start_t=10
+FLOAT next_t=start_t
+FLOAT sp=0
+FLOAT c=16000
+
+ON TIMER AT PERIOD EVERY PERIOD
+RESTORE
+OUT=v
+t = t + PERIOD
+
+IF t >= next_t
+
+  next_t = t + 0.1
+
+  IF sp <= 120
+    sp = sp + 0.99
+  ENDIF
+  PERIOD = (3600 / c) / sp / 2
+ 
+ENDIF
+
+IF t >= start_t
+  v=5-v
+ENDIF
+
+ENDON

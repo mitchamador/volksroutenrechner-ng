@@ -34,13 +34,6 @@ volatile uint8_t adc_key;
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0 && key3_press == 0)
 #define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0; key3_longpress = 0;
 
-// todo config.settings.alt_buttons
-#define ALT_BUTTONS 0
-
-#define KEY_NEXT ((key1_press != 0 && ALT_BUTTONS == 0) || (key2_press != 0 && ALT_BUTTONS != 0))
-#define KEY_OK ((key2_press != 0 && ALT_BUTTONS == 0) || (key1_press != 0 && ALT_BUTTONS != 0) || (key3_press != 0 && ALT_BUTTONS != 0))
-#define KEY_PREV (key3_press != 0 && ALT_BUTTONS == 0)
-
 #else
 
 #ifdef KEY3_SUPPORT
@@ -50,6 +43,18 @@ volatile uint8_t adc_key;
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0)
 #define CLEAR_KEYS_STATE() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
 #endif
+
+#endif
+
+#ifdef ENCODER_SUPPORT
+
+// todo config.settings.alt_buttons
+#define ALT_BUTTONS 1
+#define KEY_NEXT ((key1_press != 0 && ALT_BUTTONS == 0) || (key2_press != 0 && ALT_BUTTONS != 0))
+#define KEY_OK ((key2_press != 0 && ALT_BUTTONS == 0) || (key1_press != 0 && ALT_BUTTONS != 0) || (key3_press != 0 && ALT_BUTTONS != 0))
+#define KEY_PREV (key3_press != 0 && ALT_BUTTONS == 0)
+
+#else
 
 #define KEY_NEXT (key1_press != 0)
 #define KEY_OK (key2_press != 0)
@@ -1888,7 +1893,7 @@ void read_eeprom() {
 #if defined(__AVR) && defined(PROGMEM_EEPROM)
     // check eeprom special mark and save default eeprom content if mark not exists
     unsigned char tbuf[8];
-    // checking key ok pressed for 1 sec for overwriting eeprom
+    // checking key ok pressed for 1 sec for overwriting eeprom with defaults
     uint8_t c;
     while (KEY_OK_PRESSED && ++c < 25) {
         delay_ms(40);

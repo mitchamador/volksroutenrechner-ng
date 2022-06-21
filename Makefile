@@ -59,7 +59,9 @@ build: .build-post
 .build-post: .build-impl
 # Add your post 'build' code here...
 ifneq (${EEPROM},)
+ifeq (,$(findstring _arduino,${CONF}))
 .build-post: .eeprom_${CONF}
+endif
 endif
 ifneq (${RELEASE},)
 .build-post: .release_${CONF}
@@ -117,33 +119,24 @@ include nbproject/Makefile-variables.mk
 
 include nbproject/Makefile-local-${CONF}.mk
 
-.eeprom_PIC16F876A_legacy:
-	${MP_CC_DIR}/avr-objcopy -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_16F876A.bin
+# string to lower case LOWER_VAR = $(call lc,$(VAR))
+lc = $(subst A,a,$(subst B,b,$(subst C,c,$(subst D,d,$(subst E,e,$(subst F,f,$(subst G,g,$(subst H,h,$(subst I,i,$(subst J,j,$(subst K,k,$(subst L,l,$(subst M,m,$(subst N,n,$(subst O,o,$(subst P,p,$(subst Q,q,$(subst R,r,$(subst S,s,$(subst T,t,$(subst U,u,$(subst V,v,$(subst W,w,$(subst X,x,$(subst Y,y,$(subst Z,z,$1))))))))))))))))))))))))))
 
-.eeprom_PIC16F1936_legacy:
-	${MP_CC_DIR}/avr-objcopy -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_16F1936.bin
+.eeprom_PIC%_legacy:
+	${MP_CC_DIR}/avr-objcopy -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_$(patsubst .eeprom_PIC%_legacy,%,$@).bin
 
-.eeprom_PIC16F1938_legacy:
-	${MP_CC_DIR}/avr-objcopy -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_16F1938.bin
+.release_PIC%_legacy:
+	${CP} ${CND_ARTIFACT_PATH_${CONF}} firmware/${PROJECTNAME}.$(call lc,$(patsubst .release_%_legacy,%,$@)).hex
 
-.release_PIC16F876A_legacy:
-	${CP} ${CND_ARTIFACT_PATH_${CONF}} firmware/${PROJECTNAME}.pic16f876a.hex
+.eeprom_ATMega%:
+	${MP_CC_DIR}/avr-objcopy -j .eeprom --set-section-flags=.eeprom=alloc,load --change-section-lma .eeprom=0 --no-change-warnings -O binary ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_$(patsubst .eeprom_%,%,$@).bin
 
-.release_PIC16F1936_legacy:
-	${CP} ${CND_ARTIFACT_PATH_${CONF}} firmware/${PROJECTNAME}.pic16f1936.hex
-
-.release_PIC16F1938_legacy:
-	${CP} ${CND_ARTIFACT_PATH_${CONF}} firmware/${PROJECTNAME}.pic16f1938.hex
-
-.eeprom_ATMega328P:
-	${MP_CC_DIR}/avr-objcopy -O binary -I elf32-little -j .eeprom ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.elf proteus/eeprom_ATmega328P.bin
-
-.release_ATMega328P:
-	${CP} ${CND_ARTIFACT_PATH_${CONF}} firmware/${PROJECTNAME}.atmega328p.hex
-	${CP} ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.eep firmware/${PROJECTNAME}.atmega328p.eep
+.release_ATMega%:
+	${CP} ${CND_ARTIFACT_PATH_${CONF}} firmware/${PROJECTNAME}.$(call lc,$(patsubst .release_%,%,$@)).hex
+	${CP} ${CND_ARTIFACT_DIR_${CONF}}/${PROJECTNAME}.production.eep firmware/${PROJECTNAME}.$(call lc,$(patsubst .release_%,%,$@)).eep
 
 version:
-	@version.cmd
+	@cd build && version.cmd
 
 eeprom:
 	${MAKE} EEPROM=1 all

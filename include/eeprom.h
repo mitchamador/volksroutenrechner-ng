@@ -7,10 +7,8 @@
 
 #if defined(__AVR)
 
-// save default eeprom in progmem
-#define PROGMEM_EEPROM
-
 #ifdef PROGMEM_EEPROM
+// save default eeprom in progmem
 PROGMEM const char eedata[] = {
 #else
 volatile const struct {
@@ -50,8 +48,10 @@ __EEDATA(0x03,0x05,0x05,0x00,0x00,0x01,0x02,0x00) // 0x06 - l/h[0]
 __EEDATA(0x00,0x00,0x08,0x10,0x00,0x14,0x1C,0x04) // 0x07 - l/h[1]
 
 #if defined(__AVR)
+#if defined(PROGMEM_EEPROM)
 // special eeprom mark
 __EEDATA(0x00,0x00,0x00,0x00,0xDE,0xAD,0xC0,0xDE)
+#endif
 };
 #endif
 
