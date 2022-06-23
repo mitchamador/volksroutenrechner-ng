@@ -207,7 +207,17 @@ typedef uint32_t uint24_t;
 
 #define start_timer1() TMR1ON = 1
 
-#define get_timer1() (TMR1)
+// read 16bit TMR1 value (read TMR1H, TMR1L; if TMR1L == 0x00, re-read TMR1H)
+// if overflow occurs during reading (between start of interrupt and TMR1 reading) - set to max value
+#define get_timer1(_timer1)                                 \
+    *((uint8_t*)(&_timer1) + 1) = TMR1H;                    \
+    *((uint8_t*)(&_timer1) + 0) = TMR1L;                    \
+    if (*((uint8_t*)(&_timer1) + 0) == 0x00) {              \
+        *((uint8_t*)(&_timer1) + 1) = TMR1H;                \
+    }                                                       \
+    if (timer1_overflow()) {                                \
+        _timer1 = TIMER1_VALUE;                             \
+    }                                                       \
 
 #if defined(_16F876A)
 #define timer1_overflow() CCP2IF
@@ -326,7 +336,11 @@ typedef uint32_t uint24_t;
 #define TIMER1_PERIOD 0.01f
 #define TIMER1_VALUE 2500
 
-#define get_timer1() (TCNT1)
+#define get_timer1(_timer1)                         \
+    _timer1 = TCNT1;                                \
+    if (timer1_overflow()) {                        \
+        _timer1 = TIMER1_VALUE;                     \
+    }                                               \
 
 #define timer1_overflow() ((TIFR1 & (1 << OCF1A)) != 0)
 

@@ -80,7 +80,7 @@ endif
 
 release: version
 ifdef XC8-TOOLCHAIN
-	MCU=pic16f876a $(MAKE) MP_EXTRA_CC_PRE="-DNO_SERVICE_COUNTERS_CONFIG" -f $(lastword $(MAKEFILE_LIST)) clean build
+	MCU=pic16f876a $(MAKE) MP_EXTRA_CC_PRE="-DNO_SERVICE_COUNTERS_CHECKS" -f $(lastword $(MAKEFILE_LIST)) clean build
 	MCU=pic16f1936 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean build
 	MCU=pic16f1938 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean build
 endif

@@ -49,9 +49,13 @@ typedef enum {
 #define ONOFF_STRING "\0 off\0  on";
 #define TIME_CORRECTION "time correction?";
 #define RESET_STRING "reset?"; 
-#define SPEED100_STRING "0-100 timing"; 
-#define SPEED100_WAIT_STRING "wait for start"; 
+
+#define ACCEL_MEAS_STRING "\0 0-100\0 0-60\0 60-100\0 80-120"; 
+#define ACCEL_MEAS_STRING_TIMING "timing"; 
+#define ACCEL_MEAS_SIMPLE_STRING "0-100 timing"; 
+#define ACCEL_MEAS_WAIT_STRING "wait for start"; 
 #define TIMEOUT_STRING "timeout"; 
+
 #define WARNING_STR "WARNING"; 
 
 #define CONFIG_MENU_TITLE "CONFIG MENU";
@@ -98,8 +102,9 @@ extern const char trip_string[];
 extern const char onoff_string[];
 extern const char time_correction[];
 extern const char reset_string[]; 
-extern const char speed100_string[]; 
-extern const char speed100_wait_string[]; 
+extern const char accel_meas_string[]; 
+extern const char accel_meas_timing_string[]; 
+extern const char accel_meas_wait_string[]; 
 extern const char timeout_string[]; 
 extern const char warning_str[]; 
 

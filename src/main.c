@@ -69,17 +69,15 @@ signed char c_item_dir;
 #endif
 
 // key variables and flags
-uint8_t key1_counter, key2_counter, shutdown_counter;
-volatile __bit key1_press, key2_press, key1_longpress, key2_longpress;
+uint8_t key1_counter, key2_counter, key_repeat_counter;
+volatile __bit key1_press, key2_press, key1_longpress, key2_longpress, key_pressed;
 
 #if defined(KEY3_SUPPORT)
 uint8_t key3_counter;
 volatile __bit key3_press, key3_longpress;
 #endif
 
-// 0.1s flag and counter
-uint8_t counter_01sec;
-volatile __bit counter_01sec_fl;
+uint8_t shutdown_counter;
 
 // main interval
 uint8_t main_interval_counter;
@@ -90,17 +88,24 @@ __bit time_increase_fl;
 // timeout
 volatile uint16_t timeout_timer;
 volatile __bit timeout;
-
 #define start_timeout(timer) timeout = 0; timeout_timer = timer;
 
-// misc flags
-volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, shutdown_fl, _timer1_overflow, drive_min_speed_fl;
+// timeout2
+volatile uint8_t timeout2_timer;
+volatile __bit timeout2;
+#define start_timeout2(timer) timeout2 = 0; timeout2_timer = timer;
 
-// speed100 flags and variables
-volatile __bit speed100_measure_fl, speed100_ok_fl, speed100_timer_fl, speed100_fl, speed100_final_fl, _speed100_exit;
-volatile uint16_t speed100_const, speed100_timer, speed100;
-uint16_t speed100_tmr1_prev, speed100_tmr1;
-uint8_t speed100_tmr1_ofl;
+// misc flags
+volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, shutdown_fl, drive_min_speed_fl;
+
+// acceleration measurement flags and variables
+volatile __bit accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl, accel_meas_final_fl, _accel_meas_exit;
+#ifndef SIMPLE_ACCELERATION_MEASUREMENT
+volatile uint16_t accel_meas_lower_const;
+#endif
+volatile uint16_t accel_meas_upper_const, accel_meas_timer, accel_meas_speed;
+uint16_t accel_meas_tmr1_prev, accel_meas_tmr1;
+uint8_t accel_meas_tmr1_ofl;
 
 uint16_t kmh_tmp, fuel_tmp;
 volatile uint16_t taho_tmr1_prev;
@@ -144,7 +149,7 @@ uint16_t temps[3] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE};
 int8_t key_sound = BUZZER_NONE;
 __bit buzzer_fl, buzzer_init_fl, buzzer_snd_fl, buzzer_repeat_fl;
 uint8_t buzzer_counter_r;
-uint8_t buzzer_counter;
+uint8_t buzzer_counter, buzzer_counter_01sec;
 
 typedef struct {
     uint8_t counter; // number of repeats
@@ -210,7 +215,7 @@ void config_screen_settings_bits(void);
 #if defined(DS18B20_CONFIG)
 void config_screen_temp_sensors(void);
 #endif
-#ifdef SERVICE_COUNTERS_CONFIG_SUPPORT
+#ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
 void config_screen_service_counters(void);
 #endif
 void config_screen_ua_const(void);
@@ -231,7 +236,7 @@ const config_screen_item_t items_service[] = {
 #if defined(DS18B20_TEMP) && defined(DS18B20_CONFIG)
     {TEMP_SENSOR_INDEX, config_screen_temp_sensors},
 #endif
-#ifdef SERVICE_COUNTERS_CONFIG_SUPPORT
+#ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
     {SERVICE_COUNTERS_INDEX, config_screen_service_counters},
 #endif
     {VERSION_INFO_INDEX, config_screen_version},
@@ -261,17 +266,19 @@ void read_rotary() {
   if  (rot_enc_table[prevNextCode] ) {
     store <<= 4;
     store |= prevNextCode;
-    if (store == 0x2b) {
-        key3_press = 1;
-    }
-    if (store == 0x17) {
-        key1_press = 1;
-    }
-    if (key1_press != 0 || key3_press != 0) {
-        screen_refresh = 1;
+    if (key_repeat_counter == 0) {
+        if (store == 0x2b) {
+            key3_press = 1;
+        }
+        if (store == 0x17) {
+            key1_press = 1;
+        }
+        if (key1_press != 0 || key3_press != 0) {
+            key_pressed = 1;
 #ifdef SOUND_SUPPORT
-        key_sound = BUZZER_KEY;
+            key_sound = BUZZER_KEY;
 #endif
+        }
     }
   }
 }
@@ -389,10 +396,7 @@ int_handler_GLOBAL_begin
     int_handler_fuel_speed_begin
 
         // capture 0.01s timer value
-        /*uint16_t*/ _timer1 = get_timer1();
-        if (timer1_overflow()) {
-            _timer1_overflow = 1;
-        }
+        get_timer1(_timer1);
 
         // fuel injector
         if (FUEL_ACTIVE) {
@@ -416,9 +420,6 @@ int_handler_GLOBAL_begin
                     taho_tmr1_ofl = 0;
                 } else {
                     _taho = taho_tmr1 + _timer1 - taho_tmr1_prev;
-                    if (_timer1_overflow != 0) {
-                        _taho += TIMER1_VALUE;
-                    }
                     {
                         taho = _taho;
                         taho_fl = 1;
@@ -438,9 +439,6 @@ int_handler_GLOBAL_begin
                 // measure fuel duration                
                 if (taho_measure_fl != 0) {
                     _fuel_duration = taho_tmr1 + _timer1 - taho_tmr1_prev;
-                    if (_timer1_overflow != 0) {
-                        _fuel_duration += TIMER1_VALUE;
-                    }
                     fuel_duration = (uint16_t) _fuel_duration;
                     fuel_duration_fl = 1;
                 }
@@ -455,29 +453,36 @@ int_handler_GLOBAL_begin
                 drive_fl = 1;
                 
                 // new speed 100 calculation based on captured value of 0.01s timer
-                if (speed100_timer_fl != 0) {
-                    if (speed100_measure_fl == 0) {
-                        speed100_measure_fl = 1;
-                        speed100_tmr1_prev = _timer1;
-                        speed100_tmr1 = 0;
-                        speed100_tmr1_ofl = 0;
+                if (accel_meas_process_fl != 0) {
+                    if (accel_meas_fl == 0) {
+                        accel_meas_fl = 1;
+                        accel_meas_tmr1_prev = _timer1;
+                        accel_meas_tmr1 = 0;
+                        accel_meas_tmr1_ofl = 0;
                     } else {
-                        speed100 = speed100_tmr1 + _timer1 - speed100_tmr1_prev;
-                        if (_timer1_overflow != 0) {
-                            speed100 += TIMER1_VALUE;
+                        accel_meas_speed = accel_meas_tmr1 + _timer1 - accel_meas_tmr1_prev;
+                        accel_meas_drive_fl = 1;
+#ifndef SIMPLE_ACCELERATION_MEASUREMENT
+                        if (accel_meas_timer_fl == 0 && (accel_meas_speed <= accel_meas_lower_const || accel_meas_lower_const == 0)) {
+                            accel_meas_timer_fl = 1;
                         }
-                        speed100_fl = 1;
-                        if (speed100 <= speed100_const) {
-                            speed100_ok_fl = 1;
-                            speed100_timer_fl = 0;
+#else
+                        accel_meas_timer_fl = 1;
+#endif
+                        if (accel_meas_speed <= accel_meas_upper_const) {
+                            accel_meas_ok_fl = 1;
+                            accel_meas_timer_fl = 0;
+#ifndef SIMPLE_ACCELERATION_MEASUREMENT
+                            accel_meas_process_fl = 0;
+#endif
                         } else {
-                            speed100_tmr1_prev = _timer1;
-                            speed100_tmr1 = 0;
-                            speed100_tmr1_ofl = 0;
+                            accel_meas_tmr1_prev = _timer1;
+                            accel_meas_tmr1 = 0;
+                            accel_meas_tmr1_ofl = 0;
                         }
                     }
                 } else {
-                    speed100_measure_fl = 0;
+                    accel_meas_fl = 0;
                 }
 
                 kmh_tmp++;
@@ -567,119 +572,125 @@ int_handler_GLOBAL_begin
 
     int_handler_timer1_begin
 
-        if (_timer1_overflow == 0) {
-            if (taho_measure_fl != 0) {
-                if (++taho_tmr1_ofl == TAHO_OVERFLOW) {
-                    taho_measure_fl = 0;
-                    stop_timer_fuel();
-                    taho_fl = 0;
+        if (taho_measure_fl != 0) {
+            if (++taho_tmr1_ofl == TAHO_OVERFLOW) {
+                taho_measure_fl = 0;
+                stop_timer_fuel();
+                taho_fl = 0;
 #ifdef FUEL_DURATION
-                    fuel_duration_fl = 0;
+                fuel_duration_fl = 0;
 #endif
-                    motor_fl = 0;
-                } else {
-                    taho_tmr1 += TIMER1_VALUE;
-                }
+                motor_fl = 0;
+            } else {
+                taho_tmr1 += TIMER1_VALUE;
             }
-
-            if (speed100_measure_fl != 0) {
-                if (++speed100_tmr1_ofl == SPEED100_OVERFLOW) {
-                    speed100_measure_fl = 0;
-                    speed100_fl = 0;
-                } else {
-                    speed100_tmr1 += TIMER1_VALUE;
-                }
-            }
-        } else {
-            _timer1_overflow = 0;
         }
 
+        if (accel_meas_fl != 0) {
+            if (++accel_meas_tmr1_ofl == SPEED100_OVERFLOW) {
+                accel_meas_fl = 0;
+                accel_meas_drive_fl = 0;
+            } else {
+                accel_meas_tmr1 += TIMER1_VALUE;
+            }
+        }
+
+        if (key_repeat_counter == 0) {
 #ifndef ENCODER_SUPPORT
-        if (KEY1_PRESSED) // key pressed
-        {
-            if (key1_counter <= LONGKEY) {
-                key1_counter++;
-            }
-            if (key1_counter == LONGKEY) {
-                // long keypress
-                key1_longpress = 1;
-                screen_refresh = 1;
+            if (KEY1_PRESSED) // key pressed
+            {
+                if (key1_counter <= LONGKEY) {
+                    key1_counter++;
+                }
+                if (key1_counter == LONGKEY) {
+                    // long keypress
+                    key1_longpress = 1;
+                    key_pressed = 1;
 #ifdef SOUND_SUPPORT
-                key_sound = BUZZER_LONGKEY;
+                    key_sound = BUZZER_LONGKEY;
 #endif
-            }
-        } else // key released
-        {
-            if (key1_counter > DEBOUNCE && key1_counter <= SHORTKEY) {
-                // key press
-                key1_press = 1;
-                screen_refresh = 1;
+                }
+            } else // key released
+            {
+                if (key1_counter > DEBOUNCE && key1_counter <= SHORTKEY) {
+                    // key press
+                    key1_press = 1;
+                    key_pressed = 1;
 #ifdef SOUND_SUPPORT
-                key_sound = BUZZER_KEY;
+                    key_sound = BUZZER_KEY;
 #endif
+                }
+                key1_counter = 0;
             }
-            key1_counter = 0;
-        }
 #endif
 
-        if (KEY2_PRESSED) // key pressed
-        {
-            if (key2_counter <= LONGKEY) {
-                key2_counter++;
-            }
-            if (key2_counter == LONGKEY) {
-                // long keypress
-                key2_longpress = 1;
-                screen_refresh = 1;
+            if (KEY2_PRESSED) // key pressed
+            {
+                if (key2_counter <= LONGKEY) {
+                    key2_counter++;
+                }
+                if (key2_counter == LONGKEY) {
+                    // long keypress
+                    key2_longpress = 1;
+                    key_pressed = 1;
 #ifdef SOUND_SUPPORT
-                key_sound = BUZZER_LONGKEY;
+                    key_sound = BUZZER_LONGKEY;
 #endif
-            }
-        } else // key released
-        {
-            if (key2_counter > DEBOUNCE && key2_counter <= SHORTKEY) {
-                // key press
-                key2_press = 1;
-                screen_refresh = 1;
+                }
+            } else // key released
+            {
+                if (key2_counter > DEBOUNCE && key2_counter <= SHORTKEY) {
+                    // key press
+                    key2_press = 1;
+                    key_pressed = 1;
 #ifdef SOUND_SUPPORT
-                key_sound = BUZZER_KEY;
+                    key_sound = BUZZER_KEY;
 #endif
+                }
+                key2_counter = 0;
             }
-            key2_counter = 0;
-        }
     
 #if defined(KEY3_SUPPORT) && !defined(ENCODER_SUPPORT)
-        if (KEY3_PRESSED) // key pressed
-        {
-            if (key3_counter <= LONGKEY) {
-                key3_counter++;
-            }
-            if (key3_counter == LONGKEY) {
-                // long keypress
-                key3_longpress = 1;
-                screen_refresh = 1;
+            if (KEY3_PRESSED) // key pressed
+            {
+                if (key3_counter <= LONGKEY) {
+                    key3_counter++;
+                }
+                if (key3_counter == LONGKEY) {
+                    // long keypress
+                    key3_longpress = 1;
+                    key_pressed = 1;
 #ifdef SOUND_SUPPORT
-                key_sound = BUZZER_LONGKEY;
+                    key_sound = BUZZER_LONGKEY;
 #endif
-            }
-        } else // key released
-        {
-            if (key3_counter > DEBOUNCE && key3_counter <= SHORTKEY) {
-                // key press
-                key3_press = 1;
-                screen_refresh = 1;
+                }
+            } else // key released
+            {
+                if (key3_counter > DEBOUNCE && key3_counter <= SHORTKEY) {
+                    // key press
+                    key3_press = 1;
+                    key_pressed = 1;
 #ifdef SOUND_SUPPORT
-                key_sound = BUZZER_KEY;
+                    key_sound = BUZZER_KEY;
 #endif
+                }
+                key3_counter = 0;
             }
-            key3_counter = 0;
+#endif
+        } else {
+            key_repeat_counter--;
         }
-#endif
+
+        if (key_pressed == 1) {
+            key_pressed = 0; screen_refresh = 1;
+            key_repeat_counter = KEY_REPEAT_PAUSE; 
+        }
 
 #ifdef SOUND_SUPPORT    
         if (key_sound != BUZZER_NONE) {
             if (config.settings.key_sound) {
                 buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[key_sound];
+                buzzer_counter_01sec = 1;
             }
             key_sound = BUZZER_NONE;
         }
@@ -727,15 +738,20 @@ int_handler_GLOBAL_begin
             }
         }
 
-        if (speed100_timer_fl != 0) {
-            speed100_timer++;
+        if (accel_meas_timer_fl != 0) {
+            accel_meas_timer++;
         }
 
-        if (counter_01sec == 0) {
-            counter_01sec_fl = 1;
-            counter_01sec = 10;
+        if (timeout2_timer > 0) {
+            if (--timeout2_timer == 0) {
+                timeout2 = 1;
+            }
+        }
+
 #ifdef SOUND_SUPPORT
-            if (buzzer_fl != 0) {
+        if (buzzer_fl != 0) {
+            if (--buzzer_counter_01sec == 0) {
+                buzzer_counter_01sec = TIMER_01SEC_INTERVAL;
                 if (buzzer_init_fl == 0) {
                     buzzer_init_fl = 1;
                     buzzer_repeat_fl = 1;
@@ -768,10 +784,8 @@ int_handler_GLOBAL_begin
                 }
                 buzzer_counter--;
             }
-#endif                
-        } else {
-            counter_01sec--;
         }
+#endif                
     int_handler_timer1_end
 
     int_handler_adc_begin
@@ -1217,6 +1231,11 @@ unsigned char edit_value_char(unsigned char v, edit_value_char_t mode, unsigned 
         }
 #if !defined(KEY3_SUPPORT)
         if (key2_press != 0) {
+#elif defined(ENCODER_SUPPORT)
+        if (key2_press != 0) {
+            timeout = 1;
+        }
+        if (key3_press != 0) {
 #else
         if (key2_press != 0 || key3_press != 0) {
 #endif
@@ -1464,62 +1483,80 @@ void print_selected_param1(align_t align) {
     }
 }
 
-void speed100_measurement(void) {
+#ifdef SIMPLE_ACCELERATION_MEASUREMENT
+void acceleration_measurement(void) {
+#else
+
+typedef struct {
+    uint32_t lower;
+    uint32_t upper;
+} accel_meas_limits_t;
+
+accel_meas_limits_t accel_meas_limits[4] = {
+    {0, speed_const(100)},
+    {0, speed_const(60)},
+    {speed_const(60), speed_const(100)},
+    {speed_const(80), speed_const(120)},
+};
+
+void acceleration_measurement(uint8_t index) {
+#endif
     LCD_CMD(0x80);
-    LCD_Write_String16(buf, strcpy2(buf, (char *) &speed100_wait_string, 0), LCD_ALIGN_CENTER);
+    LCD_Write_String16(buf, strcpy2(buf, (char *) &accel_meas_wait_string, 0), LCD_ALIGN_CENTER);
 
-    speed100_measure_fl = 0; speed100_ok_fl = 0; speed100_timer = 0; speed100_final_fl = 0; _speed100_exit = 0;
+    accel_meas_fl = 0; accel_meas_ok_fl = 0; accel_meas_timer = 0; accel_meas_final_fl = 0; _accel_meas_exit = 0;
 
+#ifndef SIMPLE_ACCELERATION_MEASUREMENT
+    accel_meas_lower_const = (unsigned short) (accel_meas_limits[index].lower / config.odo_const);
+    accel_meas_upper_const = (unsigned short) (accel_meas_limits[index].upper / config.odo_const);
+#endif
+    
     memset(buf, '=', 16);
 
     // 15 sec waiting for start
-    start_timeout(1536);
+    start_timeout(1500);
 
-    counter_01sec_fl = 0;
-    while (_speed100_exit == 0 && NO_KEY_PRESSED) {
+    timeout2 = 1;
+    while (_accel_meas_exit == 0 && NO_KEY_PRESSED) {
         if (timeout == 0 && drive_fl == 0) {
-            if (counter_01sec_fl != 0) {
-                counter_01sec_fl = 0;
+            if (timeout2 != 0) {
+                start_timeout2((uint8_t) (TIMER_01SEC_INTERVAL * 2.5f));
                 LCD_CMD(0xC0);
                 LCD_Write_String16(buf, (unsigned char) (timeout_timer / 91), LCD_ALIGN_LEFT);
             }
         } else {
             if (timeout == 0) {
-                if (speed100_ok_fl == 0 && speed100_timer_fl == 0) {
+                if (accel_meas_ok_fl == 0 && accel_meas_process_fl == 0) {
                     // 30 sec for acceleration measurement
-                    timeout_timer = 3072;
-                    speed100_timer_fl = 1;
+                    timeout_timer = 3000;
+                    accel_meas_process_fl = 1;
+
+                    LCD_Clear();
                 }
 
-                len = print_fract((char*) buf, speed100_timer / 10U);
+                len = print_fract((char*) buf, accel_meas_timer / 10U);
                 len += print_symbols_str(len, POS_SEC);
 
-#ifdef PRINT_SPEED100                
                 add_leading_symbols(buf, ' ', len, 16);
-                if (speed100_fl != 0) {
-                    // print current speed 
-                    //len = print_fract((char*) buf, (uint16_t) ((360000UL * TIMER1_VALUE / config.odo_const) * 10UL / speed100)); // with fraction
-                    len = ultoa2((char*) buf, (uint16_t) ((360000UL * TIMER1_VALUE / config.odo_const) / speed100), 10); // integer
-                } else {
-                    // no speed
-                    len = strcpy2(buf, (char *) &empty_string, 0);
-                }
+
+                len = ultoa2((char*) buf, accel_meas_drive_fl != 0 ? (uint16_t) ((360000UL * TIMER1_VALUE / config.odo_const) / accel_meas_speed) : 0, 10); // integer
+
                 print_symbols_str(len, POS_KMH);
                 len = 16;
-#endif
+
                 LCD_CMD(0xC0);
                 LCD_Write_String16(buf, len, LCD_ALIGN_CENTER);
             }
 
-            if (timeout == 0 && speed100_ok_fl == 0) {
-                counter_01sec_fl = 0; while (counter_01sec_fl == 0);
+            if (timeout == 0 && accel_meas_ok_fl == 0) {
+                start_timeout2(TIMER_01SEC_INTERVAL); while (timeout2 == 0);
             } else {
-                if (speed100_ok_fl != 0 && speed100_final_fl == 0) {
+                if (accel_meas_ok_fl != 0 && accel_meas_final_fl == 0) {
                     // print final result
-                    speed100_final_fl = 1;
+                    accel_meas_final_fl = 1;
                 } else {
                     // timeout or 100 km/h
-                    speed100_timer_fl = 0;
+                    accel_meas_process_fl = 0;
                     if (timeout == 1) {
                         // timeout
                         LCD_CMD(0xC0);
@@ -1528,13 +1565,13 @@ void speed100_measurement(void) {
 #ifdef SOUND_SUPPORT
                     buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[BUZZER_WARN];
 #endif
-                    start_timeout(512); while (timeout == 0 && NO_KEY_PRESSED);
-                    _speed100_exit = 1;
+                    start_timeout(500); while (timeout == 0 && NO_KEY_PRESSED);
+                    _accel_meas_exit = 1;
                 }
             }
         }
     }
-    speed100_timer_fl = 0;
+    accel_meas_process_fl = 0;
     CLEAR_KEYS_STATE();
 }
 
@@ -1576,9 +1613,60 @@ void screen_main(void) {
         print_current_fuel_km(LCD_ALIGN_RIGHT);
     }
 
-    if (drive_fl == 0 && motor_fl != 0 && request_screen((char *) &speed100_string) != 0) {
-        speed100_measurement();
+#ifdef SIMPLE_ACCELERATION_MEASUREMENT
+    if (drive_fl == 0 && motor_fl != 0 && request_screen((char *) &accel_meas_string) != 0) {
+        acceleration_measurement();
     }
+#else
+    if (drive_fl == 0 && motor_fl != 0 && key2_longpress != 0) {
+
+        CLEAR_KEYS_STATE();
+
+        LCD_Clear();
+
+        uint8_t v = 0, max_value = sizeof(accel_meas_limits) / sizeof(accel_meas_limits[0]) - 1, index = 0xFF;
+        
+        start_timeout(300);
+        while (timeout == 0) {
+            screen_refresh = 0;
+
+            if (key1_press != 0) {
+                if (v++ == max_value) {
+                    v = 0;
+                }
+                start_timeout(300);
+            }
+#if defined(KEY3_SUPPORT)
+            if (key3_press != 0) {
+                if (v-- == 0) {
+                    v = max_value;
+                }
+                start_timeout(300);
+            }
+#endif
+            if (key2_press != 0) {
+                timeout = 1;
+                index = v;
+            }
+
+            CLEAR_KEYS_STATE();
+
+            LCD_CMD(0x80);
+            len = strcpy2(buf, (char *) &accel_meas_timing_string, 0);
+            len += strcpy2(&buf[len], (char *) accel_meas_string, v + 1);
+            
+            LCD_Write_String16(buf, len, LCD_ALIGN_CENTER);
+
+            while (screen_refresh == 0 && timeout == 0);
+        }
+        
+        
+        if (index != 0xFF) {
+            acceleration_measurement(index);
+        }
+        
+    }
+#endif        
 }
 
 
@@ -1773,7 +1861,7 @@ void config_screen_temp_sensors() {
 }
 #endif
 
-#ifdef SERVICE_COUNTERS_CONFIG_SUPPORT
+#ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
 void config_screen_service_counters() {
     // next service counter
     if (key1_press != 0) {
@@ -1836,6 +1924,11 @@ void config_screen_ua_const() {
     }
 #if !defined(KEY3_SUPPORT)
     if (key2_press != 0) {
+#elif defined(ENCODER_SUPPORT)
+    if (key2_press != 0) {
+        timeout = 1;
+    }
+    if (key3_press != 0) {
 #else
     if (key2_press != 0 || key3_press != 0) {
 #endif
@@ -2044,7 +2137,7 @@ unsigned char check_tripC_time() {
     
 }
 
-#ifdef SERVICE_COUNTERS_CONFIG_SUPPORT
+#ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
 unsigned char check_service_counters() {
     unsigned char i;
     unsigned char warn = 0;
@@ -2146,8 +2239,9 @@ void handle_misc_values() {
 #ifdef SERVICE_COUNTERS_SUPPORT
     mh_rpm_const = config.settings.dual_injection != 0 ? 1 : 2;
 #endif
-    speed100_const = (unsigned short) (SPEED100_CONST / config.odo_const);
-
+#ifdef SIMPLE_ACCELERATION_MEASUREMENT
+    accel_meas_upper_const = (unsigned short) (speed_const(100) / config.odo_const);
+#endif
     speed = (unsigned short) ((36000UL * (unsigned long) kmh) / (unsigned long) config.odo_const);
 
     drive_min_speed_fl = speed >= config.min_speed * 10;
@@ -2184,7 +2278,7 @@ void main() {
     temperature_fl = 1;
 #endif        
 
-#ifdef SERVICE_COUNTERS_CONFIG_SUPPORT
+#ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
     if (config_mode == 0 && config.settings.service_alarm) {
         unsigned char warn = check_service_counters();
         print_warning_service_counters(warn);

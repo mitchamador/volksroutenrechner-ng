@@ -16,8 +16,13 @@ PROGMEM const char trip_string[] = TRIP_STRING;
 PROGMEM const char onoff_string[] = ONOFF_STRING;
 PROGMEM const char time_correction[] = TIME_CORRECTION;
 PROGMEM const char reset_string[] = RESET_STRING; 
-PROGMEM const char speed100_string[] = SPEED100_STRING; 
-PROGMEM const char speed100_wait_string[] = SPEED100_WAIT_STRING; 
+#ifdef SIMPLE_ACCELERATION_MEASUREMENT
+PROGMEM const char accel_meas_string[] = ACCEL_MEAS_SIMPLE_STRING; 
+#else
+PROGMEM const char accel_meas_string[] = ACCEL_MEAS_STRING;
+PROGMEM const char accel_meas_timing_string[] = ACCEL_MEAS_STRING_TIMING;
+#endif
+PROGMEM const char accel_meas_wait_string[] = ACCEL_MEAS_WAIT_STRING; 
 PROGMEM const char timeout_string[] = TIMEOUT_STRING; 
 PROGMEM const char warning_str[] = WARNING_STR; 
 

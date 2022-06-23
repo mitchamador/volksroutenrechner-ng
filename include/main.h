@@ -53,16 +53,16 @@
 
 // disable all service counters' support
 #ifdef NO_SERVICE_COUNTERS
-#ifndef NO_SERVICE_COUNTERS_CONFIG
-#define NO_SERVICE_COUNTERS_CONFIG
+#ifndef NO_SERVICE_COUNTERS_CHECKS
+#define NO_SERVICE_COUNTERS_CHECKS
 #endif
 #else
 #define SERVICE_COUNTERS_SUPPORT
 #endif
 
 // disable service counters' configuration and checking
-#ifndef NO_SERVICE_COUNTERS_CONFIG
-#define SERVICE_COUNTERS_CONFIG_SUPPORT
+#ifndef NO_SERVICE_COUNTERS_CHECKS
+#define SERVICE_COUNTERS_CHECKS_SUPPORT
 #endif
 
 // disable sound support
@@ -92,7 +92,7 @@
 #undef DS3231_TEMP
 #endif
 
-#if defined(DS18B20_TEMP) && defined(SERVICE_COUNTERS_CONFIG_SUPPORT)
+#if defined(DS18B20_TEMP) && defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
 
 // skip oled lcd reset sequence (though works ok without it after power up with EH1602 REV.J)
 #define NO_LCD_OLED_RESET
@@ -102,7 +102,7 @@
 #endif
 
 // fuel duration measurement
-#if defined(DS18B20_CONFIG) && defined(SERVICE_COUNTERS_CONFIG_SUPPORT)
+#if defined(DS18B20_CONFIG) && defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
 #undef FUEL_DURATION
 #endif
 
@@ -114,12 +114,17 @@
 // min speed settings
 //#undef MIN_SPEED_CONFIG
 
+// speed 0-100 measurement only
+#if defined(DS18B20_TEMP) || defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
+#define SIMPLE_ACCELERATION_MEASUREMENT
 #endif
 
-#if defined(FUEL_DURATION)
+#endif
+
+//#if defined(FUEL_DURATION)
 // 1/10 rounding
 //#define FUEL_DURATION_SMALL_FRACTION
-#endif
+//#endif
 
 #endif
 
@@ -140,6 +145,8 @@
 #define DEBOUNCE ((uint8_t) (0.04f / TIMER1_PERIOD))
 #define SHORTKEY ((uint8_t) (0.5f / TIMER1_PERIOD))
 #define LONGKEY ((uint8_t) (1.0f / TIMER1_PERIOD))
+#define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / TIMER1_PERIOD))
+#define TIMER_01SEC_INTERVAL ((uint8_t) (0.1f / TIMER1_PERIOD))
 
 //show average speed (or fuel consumption) after distance AVERAGE_MIN_DIST * 0.1 km
 #define AVERAGE_MIN_DIST 3
@@ -165,11 +172,9 @@
 // taho const 
 #define TAHO_CONST ((uint32_t) (60 / TIMER1_PERIOD * TIMER1_VALUE))
 
-// print speed while acceleration's measurement 
-#define PRINT_SPEED100
-// timer1 counts between speed pulses when speed is 100 km/h
-// (1 / ((config.odo_const * 100) / 3600)) / (0.01f/TIMER1_VALUE) = (36 / (0.01f / TIMER1_VALUE) / config.odo_const
-#define SPEED100_CONST ((uint32_t) (36 / (TIMER1_PERIOD / TIMER1_VALUE)))
+// timer1 counts between speed pulses when speed is X km/h
+// (1 / ((config.odo_const * X) / 3600)) / (0.01f/TIMER1_VALUE) = ((3600 / X) / (0.01f / TIMER1_VALUE) / config.odo_const
+#define speed_const(x) ((uint32_t) ((3600 / x) / (TIMER1_PERIOD / TIMER1_VALUE)))
 
 // minimum pulse width for speed100 calculation (10 * 0.01s)
 #if (65536 / TIMER1_VALUE) >= 10

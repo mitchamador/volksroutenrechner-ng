@@ -92,7 +92,7 @@
         <property key="call-prologues" value="false"/>
         <property key="default-bitfield-type" value="true"/>
         <property key="default-char-type" value="true"/>
-        <property key="define-macros" value="HW_LEGACY;NO_SERVICE_COUNTERS_CONFIG"/>
+        <property key="define-macros" value="HW_LEGACY;NO_SERVICE_COUNTERS_CHECKS"/>
         <property key="disable-optimizations" value="false"/>
         <property key="extra-include-directories" value="include"/>
         <property key="favor-optimization-for" value="-speed,+space"/>
