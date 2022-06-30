@@ -18,6 +18,11 @@
 // support for prev key
 #define KEY3_SUPPORT
 
+#elif !defined(_16F876A)
+
+// support for prev key
+//#define KEY3_SUPPORT
+
 #endif
 
 #include <hw.h>
@@ -26,7 +31,7 @@
 #if !defined(NO_TEMPERATURE_SUPPORT)
 
 // use temp sensor from ds3231
-#ifndef NO_DS3231
+#ifndef NO_DS3231_TEMP
 #define DS3231_TEMP
 #endif
 
@@ -46,9 +51,18 @@
 #define TEMPERATURE_SUPPORT
 #endif
 
+#ifdef DS18B20_CONFIG
+// extended ds18b20 config (use onewire search)
+#ifndef NO_DS18B20_CONFIG_EXT
+#define DS18B20_CONFIG_EXT
+// show device number in config (e.g. 1/3 - first of total three)
+//#define DS18B20_CONFIG_EXT_SHOW_DEV
+#endif
+#endif
+
 // temperature timeout
 #define TIMEOUT_TEMPERATURE (15 - 1)
-
+#define FORCED_TIMEOUT_TEMPERATURE (3 - 1)
 #endif
 
 // disable all service counters' support
@@ -70,9 +84,6 @@
 #define SOUND_SUPPORT
 #endif
 
-// fuel duration measurement
-#define FUEL_DURATION
-
 // auto calculate day of week
 #define AUTO_DAY_OF_WEEK
 
@@ -87,53 +98,57 @@
 // pic16f876a undefs
 #if defined(LOW_MEM_DEVICE) && defined(SERVICE_COUNTERS_SUPPORT)
 
+// disable either service counters checks (default) or ds18b20 temp support
+#if defined(SERVICE_COUNTERS_CHECKS_SUPPORT) && defined(DS18B20_TEMP)
+#undef SERVICE_COUNTERS_CHECKS_SUPPORT
+#endif
+
 #if defined(DS18B20_TEMP) && defined(DS3231_TEMP)
 // ds3231 temperature sensor support
 #undef DS3231_TEMP
 #endif
 
-#if defined(DS18B20_TEMP) && defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
-
 // skip oled lcd reset sequence (though works ok without it after power up with EH1602 REV.J)
-#define NO_LCD_OLED_RESET
+//#define NO_LCD_OLED_RESET
 // simple checking time difference (decrease memory usage)
-#define SIMPLE_TRIPC_TIME_CHECK
-
-#endif
-
-// fuel duration measurement
-#if defined(DS18B20_CONFIG) && defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
-#undef FUEL_DURATION
-#endif
-
+//#define SIMPLE_TRIPC_TIME_CHECK
 // auto calculate day of week
-#if defined(FUEL_DURATION) && defined(DS18B20_TEMP)
 //#undef AUTO_DAY_OF_WEEK
-#endif
-
 // min speed settings
 //#undef MIN_SPEED_CONFIG
 
 // speed 0-100 measurement only
-#if defined(DS18B20_TEMP) || defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
+#if (defined(DS18B20_TEMP) || defined(SERVICE_COUNTERS_CHECKS_SUPPORT)) && !defined(NO_TEMPERATURE_SUPPORT)
 #define SIMPLE_ACCELERATION_MEASUREMENT
 #endif
 
 #endif
 
-//#if defined(FUEL_DURATION)
-// 1/10 rounding
-//#define FUEL_DURATION_SMALL_FRACTION
-//#endif
-
 #endif
 
+// disable config for 8k devices
+#if (defined(_16F876A) || defined(_16F1936)) && defined(DS18B20_CONFIG_EXT)
+#undef DS18B20_CONFIG_EXT
+#endif
+
+// show temp for sensors' configuration
+#if defined(_16F1936) && defined(DS18B20_CONFIG) && !defined(DS18B20_CONFIG_EXT)
+#define DS18B20_CONFIG_SHOW_TEMP
+#endif
+
+#ifdef DS18B20_CONFIG_EXT
+#define ONEWIRE_SEARCH
+#endif
 
 // power supply threshold 
 // with default divider resistor's (8,2k (to Vcc) + 3,6k (to GND)) values
 // THRESHOLD_VOLTAGE * (3,6 / (3,6 + 8,2)) * (1024 / 5) = THRESHOLD_VOLTAGE_ADC_VALUE
 // 2,048V ~ 128
 #define THRESHOLD_VOLTAGE_ADC_VALUE 128
+
+// number of measurements with power supply threshold before shutdown
+#define SHUTDOWN_COUNTER 10
+
 #ifdef ADC_BUTTONS
 // threshold for buttons +-0,2v
 #define ADC_BUTTONS_THRESHOLD 40
@@ -141,7 +156,7 @@
 #endif
 
 // misc constants (in seconds)
-#define MAIN_INTERVAL ((uint8_t) (2.0f / TIMER1_PERIOD))
+#define MAIN_INTERVAL ((uint8_t) (1.0f / TIMER1_PERIOD))
 #define DEBOUNCE ((uint8_t) (0.04f / TIMER1_PERIOD))
 #define SHORTKEY ((uint8_t) (0.5f / TIMER1_PERIOD))
 #define LONGKEY ((uint8_t) (1.0f / TIMER1_PERIOD))
@@ -176,11 +191,11 @@
 // (1 / ((config.odo_const * X) / 3600)) / (0.01f/TIMER1_VALUE) = ((3600 / X) / (0.01f / TIMER1_VALUE) / config.odo_const
 #define speed_const(x) ((uint32_t) ((3600 / x) / (TIMER1_PERIOD / TIMER1_VALUE)))
 
-// minimum pulse width for speed100 calculation (10 * 0.01s)
+// minimum pulse width for acceleration measurement calculation (10 * 0.01s)
 #if (65536 / TIMER1_VALUE) >= 10
-#define SPEED100_OVERFLOW 10
+#define ACCEL_MEAS_OVERFLOW 10
 #else
-#define SPEED100_OVERFLOW (65536 / TIMER1_VALUE)
+#define ACCEL_MEAS_OVERFLOW (65536 / TIMER1_VALUE)
 #endif
 
 typedef struct {
@@ -208,15 +223,15 @@ typedef union {
 
     struct {
         unsigned dummy : 7;
-        unsigned ds3231_temp : 1;
-        unsigned show_inner_temp : 1;
-        unsigned daily_tripc : 1;
-        unsigned mh_rpm : 1;
-        unsigned fast_refresh : 1;
-        unsigned service_alarm : 1;
-        unsigned key_sound : 1;
-        unsigned skip_temp_screen : 1;
-        unsigned dual_injection : 1;
+        unsigned ds3231_temp : 1;           // use ds3231 temperature as inner
+        unsigned show_inner_temp : 1;       // show inner (outer by default) temperature on first screen
+        unsigned daily_tripc : 1;           // use trip C as dayly counter (auto reset on next day)
+        unsigned mh_rpm : 1;                // show motorhours based on rpm (96000 per hour)
+        unsigned reserved : 1;              // reserved
+        unsigned service_alarm : 1;         // alarm for service counters
+        unsigned key_sound : 1;             // keys sound
+        unsigned skip_temp_screen : 1;      // skip temperature screen
+        unsigned par_injection : 1;         // pair/parallel injection
     };
 } settings_u;
 

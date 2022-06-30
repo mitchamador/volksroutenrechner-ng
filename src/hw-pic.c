@@ -1,7 +1,7 @@
 #include "hw.h"
 #include "i2c.h"
 
-#if defined(__PIC_MIDRANGE)
+#if defined(_PIC14) || defined(_PIC14E)
 
 void HW_Init(void) {
 

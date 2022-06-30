@@ -21,24 +21,18 @@ void bcd8_to_str(char* buf, unsigned char b) {
     buf[0] = ((b >> 4) & 0x0F) + '0';
 }
 
-unsigned char bcd8_incdec(unsigned char bcd, dir_t dir, unsigned char min, unsigned char max) {
-    unsigned char _tmp = bcd8_to_bin(bcd);
-    if (dir == BACKWARD) {
-        if (_tmp++ >= max) {
-            _tmp = min;
-        }
-    } else {
-        if (_tmp-- <= min) {
-            _tmp = max;
-        }
-    }
-    return bin8_to_bcd(_tmp);
-}
-
 unsigned char bcd8_inc(unsigned char bcd, unsigned char min, unsigned char max) {
     unsigned char _tmp = bcd8_to_bin(bcd);
     if (_tmp++ >= max) {
         _tmp = min;
+    }
+    return bin8_to_bcd(_tmp);
+}
+
+unsigned char bcd8_dec(unsigned char bcd, unsigned char min, unsigned char max) {
+    unsigned char _tmp = bcd8_to_bin(bcd);
+    if (_tmp-- <= min) {
+        _tmp = max;
     }
     return bin8_to_bcd(_tmp);
 }
@@ -107,20 +101,6 @@ unsigned char strcpy2(char* buf, char* str, unsigned char pos) {
     return pos;
 }
 
-void str_center16(char * buf, unsigned char len) {
-    unsigned char i;
-    unsigned char pos = (16 - len) >> 1;
-    for (i = len; i != 0; i--) {
-        buf[i + pos] = buf[i];
-    }
-    for (i = 0; i < pos; i++) {
-        buf[i] = ' ';
-    }
-    for (i = len + pos; i < 16; i++) {
-        buf[i] = ' ';
-    }
-}
-
 // long long ptr to hex string (for printing ds18b20 serial number)
 void llptrtohex(unsigned char *sn, unsigned char *p) {
     unsigned char i = 16, t;
@@ -156,4 +136,34 @@ void set_day_of_week(ds_time* time) {
     while (dow >= 7)
         dow -= 7;
     time->day_of_week = dow + 1;
+}
+
+#if !defined(__AVR)
+void * _memset(void * p1, char c, char n)
+{
+    char * p;
+
+    p = p1;
+    while (n--)
+        *p++ = c;
+    return p1;
+}
+#endif
+
+void buf_write_string(char* buf, unsigned char len, unsigned char max, align_t align) {
+    unsigned char p_lower = max - len, p_upper = max;
+    if (align == ALIGN_LEFT) {
+        p_lower = 0;
+    } else if (align == ALIGN_CENTER) {
+        p_lower >>= 1;
+    };
+    p_upper = p_lower + len;
+
+    while (max-- > 0) {
+        if (max < p_lower || max >= p_upper) {
+            buf[max] = ' ';
+        } else {
+            buf[max] = buf[--len];
+        }
+    }
 }

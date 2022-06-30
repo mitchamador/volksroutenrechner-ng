@@ -1,64 +1,5 @@
 #include "onewire.h"
-
-#if 0
-__bit onewire_start() {
-    ONEWIRE_CLEAR; // send reset pulse to the DS18B20 sensor
-    ONEWIRE_OUTPUT; // configure DS18B20_PIN pin as output
-    delay_us(500); // wait 500 us
-
-    ONEWIRE_INPUT; // configure DS18B20_PIN pin as input
-    delay_us(100); // wait 100 us to read the DS18B20 sensor response
-
-    if (ONEWIRE_GET == 0) {
-        delay_us(400); // wait 400 us
-        return 1; // DS18B20 sensor is present
-    }
-
-    return 0; // connection error
-}
-
-void onewire_write_bit(uint8_t value) {
-    ONEWIRE_CLEAR;
-    ONEWIRE_OUTPUT; // configure DS18B20_PIN pin as output
-    delay_us(2); // wait 2 us
-
-    ONEWIRE_VALUE((__bit) value);
-    delay_us(80); // wait 80 us
-
-    ONEWIRE_INPUT; // configure DS18B20_PIN pin as input
-    delay_us(2); // wait 2 us
-}
-
-__bit onewire_read_bit(void) {
-    static __bit value;
-
-    ONEWIRE_CLEAR;
-    ONEWIRE_OUTPUT; // configure DS18B20_PIN pin as output
-    delay_us(2);
-
-    ONEWIRE_INPUT; // configure DS18B20_PIN pin as input
-    delay_us(5); // wait 5 us
-
-    value = ONEWIRE_GET; // read and store DS18B20 state
-    delay_us(100); // wait 100 us
-
-    return value;
-}
-
-void onewire_write_byte(uint8_t value) {
-    for (uint8_t i = 0; i < 8; i++)
-        onewire_write_bit(value >> i);
-}
-
-uint8_t onewire_read_byte(void) {
-    uint8_t value = 0;
-
-    for (uint8_t i = 0; i < 8; i++)
-        value |= onewire_read_bit() << i;
-
-    return value;
-}
-#else
+#include <string.h>
 
 void onewire_write_bit(uint8_t value) {
     value = value & 0x01;
@@ -94,16 +35,16 @@ __bit onewire_read_bit(void) {
 }
 
 __bit onewire_start() {
+    unsigned char result;
+
     ONEWIRE_OUTPUT;
     ONEWIRE_CLEAR;
     delay_us(480);
     ONEWIRE_INPUT;
-    delay_us(60);
-    if (ONEWIRE_GET == 0) {
-        delay_us(100);
-        return 1;
-    }
-    return 0;
+    delay_us(70);
+    result = !ONEWIRE_GET;
+    delay_us(410);
+    return (__bit) result;
 }
 
 uint8_t onewire_read_byte(void) {
@@ -128,6 +69,148 @@ void onewire_write_byte(uint8_t value) {
         // shift the data byte for the next bit
         value >>= 1;
     }
+}
+
+uint8_t onewire_crc8(const uint8_t *addr, uint8_t len) {
+    uint8_t crc = 0;
+    while (len--) {
+#if defined(__AVR__)
+		crc = _crc_ibutton_update(crc, *addr++);
+#else
+        uint8_t inbyte = *addr++;
+        for (uint8_t i = 8; i; i--) {
+            uint8_t mix = (crc ^ inbyte) & 0x01;
+            crc >>= 1;
+            if (mix) crc ^= 0x8C;
+            inbyte >>= 1;
+        }
+#endif
+    }
+    return crc;
+}
+
+#ifdef ONEWIRE_SEARCH
+
+uint8_t last_discrepancy = 0;
+__bit last_device_fl = 0;
+uint8_t _rom[8] = {0,0,0,0,0,0,0,0};
+
+__bit onewire_search() {
+
+    uint8_t id_bit_number;
+    uint8_t last_zero;
+    static __bit search_result;
+    uint8_t id_bit, cmp_id_bit;
+
+    uint8_t rom_byte_mask, search_direction;
+    
+    // initialize for search
+    id_bit_number = 1;
+    last_zero = 0;
+    rom_byte_mask = 1;
+    search_result = 0;
+    
+    uint8_t *buf = (uint8_t *) _rom;
+
+    // if the last call was not the last one
+    if (!last_device_fl) {
+        // 1-Wire reset
+        if (!onewire_start()) {
+            // reset the search
+            last_discrepancy = 0;
+            last_device_fl = 0;
+            return 0;
+        }
+
+        // issue the search command
+        onewire_write_byte(0xF0); // NORMAL SEARCH
+
+        uint8_t _b = 64;
+        // loop to do the search
+        while (_b-- > 0) {
+            // read a bit and its complement
+            id_bit = onewire_read_bit();
+            cmp_id_bit = onewire_read_bit();
+
+            // check for no devices on 1-wire
+            if ((id_bit == 1) && (cmp_id_bit == 1)) {
+                break;
+            } else {
+                // all devices coupled have 0 or 1
+                if (id_bit != cmp_id_bit) {
+                    search_direction = id_bit; // bit write value for search
+                } else {
+                    // if this discrepancy if before the Last Discrepancy
+                    // on a previous next then pick the same as last time
+                    if (id_bit_number < last_discrepancy) {
+                        search_direction = ((*buf & rom_byte_mask) > 0);
+                    } else {
+                        // if equal to last pick 1, if not then pick 0
+                        search_direction = (id_bit_number == last_discrepancy);
+                    }
+                    // if 0 was picked then record its position in LastZero
+                    if (search_direction == 0) {
+                        last_zero = id_bit_number;
+                    }
+                }
+
+                // set or clear the bit in the ROM byte rom_byte_number
+                // with mask rom_byte_mask
+                if (search_direction == 1)
+                    *buf |= rom_byte_mask;
+                else
+                    *buf &= ~rom_byte_mask;
+
+                // serial number search direction write bit
+                onewire_write_bit(search_direction);
+
+                // increment the byte counter id_bit_number
+                // and shift the mask rom_byte_mask
+                id_bit_number++;
+                rom_byte_mask <<= 1;
+
+                // if the mask is 0 then go to new SerialNum byte rom_byte_number and reset mask
+                if (rom_byte_mask == 0) {
+                    buf++;
+                    rom_byte_mask = 1;
+                }
+            }
+        } // loop until through all ROM bytes 0-7
+
+        // if the search was successful then
+        if (id_bit_number > 64) {
+            // search successful so set LastDiscrepancy,LastDeviceFlag,search_result
+            last_discrepancy = last_zero;
+
+            // check for last device
+            if (last_discrepancy == 0) {
+                last_device_fl = 1;
+            }
+            search_result = 1;
+        }
+    }
+
+    if (search_result == 0) {
+        // reset the search
+        last_discrepancy = 0;
+        last_device_fl = 0;
+        memset(_rom, 0x00, 8);
+    }
+
+    return search_result;
+}
+
+uint8_t onewire_search_devices(uint8_t *ptr, int8_t max_devices) {
+    uint8_t num_devices = 0;
+    while (num_devices < max_devices && onewire_search() != 0) {
+        uint8_t *_rom_ptr = (uint8_t *) _rom;
+        uint8_t c = 8;
+        while (c-- != 0) {
+            *ptr++ = *_rom_ptr++;
+        }
+        num_devices++;
+    }
+    return num_devices;
 }
 #endif
 

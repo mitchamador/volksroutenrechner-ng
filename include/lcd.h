@@ -3,6 +3,7 @@
 
 #include "main.h"
 #include "i2c.h"
+#include "utils.h"
 
 #define LCD_I2C_ADDRESS 0x4E
 
@@ -37,13 +38,6 @@
 #define LCD_FUNCTION_SET       0x20
 #define LCD_TYPE               2       // 0 -> 5x7 | 1 -> 5x10 | 2 -> 2 lines
 
-typedef enum {
-    LCD_ALIGN_NONE = 0,
-    LCD_ALIGN_LEFT = 0,
-    LCD_ALIGN_RIGHT,
-    LCD_ALIGN_CENTER
-} align_t;
-
 //-----------[ Functions' Prototypes ]--------------
 
 //---[ LCD Routines ]---
@@ -65,6 +59,7 @@ void LCD_Clear(void);
 
 #define LCD_Write_String8(Str, len, align) __LCD_Write_String(Str, len, 8, align)
 #define LCD_Write_String16(Str, len, align) __LCD_Write_String(Str, len, 16, align)
+#define LCD_Write_String(Str, len) __LCD_Write_String(Str, len, len, ALIGN_LEFT)
 void __LCD_Write_String(char*, unsigned char, unsigned char, align_t);
 
 #endif

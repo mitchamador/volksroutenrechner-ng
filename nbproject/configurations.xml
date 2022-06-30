@@ -30,7 +30,6 @@
       <itemPath>src/main.c</itemPath>
       <itemPath>src/utils.c</itemPath>
       <itemPath>src/hw-avr.c</itemPath>
-      <itemPath>src/locale.c</itemPath>
       <itemPath>src/i2c.c</itemPath>
       <itemPath>src/onewire.c</itemPath>
     </logicalFolder>
@@ -92,7 +91,7 @@
         <property key="call-prologues" value="false"/>
         <property key="default-bitfield-type" value="true"/>
         <property key="default-char-type" value="true"/>
-        <property key="define-macros" value="HW_LEGACY;NO_SERVICE_COUNTERS_CHECKS"/>
+        <property key="define-macros" value="HW_LEGACY"/>
         <property key="disable-optimizations" value="false"/>
         <property key="extra-include-directories" value="include"/>
         <property key="favor-optimization-for" value="-speed,+space"/>
@@ -1805,7 +1804,7 @@
         <targetPluginBoard></targetPluginBoard>
         <platformTool>noID</platformTool>
         <languageToolchain>AVR</languageToolchain>
-        <languageToolchainVersion>5.4.0</languageToolchainVersion>
+        <languageToolchainVersion>1.00</languageToolchainVersion>
         <platform>3</platform>
       </toolsSet>
       <packs>
@@ -1832,8 +1831,8 @@
         <makeCustomizationPreStepEnabled>false</makeCustomizationPreStepEnabled>
         <makeUseCleanTarget>false</makeUseCleanTarget>
         <makeCustomizationPreStep>${ProjectDir}/version.cmd</makeCustomizationPreStep>
-        <makeCustomizationPostStepEnabled>false</makeCustomizationPostStepEnabled>
-        <makeCustomizationPostStep>${MP_CC_DIR}/avr-objcopy -O binary -I elf32-little -j .eeprom ${ImageDir}/${ProjectName}.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX} proteus/eeprom_$(MP_PROCESSOR_OPTION).bin</makeCustomizationPostStep>
+        <makeCustomizationPostStepEnabled>true</makeCustomizationPostStepEnabled>
+        <makeCustomizationPostStep>${MP_CC_DIR}/avr-size -C --mcu=atmega328p ${ImageDir}/${ProjectName}.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}</makeCustomizationPostStep>
         <makeCustomizationPutChecksumInUserID>false</makeCustomizationPutChecksumInUserID>
         <makeCustomizationEnableLongLines>false</makeCustomizationEnableLongLines>
         <makeCustomizationNormalizeHexFile>false</makeCustomizationNormalizeHexFile>
@@ -1887,8 +1886,8 @@
         <property key="default-char-type" value="true"/>
         <property key="extra-include-directories" value="include"/>
         <property key="extra-warnings" value="false"/>
-        <property key="garbage-collect-data" value="true"/>
-        <property key="garbage-collect-functions" value="true"/>
+        <property key="garbage-collect-data" value="false"/>
+        <property key="garbage-collect-functions" value="false"/>
         <property key="inhibit-all" value="false"/>
         <property key="make-warnings-into-errors" value="false"/>
         <property key="no-interrupts" value="false"/>
@@ -1906,7 +1905,7 @@
         <property key="syntax-only" value="false"/>
         <property key="undefined-identifier" value="false"/>
         <property key="verbose" value="false"/>
-        <appendMe value="-std=gnu99"/>
+        <appendMe value="-std=gnu99 -flto"/>
       </AVR-GCC>
       <AVR-Global>
         <property key="common-include-directories" value="include"/>
@@ -1939,6 +1938,86 @@
         <property key="sram-segment" value=""/>
         <property key="v-printf" value="false"/>
       </AVR-LD>
+      <HI-TECH-COMP>
+        <property key="additional-warnings" value="true"/>
+        <property key="asmlist" value="true"/>
+        <property key="call-prologues" value="false"/>
+        <property key="default-bitfield-type" value="true"/>
+        <property key="default-char-type" value="true"/>
+        <property key="define-macros" value=""/>
+        <property key="disable-optimizations" value="true"/>
+        <property key="extra-include-directories" value=""/>
+        <property key="favor-optimization-for" value="-speed,+space"/>
+        <property key="garbage-collect-data" value="true"/>
+        <property key="garbage-collect-functions" value="true"/>
+        <property key="identifier-length" value="255"/>
+        <property key="local-generation" value="false"/>
+        <property key="operation-mode" value="free"/>
+        <property key="opt-xc8-compiler-strict_ansi" value="false"/>
+        <property key="optimization-assembler" value="true"/>
+        <property key="optimization-assembler-files" value="true"/>
+        <property key="optimization-debug" value="false"/>
+        <property key="optimization-invariant-enable" value="false"/>
+        <property key="optimization-invariant-value" value="16"/>
+        <property key="optimization-level" value="-O0"/>
+        <property key="optimization-speed" value="false"/>
+        <property key="optimization-stable-enable" value="false"/>
+        <property key="preprocess-assembler" value="true"/>
+        <property key="short-enums" value="true"/>
+        <property key="tentative-definitions" value="-fno-common"/>
+        <property key="undefine-macros" value=""/>
+        <property key="use-cci" value="false"/>
+        <property key="use-iar" value="false"/>
+        <property key="verbose" value="false"/>
+        <property key="warning-level" value="-3"/>
+        <property key="what-to-do" value="ignore"/>
+      </HI-TECH-COMP>
+      <HI-TECH-LINK>
+        <property key="additional-options-checksum" value=""/>
+        <property key="additional-options-code-offset" value=""/>
+        <property key="additional-options-command-line" value=""/>
+        <property key="additional-options-errata" value=""/>
+        <property key="additional-options-extend-address" value="false"/>
+        <property key="additional-options-trace-type" value=""/>
+        <property key="additional-options-use-response-files" value="false"/>
+        <property key="backup-reset-condition-flags" value="false"/>
+        <property key="calibrate-oscillator" value="false"/>
+        <property key="calibrate-oscillator-value" value="0x3400"/>
+        <property key="clear-bss" value="true"/>
+        <property key="code-model-external" value="wordwrite"/>
+        <property key="code-model-rom" value=""/>
+        <property key="create-html-files" value="false"/>
+        <property key="data-model-ram" value=""/>
+        <property key="data-model-size-of-double" value="24"/>
+        <property key="data-model-size-of-double-gcc" value="no-short-double"/>
+        <property key="data-model-size-of-float" value="24"/>
+        <property key="data-model-size-of-float-gcc" value="no-short-float"/>
+        <property key="display-class-usage" value="false"/>
+        <property key="display-hex-usage" value="false"/>
+        <property key="display-overall-usage" value="true"/>
+        <property key="display-psect-usage" value="false"/>
+        <property key="extra-lib-directories" value=""/>
+        <property key="fill-flash-options-addr" value=""/>
+        <property key="fill-flash-options-const" value=""/>
+        <property key="fill-flash-options-how" value="0"/>
+        <property key="fill-flash-options-inc-const" value="1"/>
+        <property key="fill-flash-options-increment" value=""/>
+        <property key="fill-flash-options-seq" value=""/>
+        <property key="fill-flash-options-what" value="0"/>
+        <property key="format-hex-file-for-download" value="false"/>
+        <property key="initialize-data" value="true"/>
+        <property key="input-libraries" value="libm"/>
+        <property key="keep-generated-startup.as" value="false"/>
+        <property key="link-in-c-library" value="true"/>
+        <property key="link-in-c-library-gcc" value=""/>
+        <property key="link-in-peripheral-library" value="false"/>
+        <property key="managed-stack" value="false"/>
+        <property key="opt-xc8-linker-file" value="false"/>
+        <property key="opt-xc8-linker-link_startup" value="false"/>
+        <property key="opt-xc8-linker-serial" value=""/>
+        <property key="program-the-device-with-default-config-words" value="true"/>
+        <property key="remove-unused-sections" value="true"/>
+      </HI-TECH-LINK>
       <Simulator>
         <property key="codecoverage.enabled" value="Disable"/>
         <property key="codecoverage.enableoutputtofile" value="false"/>
@@ -2386,6 +2465,25 @@
         <property key="target.ip.address" value="localhost"/>
         <property key="target.ip.port" value="8001"/>
       </VSMViewerPlatformTool>
+      <XC8-CO>
+        <property key="coverage-enable" value=""/>
+        <property key="stack-guidance" value="false"/>
+      </XC8-CO>
+      <XC8-config-global>
+        <property key="advanced-elf" value="true"/>
+        <property key="gcc-opt-driver-new" value="true"/>
+        <property key="gcc-opt-std" value="-std=c99"/>
+        <property key="gcc-output-file-format" value="dwarf-3"/>
+        <property key="omit-pack-options" value="false"/>
+        <property key="omit-pack-options-new" value="1"/>
+        <property key="output-file-format" value="-mcof,+elf"/>
+        <property key="stack-size-high" value="auto"/>
+        <property key="stack-size-low" value="auto"/>
+        <property key="stack-size-main" value="auto"/>
+        <property key="stack-type" value="compiled"/>
+        <property key="user-pack-device-support" value=""/>
+        <property key="wpo-lto" value="false"/>
+      </XC8-config-global>
     </conf>
     <conf name="ATMega328P_arduino" type="2">
       <toolsSet>
@@ -2395,7 +2493,7 @@
         <targetPluginBoard></targetPluginBoard>
         <platformTool>noID</platformTool>
         <languageToolchain>AVR</languageToolchain>
-        <languageToolchainVersion>5.4.0</languageToolchainVersion>
+        <languageToolchainVersion>1.00</languageToolchainVersion>
         <platform>3</platform>
       </toolsSet>
       <packs>
@@ -2422,8 +2520,8 @@
         <makeCustomizationPreStepEnabled>false</makeCustomizationPreStepEnabled>
         <makeUseCleanTarget>false</makeUseCleanTarget>
         <makeCustomizationPreStep>${ProjectDir}/version.cmd</makeCustomizationPreStep>
-        <makeCustomizationPostStepEnabled>false</makeCustomizationPostStepEnabled>
-        <makeCustomizationPostStep>${MP_CC_DIR}/avr-objcopy -O binary -I elf32-little -j .eeprom ${ImageDir}/${ProjectName}.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX} proteus/eeprom_$(MP_PROCESSOR_OPTION).bin</makeCustomizationPostStep>
+        <makeCustomizationPostStepEnabled>true</makeCustomizationPostStepEnabled>
+        <makeCustomizationPostStep>${MP_CC_DIR}/avr-size -C --mcu=atmega328p ${ImageDir}/${ProjectName}.${IMAGE_TYPE}.${DEBUGGABLE_SUFFIX}</makeCustomizationPostStep>
         <makeCustomizationPutChecksumInUserID>false</makeCustomizationPutChecksumInUserID>
         <makeCustomizationEnableLongLines>false</makeCustomizationEnableLongLines>
         <makeCustomizationNormalizeHexFile>false</makeCustomizationNormalizeHexFile>
@@ -2477,8 +2575,8 @@
         <property key="default-char-type" value="true"/>
         <property key="extra-include-directories" value="include"/>
         <property key="extra-warnings" value="false"/>
-        <property key="garbage-collect-data" value="true"/>
-        <property key="garbage-collect-functions" value="true"/>
+        <property key="garbage-collect-data" value="false"/>
+        <property key="garbage-collect-functions" value="false"/>
         <property key="inhibit-all" value="false"/>
         <property key="make-warnings-into-errors" value="false"/>
         <property key="no-interrupts" value="false"/>
@@ -2496,7 +2594,7 @@
         <property key="syntax-only" value="false"/>
         <property key="undefined-identifier" value="false"/>
         <property key="verbose" value="false"/>
-        <appendMe value="-std=gnu99"/>
+        <appendMe value="-std=gnu99 -flto"/>
       </AVR-GCC>
       <AVR-Global>
         <property key="common-include-directories" value="include"/>

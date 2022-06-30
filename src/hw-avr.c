@@ -1,7 +1,7 @@
 #include "hw.h"
 #include "i2c.h"
 
-#if defined(__AVR_ATMEGA)
+#if defined(__AVR)
 #include <avr/eeprom.h>
 #include <util/twi.h>
 
@@ -34,11 +34,7 @@ void HW_Init(void) {
     PORTD = PORTD_INIT;
 
     // Timer/Counter 0 initialization
-    // Clock source: System Clock
-    // Clock value: 2000,000 kHz
     // Mode: CTC top=OCR0A
-    // OC0A output: Disconnected
-    // OC0B output: Disconnected
     // Timer Period: 0,051 ms
     TCCR0A = (0 << COM0A1) | (0 << COM0A0) | (0 << COM0B1) | (0 << COM0B0) | (1 << WGM01) | (0 << WGM00);
     TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
@@ -47,18 +43,8 @@ void HW_Init(void) {
     OCR0B = 0x00;
 
     // Timer/Counter 1 initialization
-    // Clock source: System Clock
-    // Clock value: 2000,000 kHz
     // Mode: CTC top=OCR1A
-    // OC1A output: Disconnected
-    // OC1B output: Disconnected
-    // Noise Canceler: Off
-    // Input Capture on Falling Edge
     // Timer Period: 10 ms
-    // Timer1 Overflow Interrupt: Off
-    // Input Capture Interrupt: Off
-    // Compare A Match Interrupt: On
-    // Compare B Match Interrupt: On
     TCCR1A = (0 << COM1A1) | (0 << COM1A0) | (0 << COM1B1) | (0 << COM1B0) | (0 << WGM11) | (0 << WGM10);
     TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (0 << CS11) | (0 << CS10);
     TCNT1H = 0x00;
@@ -67,15 +53,11 @@ void HW_Init(void) {
     ICR1L = 0x00;
     OCR1AH = (TIMER1_VALUE - 1) >> 8;
     OCR1AL = (TIMER1_VALUE - 1) & 0xFF;
-    OCR1BH = (TIMER1_VALUE - 1) >> 8;
-    OCR1BL = (TIMER1_VALUE - 1) & 0xFF;
+    OCR1BH = 0x00;
+    OCR1BL = 0x00;
 
     // Timer/Counter 2 initialization
-    // Clock source: System Clock
-    // Clock value: 2000,000 kHz
     // Mode: CTC top=OCR2A
-    // OC2A output: Disconnected
-    // OC2B output: Disconnected
     // Timer Period: 0,08 ms
     //ASSR = (0 << EXCLK) | (0 << AS2);
     //TCCR2A = (0 << COM2A1) | (0 << COM2A0) | (0 << COM2B1) | (0 << COM2B0) | (1 << WGM21) | (0 << WGM20);

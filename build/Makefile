@@ -22,11 +22,14 @@ else
 endif
 
 ifneq (,$(findstring pic16f,$(MCU)))
+  MP_CC_DIR=${XC8-TOOLCHAIN}/xc8/v2.32/bin
   MP_CC=${XC8-TOOLCHAIN}/xc8/v2.32/bin/xc8-cc
+  FIXDEPS=${XC8-TOOLCHAIN}/xc8/v2.32/bin/fixDeps
   AVR_OBJCOPY=${XC8-TOOLCHAIN}/xc8/v2.32/bin/avr-objcopy
 else
   MP_CC=${AVR-GCC-TOOLCHAIN}/bin/avr-gcc
   AVR_OBJCOPY=${AVR-GCC-TOOLCHAIN}/bin/avr-objcopy
+  AVR_SIZE=${AVR-GCC-TOOLCHAIN}/bin/avr-size
   TARGET=${MP_PROCESSOR_OPTION}${TARGET_SUFFIX}
 endif
 
@@ -45,16 +48,20 @@ DEBUGGABLE_SUFFIX=elf
 OUTPUT_SUFFIX=hex
 OBJECTDIR=${TARGET}
 
-SRCS = src/onewire.c src/ds18b20.c src/ds1307.c src/hw-avr.c src/hw-pic.c src/i2c.c src/lcd.c src/locale.c src/main.c src/utils.c
+SRCS = src/onewire.c src/ds18b20.c src/ds1307.c src/hw-avr.c src/hw-pic.c src/i2c.c src/lcd.c src/main.c src/utils.c
 ifneq (,$(findstring pic16f,$(MCU)))
   OBJS = $(SRCS:%.c=${OBJECTDIR}/%.p1)
+  DEPS := $(OBJS:.p1=.d)
 else
   OBJS = $(SRCS:%.c=${OBJECTDIR}/%.o)
+  DEPS := $(OBJS:.o=.d)
 endif
 
 VPATH = ..
 
-.PHONY: usage build clean release
+-include $(DEPS)
+
+.PHONY: usage build release clobber clean version
 
 usage:
 	$(info usage:)
@@ -78,16 +85,24 @@ endif
 endif
 endif
 
-release: version
+release: clobber version
 ifdef XC8-TOOLCHAIN
-	MCU=pic16f876a $(MAKE) MP_EXTRA_CC_PRE="-DNO_SERVICE_COUNTERS_CHECKS" -f $(lastword $(MAKEFILE_LIST)) clean build
-	MCU=pic16f1936 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean build
-	MCU=pic16f1938 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean build
+	MCU=pic16f876a $(MAKE) -f $(firstword $(MAKEFILE_LIST)) build
+	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) build
+	MCU=pic16f1938 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) build
 endif
 ifdef AVR-GCC-TOOLCHAIN
-	MCU=atmega328p $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean build
-	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(lastword $(MAKEFILE_LIST)) clean build
+	MCU=atmega328p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) build
+	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) build
 endif
+
+clobber:
+	$(info $(MAKEFILE_LIST))
+	MCU=pic16f876a $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=pic16f1938 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=atmega328p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 
 $(TARGET): $(OBJS)
 	@${MKDIR} ${OBJECTDIR} 
@@ -97,18 +112,22 @@ else
 	${MP_CC} -o ${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} -mmcu=$(MCU) -Os -Wl,--gc-sections -flto -fuse-linker-plugin ${OBJS} 
 	${AVR_OBJCOPY} -O ihex -R .eeprom "${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" "${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}"
 	${AVR_OBJCOPY} -j .eeprom --set-section-flags=.eeprom=alloc,load --change-section-lma .eeprom=0 --no-change-warnings -O ihex "${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" "${OBJECTDIR}/${OUTPUTNAME}.production.eep" || exit 0 
+	${AVR_SIZE} -C --mcu=$(MCU) "${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}"
 endif
 
 ${OBJECTDIR}/%.o : %.c
 	@${MKDIR} "${OBJECTDIR}/src"
-	${MP_CC} -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -Os -ffunction-sections -fdata-sections -flto $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
+	${MP_CC} -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -MD -Os -ffunction-sections -fdata-sections -flto -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
 
 ${OBJECTDIR}/%.p1 : %.c
 	@${MKDIR} "${OBJECTDIR}/src"
 	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -DHW_LEGACY -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall $(COMPARISON_BUILD)  -std=c99 -gcoff -mstack=compiled:auto:auto     -o $@ -c $<
+	@${FIXDEPS} $(patsubst %.p1,%.d,$@) $(SILENT) -rsi ${MP_CC_DIR}../ 
 
 clean:
 	@rm -rf $(OBJECTDIR)
 
 version:
-	@version.cmd
+ifneq ($(VERSION),0)
+	@$(shell sh version.cmd)
+endif

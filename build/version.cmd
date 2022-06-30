@@ -11,7 +11,7 @@ echo \#define VERSION_H >>../include/version.h
 echo >>../include/version.h
 echo \#define VERSION_STRING \"$(date +"%H:%M %d.%m.%Y")\"\; >>../include/version.h
 echo >>../include/version.h
-echo \#define VERSION_MINUTE_BCD 0x$(date +%M) >>i../include/version.h
+echo \#define VERSION_MINUTE_BCD 0x$(date +%M) >>../include/version.h
 echo \#define VERSION_HOUR_BCD 0x$(date +%H) >>../include/version.h
 echo \#define VERSION_DAY_OF_WEEK_BCD 0x0${dayofweek} >>../include/version.h
 echo \#define VERSION_DAY_OF_MONTH_BCD 0x$(date +%d) >>../include/version.h

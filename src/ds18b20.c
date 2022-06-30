@@ -25,7 +25,10 @@ __bit ds18b20_read_rom(unsigned char *buf) {
     return 1; // OK --> return 1
 }
 
+
 __bit ds18b20_read_temp_matchrom(unsigned char *tbuf, uint16_t *raw_temp_value) {
+    unsigned char rom_buf[9];
+
     if (!onewire_start()) // send start pulse
         return 0; // return 0 if error
 
@@ -40,32 +43,18 @@ __bit ds18b20_read_temp_matchrom(unsigned char *tbuf, uint16_t *raw_temp_value) 
 
     onewire_write_byte(0xBE); // send read command
 
-    ptr = tbuf;
+    ptr = rom_buf;
     for (int i = 0; i < 9; i++) {
         *ptr++ = onewire_read_byte();
     }
 
-    *raw_temp_value = (((uint16_t) (tbuf[1] << 8)) | tbuf[0]);
+    *raw_temp_value = (((uint16_t) (rom_buf[1] << 8)) | rom_buf[0]);
 
-    if (tbuf[8] != ds18b20_crc(tbuf, 8)) {
+    if (rom_buf[8] != onewire_crc8(rom_buf, 8)) {
         return 0; // ERROR --> return 0
     }
 
     return 1; // OK --> return 1
-}
-
-uint8_t ds18b20_crc(const uint8_t *addr, uint8_t len) {
-    uint8_t crc = 0;
-    while (len--) {
-        uint8_t inbyte = *addr++;
-        for (uint8_t i = 8; i; i--) {
-            uint8_t mix = (crc ^ inbyte) & 0x01;
-            crc >>= 1;
-            if (mix) crc ^= 0x8C;
-            inbyte >>= 1;
-        }
-    }
-    return crc;
 }
 
 #endif

@@ -1,6 +1,8 @@
 #ifndef LOCALE_H
 #define	LOCALE_H
 
+#include "version.h"
+
 typedef enum {
     POS_KMH=1,        
     POS_OMIN,        
@@ -61,9 +63,11 @@ typedef enum {
 #define CONFIG_MENU_TITLE "CONFIG MENU";
 #define SERVICE_COUNTERS "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
 
-#define SETTINGS_BITS "\0dual inj\0skip temp\0key sound\0serv alarm\0fast refresh\0mh rpm\0daily trip\0in/out temp\0ds3231 temp\0\0\0\0\0\0\0";
+// xc8 going crazy with pic16f876a target with length of this string (1347 error)
+#define SETTINGS_BITS "\0pair/par inj\0skip temp\0key sound\0serv alarm\0dummy\0mh rpm\0daily trip\0in/out temp\0ds3231 temp\0\0\0\0\0\0\0";
 
 #define TEMP_SENSORS "\0---\0out\0in\0eng";
+#define TEMP_NO_SENSORS "no sensors found"
 
 typedef enum {
     FUEL_CONSTANT_INDEX=1,        
@@ -91,33 +95,45 @@ typedef enum {
 #define DAY_OF_WEEK_STR "\0sunday\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday";
 #define MONTH_STR "\0jan\0feb\0mar\0apr\0may\0jun\0jul\0aug\0sep\0oct\0nov\0dec";
 
-extern const char symbols_str[];
-extern const char trips_str[];
+#ifndef __AVR
+#define PROGMEM
+#endif
 
-extern const char version_str[]; 
+PROGMEM const char symbols_str[] = SYMBOLS_STR;
+PROGMEM const char trips_str[] = TRIPS_STR;
 
-extern const char empty_string[];
-extern const char no_time_string[];
-extern const char trip_string[];
-extern const char onoff_string[];
-extern const char time_correction[];
-extern const char reset_string[]; 
-extern const char accel_meas_string[]; 
-extern const char accel_meas_timing_string[]; 
-extern const char accel_meas_wait_string[]; 
-extern const char timeout_string[]; 
-extern const char warning_str[]; 
+PROGMEM const char version_str[] = VERSION_STRING;
 
-extern const char service_menu_title[];
-extern const char service_menu_str[];
-extern const char service_counters[];
+PROGMEM const char empty_string[] = EMPTY_STRING;
+PROGMEM const char no_time_string[] = NO_TIME_STRING;
+PROGMEM const char trip_string[] = TRIP_STRING;
+PROGMEM const char onoff_string[] = ONOFF_STRING;
+PROGMEM const char time_correction[] = TIME_CORRECTION;
+PROGMEM const char reset_string[] = RESET_STRING;
+#ifdef SIMPLE_ACCELERATION_MEASUREMENT
+PROGMEM const char accel_meas_string[] = ACCEL_MEAS_SIMPLE_STRING;
+#else
+PROGMEM const char accel_meas_string[] = ACCEL_MEAS_STRING;
+PROGMEM const char accel_meas_timing_string[] = ACCEL_MEAS_STRING_TIMING;
+#endif
+PROGMEM const char accel_meas_wait_string[] = ACCEL_MEAS_WAIT_STRING;
+PROGMEM const char timeout_string[] = TIMEOUT_STRING;
+#ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
+PROGMEM const char warning_str[] = WARNING_STR;
+#endif
+PROGMEM const char service_menu_title[] = CONFIG_MENU_TITLE;
+PROGMEM const char service_menu_str[] = SERVICES_STR;
+PROGMEM const char service_counters[] = SERVICE_COUNTERS;
 
-extern const char settings_bits[];
-
-extern const char temp_sensors[];
-
-extern const char day_of_week_str[];
-extern const char month_str[];
+PROGMEM const char settings_bits[] = SETTINGS_BITS;
+#ifdef TEMPERATURE_SUPPORT
+PROGMEM const char temp_sensors[] = TEMP_SENSORS;
+#ifdef DS18B20_CONFIG_EXT
+PROGMEM const char temp_no_sensors[] = TEMP_NO_SENSORS;
+#endif
+#endif
+PROGMEM const char day_of_week_str[] = DAY_OF_WEEK_STR;
+PROGMEM const char month_str[] = MONTH_STR;
 
 #endif	/* LOCALE_H */
 

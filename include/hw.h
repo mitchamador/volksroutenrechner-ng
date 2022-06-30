@@ -4,35 +4,23 @@
 #if defined(__XC8)
 #include <xc.h>
 #if defined(_16F876A) || defined(_16F1936) || defined(_16F1938)
-#define __PIC_MIDRANGE
 #if defined(_16F876A)
 #define LOW_MEM_DEVICE
+#define LOW_STACK_DEVICE
 #endif
-#elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
-#define __AVR_ATMEGA
-#endif
-#elif defined(__AVR)
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
-#define __AVR_ATMEGA
-#endif
-#include <avr/io.h>
-#endif
-
-#if !defined(__PIC_MIDRANGE) && !defined(__AVR_ATMEGA)
-#error "device and compiler not supported"
-#endif
-
-#include <stdint.h>
-
-// define cpu frequency
-#if defined(__PIC_MIDRANGE)
 #define delay_ms(ms) __delay_ms(ms)
 #define delay_us(us) __delay_us(us)
+// define cpu frequency
 #define _XTAL_FREQ 20000000
 
 #define __EEDATA(a0,a1,a2,a3,a4,a5,a6,a7) __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7);
 
+#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
+
 #else
+#error "device and compiler not supported"
+#endif
+#elif defined(__AVR) && (defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__))
 #ifndef F_CPU
 #define F_CPU 16000000
 #endif
@@ -47,15 +35,17 @@
 
 typedef uint32_t uint24_t;
 
+#else
+#error "device and compiler not supported"
 #endif
 
-#if defined(__PIC_MIDRANGE)
+#include <stdint.h>
+
+#if defined(_PIC14) || defined(_PIC14E)
 
 #if !defined(HW_LEGACY)
 #error "only legacy hardware supported with pic midrange"
 #endif
-
-#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
 
 // i2c software bit bang
 #define I2C_SOFTWARE
@@ -104,7 +94,7 @@ typedef uint32_t uint24_t;
 #define ADC_CHANNEL_FUEL_TANK ((0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
 #define ADCON0_INIT ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION))
 // PORTA A/D configuration (AN0-AN4 as analog input)
-#define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (0 << _ADCON1_PCFG2_POSITION) | (1 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
+#define ADCON1_INIT ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (0 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
 #elif defined(_16F1936) || defined(_16F1938)
 #define ADC_CHANNEL_MASK ((1 << _ADCON0_CHS4_POSITION) | (1 << _ADCON0_CHS3_POSITION) | (1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
@@ -149,7 +139,12 @@ typedef uint32_t uint24_t;
 // key1 and key2 (active ground) (legacy hardware)
 #define KEY1 PORTBbits.RB2
 #define KEY2 PORTBbits.RB3
+#ifdef KEY3_SUPPORT
+#define KEY3 PORTBbits.RB4
+#define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION) | (1 << _TRISB_TRISB4_POSITION)
+#else
 #define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
+#endif
 
 // speed sensor and injector
 #define TX PORTBbits.RB6
@@ -304,6 +299,9 @@ typedef uint32_t uint24_t;
 
 #define KEY1_PRESSED (KEY1 == 0)
 #define KEY2_PRESSED (KEY2 == 0)
+#ifdef KEY3_SUPPORT
+#define KEY3_PRESSED (KEY3 == 0)
+#endif
 
 #define PWR_ON  (PWR = 1)
 #define PWR_OFF (PWR = 0)
@@ -320,13 +318,15 @@ typedef uint32_t uint24_t;
 #define ONEWIRE_SET      (ONEWIRE_PIN = 1)
 #define ONEWIRE_GET      (ONEWIRE_PIN)
 
-#elif defined(__AVR_ATMEGA)
+#elif defined(__AVR)
 
 #define __bit unsigned char
 #define __bank0
 #define __bank1
 #define __bank2
 #define __bank3
+
+#define __section(x)
 
 #define start_timer_fuel() TCCR0B = (0 << WGM02) | (0 << CS02) | (1 << CS01) | (0 << CS00);
 
