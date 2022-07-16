@@ -1855,11 +1855,11 @@ void journal_update_header() {
 
 void journal_check_eeprom() {
     // check mark
-    uint8_t check_attempt = 2;
-    while (check_attempt-- != 0) {
+    bool init_fl = true;
+    while (1) {
         JOURNAL_read_eeprom_block((unsigned char *) &buf, J_EEPROM_MARK_POS, 8);
         if (memcmp(&buf, &journal_mark_str, (sizeof(journal_mark_str) - 1) <= 8 ? (sizeof (journal_mark_str) - 1) : 8) != 0) {
-            if (check_attempt != 0) {
+            if (init_fl) {
                 // save init values on first attempt
                 memcpy(&buf, &journal_mark_str, (sizeof (journal_mark_str) - 1) <= 8 ? (sizeof (journal_mark_str) - 1) : 8);
                 JOURNAL_write_eeprom_block((unsigned char *) &buf, J_EEPROM_MARK_POS, 8);
@@ -1872,11 +1872,13 @@ void journal_check_eeprom() {
             } else {
                 // set flag for no journal eeprom
                 journal_support = 0;
+                break;
             }
+            init_fl = false;
         } else {
             // set flag for journal support
             journal_support = 1;
-            check_attempt = 0;
+            break;
         }
     }
     if (journal_support != 0) {
@@ -2079,23 +2081,25 @@ void screen_journal_viewer() {
                                     item_index -= item_max;
                                 }
 
-                                // check item is valid
-                                JOURNAL_read_eeprom_block((unsigned char *) &item, journal_find_eeaddr(journal_type, (int8_t) item_index), 1);
-                                if (item[0] != JOURNAL_ITEM_OK) {
+                                while (1) {
+                                    // read item from eeprom
+                                    if (journal_type == 3) {
+                                        // accel
+                                        JOURNAL_read_eeprom_block((unsigned char *) &item, journal_find_eeaddr(journal_type, (int8_t) (item_num == 0 ? item_current : item_index)), sizeof(journal_accel_item_t));
+                                        accel_item = (journal_accel_item_t *) &item;
+                                        trip_time = &accel_item->start_time;
+                                    } else {
+                                        // trip
+                                        JOURNAL_read_eeprom_block((unsigned char *) &item, journal_find_eeaddr(journal_type, (int8_t) (item_num == 0 ? item_current : item_index)), sizeof(journal_trip_item_t));
+                                        trip_item = (journal_trip_item_t *) &item;
+                                        trip_time = &trip_item->start_time;
+                                    }
+                                    // check, if item is valid. if not, read first item
+                                    if (item[0] == JOURNAL_ITEM_OK || item_num == 0) {
+                                        break;
+                                    }
                                     item_num = 0;
-                                }
-                                // read item from eeprom
-                                if (journal_type == 3) {
-                                    // accel
-                                    JOURNAL_read_eeprom_block((unsigned char *) &item, journal_find_eeaddr(journal_type, (int8_t) (item_num == 0 ? item_current : item_index)), sizeof(journal_accel_item_t));
-                                    accel_item = (journal_accel_item_t *) &item;
-                                    trip_time = &accel_item->start_time;
-                                } else {
-                                    // trip
-                                    JOURNAL_read_eeprom_block((unsigned char *) &item, journal_find_eeaddr(journal_type, (int8_t) (item_num == 0 ? item_current : item_index)), sizeof(journal_trip_item_t));
-                                    trip_item = (journal_trip_item_t *) &item;
-                                    trip_time = &trip_item->start_time;
-                                }
+                                };
                                 item_page = 0;
                                 
                                 item_prev = item_num;
