@@ -63,34 +63,61 @@ typedef enum {
 #define CONFIG_MENU_TITLE "CONFIG MENU";
 #define SERVICE_COUNTERS "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
 
-// xc8 going crazy with pic16f876a target with length of this string (1347 error)
-#define SETTINGS_BITS "\0pair/par inj\0skip temp\0key sound\0serv alarm\0dummy\0mh rpm\0daily trip\0in/out temp\0ds3231 temp\0\0\0\0\0\0\0";
+#define SETTINGS_BITS "\0pair/par inj\0skip temp\0key sound\0serv alarm\0\0mh rpm\0daily trip\0in/out temp\0ds3231 temp\0\0\0\0\0\0\0";
 
 #define TEMP_SENSORS "\0---\0out\0in\0eng";
 #define TEMP_NO_SENSORS "no sensors found"
 
+// 8 symbols
+#define JOURNAL_MARK "JOURTRIP"
+#define JOURNAL_VIEWER "journal viewer"
+#define JOURNAL_VIEWER_ITEMS "\0current trip\0trip A\0trip B\0accel logger"
+#define JOURNAL_VIEWER_NO_ITEMS "no items"
+
 typedef enum {
-    FUEL_CONSTANT_INDEX=1,        
-    VSS_CONSTANT_INDEX,        
-    TOTAL_TRIP_INDEX,        
-    VOLTAGE_ADJUST_INDEX,        
-    SETTINGS_BITS_INDEX,        
+
+    FUEL_CONSTANT_INDEX = 1,
+#define FUEL_CONSTANT_STR "\0FUEL constant"
+
+    VSS_CONSTANT_INDEX,
+#define VSS_CONSTANT_STR "\0VSS constant"
+
+    TOTAL_TRIP_INDEX,
+#define TOTAL_TRIP_STR "\0total trip"
+
+    VOLTAGE_ADJUST_INDEX,
+#define VOLTAGE_ADJUST_STR "\0voltage adjust"
+
+    SETTINGS_BITS_INDEX,
+#define SETTINGS_BITS_STR "\0settings bits"
+
+#if defined(DS18B20_CONFIG)
     TEMP_SENSOR_INDEX,
-    SERVICE_COUNTERS_INDEX,        
-    MIN_SPEED_INDEX,        
-    VERSION_INFO_INDEX,        
+#define TEMP_SENSOR_STR "\0temp sensors"
+#else
+#define TEMP_SENSOR_STR
+#endif
+
+#if defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
+    SERVICE_COUNTERS_INDEX,
+#define SERVICE_COUNTERS_STR "\0service cntrs"
+#else
+#define SERVICE_COUNTERS_STR
+#endif
+
+#if defined(MIN_SPEED_CONFIG)
+    MIN_SPEED_INDEX,
+#define MIN_SPEED_STR "\0min speed"
+#else
+#define MIN_SPEED_STR
+#endif
+
+    VERSION_INFO_INDEX,
+#define VERSION_INFO_STR "\0sw version"
+
 } services_str_t;
 
-#define SERVICES_STR                                                   \
-        /*FUEL_CONSTANT_INDEX*/     "\0FUEL constant"                  \
-        /*VSS_CONSTANT_INDEX*/      "\0VSS constant"                   \
-        /*TOTAL_TRIP_INDEX*/        "\0total trip"                     \
-        /*VOLTAGE_ADJUST_INDEX*/    "\0voltage adjust"                 \
-        /*SETTINGS_BITS_INDEX*/     "\0settings bits"                  \
-        /*TEMP_SENSOR_INDEX*/       "\0temp sensors"                   \
-        /*SERVICE_COUNTERS_INDEX*/  "\0service cntrs"                  \
-        /*MIN_SPEED_INDEX*/         "\0min speed"                      \
-        /*VERSION_INFO_INDEX*/      "\0sw version"                     \
+#define SERVICES_STR FUEL_CONSTANT_STR VSS_CONSTANT_STR TOTAL_TRIP_STR VOLTAGE_ADJUST_STR SETTINGS_BITS_STR TEMP_SENSOR_STR SERVICE_COUNTERS_STR MIN_SPEED_STR VERSION_INFO_STR
 
 #define DAY_OF_WEEK_STR "\0sunday\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday";
 #define MONTH_STR "\0jan\0feb\0mar\0apr\0may\0jun\0jul\0aug\0sep\0oct\0nov\0dec";
@@ -134,6 +161,13 @@ PROGMEM const char temp_no_sensors[] = TEMP_NO_SENSORS;
 #endif
 PROGMEM const char day_of_week_str[] = DAY_OF_WEEK_STR;
 PROGMEM const char month_str[] = MONTH_STR;
+
+#ifdef JOURNAL_SUPPORT
+const char journal_mark_str[] = JOURNAL_MARK;
+PROGMEM const char journal_viewer_str[] = JOURNAL_VIEWER;
+PROGMEM const char journal_viewer_items_str[] = JOURNAL_VIEWER_ITEMS;
+PROGMEM const char journal_viewer_no_items_str[] = JOURNAL_VIEWER_NO_ITEMS;
+#endif
 
 #endif	/* LOCALE_H */
 

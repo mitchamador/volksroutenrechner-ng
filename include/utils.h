@@ -32,5 +32,6 @@ void set_day_of_week(ds_time* time);
 void * _memset(void *, char, char);
 #endif
 void buf_write_string(char* buf, unsigned char len, unsigned char max, align_t align);
+uint8_t crc8_dallas(const uint8_t *addr, uint8_t len);
 #endif	/* UTILS_H */
 

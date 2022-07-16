@@ -1,4 +1,5 @@
 #include "ds18b20.h"
+#include "utils.h"
 
 #ifdef DS18B20_TEMP
 
@@ -50,7 +51,7 @@ __bit ds18b20_read_temp_matchrom(unsigned char *tbuf, uint16_t *raw_temp_value) 
 
     *raw_temp_value = (((uint16_t) (rom_buf[1] << 8)) | rom_buf[0]);
 
-    if (rom_buf[8] != onewire_crc8(rom_buf, 8)) {
+    if (rom_buf[8] != crc8_dallas(rom_buf, 8)) {
         return 0; // ERROR --> return 0
     }
 
