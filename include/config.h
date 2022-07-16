@@ -86,7 +86,7 @@
 
 #if defined(_16F1938)
 // support for prev key for legacy hw
-#define KEY3_SUPPORT
+//#define KEY3_SUPPORT
 #endif /* _16F1938 */
 
 #else
