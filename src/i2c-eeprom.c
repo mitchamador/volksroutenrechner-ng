@@ -17,7 +17,7 @@ void I2C_read_eeprom_block(unsigned char* p, uint16_t ee_addr, unsigned char len
     if (ack == ACK) {
         I2C_Master_Write(ee_addr & 0xFF);
         I2C_Master_RepeatedStart();
-        I2C_Master_Write(0xA1);
+        I2C_Master_Write(0xA1 | ((ee_addr >> 7) & 0x0E));
         while (--length > 0) {
             *p++ = I2C_Read_Byte(ACK);
         }
