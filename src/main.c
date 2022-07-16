@@ -2014,7 +2014,7 @@ void screen_journal_viewer() {
     } else {
 
         LCD_CMD(0x80);
-        LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_str, 0), ALIGN_CENTER);
+        LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_str, 0), ALIGN_LEFT);
 
         _memset(buf, ' ', 16);
         LCD_CMD(0xC0);
@@ -2032,7 +2032,7 @@ void screen_journal_viewer() {
                 handle_keys_next_prev(&journal_type, 0, 3);
 
                 LCD_CMD(0x80);
-                LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_str, 0), ALIGN_CENTER);
+                LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_str, 0), ALIGN_LEFT);
 
                 LCD_CMD(0xC0);
                 buf[0] = '1' + journal_type;
@@ -2061,18 +2061,7 @@ void screen_journal_viewer() {
                     while (timeout_timer1 != 0) {
                         screen_refresh = 0;
 
-                        if (item_current == 0xFF) {
-                            // no items for current journal
-                            LCD_CMD(0x80);
-                            LCD_Write_String16(buf, strcpy2(buf, (char *) journal_viewer_items_str, journal_type + 1), ALIGN_LEFT);
-                            LCD_CMD(0xC0);
-                            LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_no_items_str, 0), ALIGN_LEFT);
-
-                            if (key2_press != 0) {
-                                timeout_timer1 = 0;
-                                screen_refresh = 1;
-                            }
-                        } else {
+                        if (item_current != 0xFF) {
                             handle_keys_next_prev(&item_num, 0, item_max - 1);
 
                             if (item_prev != item_num) {
@@ -2103,62 +2092,80 @@ void screen_journal_viewer() {
                                 item_page = 0;
                                 
                                 item_prev = item_num;
-                            }
-                            
-                            LCD_CMD(0x80);
-                            LCD_Write_String16(buf, journal_print_item_time((char *) &buf, trip_time), ALIGN_LEFT);
-                            
-                            if (key2_press != 0) {
-                                timeout_timer1 = 512;
-                                if (++item_page > item_page_max) {
-                                    item_page = 0;
-                                }
-                            }
 
-                            // show journal item data
-                            if (journal_type == 3) {
-                                // accel_item
-
-                                // upper-lower
-                                len = ultoa2(buf, accel_item->lower, 10);
-                                buf[len++] = '-';
-                                len += ultoa2(&buf[len], accel_item->upper, 10);
-
-                                LCD_CMD(0xC0);
-                                LCD_Write_String8(buf, len, ALIGN_LEFT);
-
-                                // time
-                                len = print_fract(buf, accel_item->time, 2);
-                                len += print_symbols_str(len, POS_SEC);
-
-                                LCD_CMD(0xC8);
-                                LCD_Write_String8(buf, len, ALIGN_RIGHT);
-                            } else {
-                                // trip_item
-
-                                LCD_CMD(0xC0);
-
-                                switch(item_page) {
-                                    case 0:
-                                        print_trip_odometer(&trip_item->trip, ALIGN_LEFT);
-                                        print_trip_average_fuel(&trip_item->trip, ALIGN_RIGHT);
-                                        break;
-                                    case 1:
-                                        print_trip_average_speed(&trip_item->trip, ALIGN_LEFT);
-                                        print_trip_time(&trip_item->trip, ALIGN_RIGHT);
-                                        break;
-                                    case 2:
-                                        print_trip_total_fuel(&trip_item->trip, ALIGN_LEFT);
-                                        LCD_Write_String8(buf, 0, ALIGN_RIGHT);
-                                        break;
+                                if (item[0] != JOURNAL_ITEM_OK && item_num == 0) {
+                                    item_current = 0xFF;
                                 }
                             }
                             
+                            if (item_current != 0xFF) {
+                                LCD_CMD(0x80);
+                                LCD_Write_String16(buf, journal_print_item_time((char *) &buf, trip_time), ALIGN_LEFT);
+
+                                if (key2_press != 0) {
+                                    timeout_timer1 = 512;
+                                    if (++item_page > item_page_max) {
+                                        item_page = 0;
+                                    }
+                                }
+
+                                // show journal item data
+                                if (journal_type == 3) {
+                                    // accel_item
+
+                                    // upper-lower
+                                    len = ultoa2(buf, accel_item->lower, 10);
+                                    buf[len++] = '-';
+                                    len += ultoa2(&buf[len], accel_item->upper, 10);
+
+                                    LCD_CMD(0xC0);
+                                    LCD_Write_String8(buf, len, ALIGN_LEFT);
+
+                                    // time
+                                    len = print_fract(buf, accel_item->time, 2);
+                                    len += print_symbols_str(len, POS_SEC);
+
+                                    LCD_CMD(0xC8);
+                                    LCD_Write_String8(buf, len, ALIGN_RIGHT);
+                                } else {
+                                    // trip_item
+
+                                    LCD_CMD(0xC0);
+
+                                    switch(item_page) {
+                                        case 0:
+                                            print_trip_odometer(&trip_item->trip, ALIGN_LEFT);
+                                            print_trip_average_fuel(&trip_item->trip, ALIGN_RIGHT);
+                                            break;
+                                        case 1:
+                                            print_trip_average_speed(&trip_item->trip, ALIGN_LEFT);
+                                            print_trip_time(&trip_item->trip, ALIGN_RIGHT);
+                                            break;
+                                        case 2:
+                                            print_trip_total_fuel(&trip_item->trip, ALIGN_LEFT);
+                                            LCD_Write_String8(buf, 0, ALIGN_RIGHT);
+                                            break;
+                                    }
+                                }
+                            }
                         }
 
-                        if (key2_longpress != 0) {
-                            timeout_timer1 = 0;
-                            screen_refresh = 1;
+                        if (item_current == 0xFF) {
+                            // no items for current journal
+                            LCD_CMD(0x80);
+                            LCD_Write_String16(buf, strcpy2(buf, (char *) journal_viewer_items_str, journal_type + 1), ALIGN_LEFT);
+                            LCD_CMD(0xC0);
+                            LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_no_items_str, 0), ALIGN_LEFT);
+
+                            if (key2_press != 0) {
+                                timeout_timer1 = 0;
+                                screen_refresh = 1;
+                            }
+                        } else {
+                            if (key2_longpress != 0) {
+                                timeout_timer1 = 0;
+                                screen_refresh = 1;
+                            }
                         }
 
                         wait_refresh_timeout();
