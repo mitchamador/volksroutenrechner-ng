@@ -122,6 +122,8 @@ typedef enum {
 #define DAY_OF_WEEK_STR "\0sunday\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday";
 #define MONTH_STR "\0jan\0feb\0mar\0apr\0may\0jun\0jul\0aug\0sep\0oct\0nov\0dec";
 
+#define TEMP_SENSOR "t.sensor"
+
 #ifndef __AVR
 #define PROGMEM
 #endif
@@ -157,6 +159,7 @@ PROGMEM const char settings_bits[] = SETTINGS_BITS;
 PROGMEM const char temp_sensors[] = TEMP_SENSORS;
 #ifdef DS18B20_CONFIG_EXT
 PROGMEM const char temp_no_sensors[] = TEMP_NO_SENSORS;
+PROGMEM const char temp_sensor[] = TEMP_SENSOR;
 #endif
 #endif
 PROGMEM const char day_of_week_str[] = DAY_OF_WEEK_STR;

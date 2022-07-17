@@ -120,11 +120,10 @@
 #endif
 
 #ifdef DS18B20_CONFIG
+
 // extended ds18b20 config (use onewire search)
 #ifndef NO_DS18B20_CONFIG_EXT
 #define DS18B20_CONFIG_EXT
-// show device number in config (e.g. 1/3 - first of total three)
-//#define DS18B20_CONFIG_EXT_SHOW_DEV
 #endif /* NO_DS18B20_CONFIG_EXT */
 
 #endif /* DS18B20_CONFIG */

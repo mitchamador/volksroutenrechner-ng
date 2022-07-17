@@ -2262,62 +2262,42 @@ void config_screen_temp_sensors() {
                 }
                 timeout_timer1 = 512;
             }
-            
-#ifdef DS18B20_CONFIG_EXT_SHOW_DEV            
-            if (key1_press != 0 || key2_press != 0 || key3_press != 0) {
-                if (key2_press == 0) {
-                    timeout_timer2 = 0;
-                    config_temperature_show_temp = 1;
-                }
-                clear_keys_state();
-                timeout_timer1 = 512;
-            }
 
-            if (timeout_timer2 == 0) {
-                if (config_temperature_conv_fl != 0) {
-                    config_temperature_show_temp = !config_temperature_show_temp;
-                } else {
-                    config_temperature_show_temp = 0;
-                }
-                timeout_timer2 = 100;
-            }
-
-            if (config_temperature_show_temp != 0 || num_devices == 1)
-            {
-#else
-            if (config_temperature_conv_fl != 0)
-            {
-#endif
+            if (config_temperature_conv_fl != 0) {
                 temps[TEMP_CONFIG] = _temps[current_device];
                 add_leading_symbols(&buf[0], ' ', print_temp(TEMP_CONFIG, ALIGN_LEFT), 4);
-#ifdef DS18B20_CONFIG_EXT_SHOW_DEV            
+                memcpy(&buf[12], &buf[0], 4);
+            } else {
+                _memset(&buf[12], ' ', 4);
             }
-            else
-            {
-                uint8_t *ptr = (uint8_t *) &buf[0];
-                buf[0] = ' ';
-                buf[1] = '1' + current_device;
-                buf[2] = '/';
-                buf[3] = '0' + num_devices;
-            }
-#endif
-            {
-                LCD_CMD(0x8C);
-                LCD_Write_String(buf, 4);
-            }
-#ifndef DS18B20_CONFIG_EXT_SHOW_DEV
-            }
-#endif
+
+            strcpy2(buf, (char *) &temp_sensor, 0);
+
+            buf[8] = ' ';
+            buf[9]= '1' + current_device;
+            buf[10] = '/';
+            buf[11] = '0' + num_devices;
+
+            LCD_CMD(0x80);
+            LCD_Write_String16(buf, 16, ALIGN_LEFT);
+
             llptrtohex((unsigned char*) &tbuf[current_device * 8], (unsigned char*) buf);
 
             len = strcpy2(&buf[12], (char *) &temp_sensors, _t_num[current_device] + 1);
             add_leading_symbols(&buf[12], ' ', len, 4);
 
-            clear_keys_state();
         }
 
         LCD_CMD(0xC0);
         LCD_Write_String16(buf, 16, ALIGN_LEFT);
+        
+        if (request_screen((char *) &reset_string) != 0) {
+            _t_num[0] = 1; _t_num[1] = 2; _t_num[2] = 3;
+            _memset(&tbuf, 0xFF, 8 * 3);
+            timeout_timer1 = 0;
+        }
+
+        clear_keys_state();
 
         while (screen_refresh == 0 && timeout_timer1 != 0 && (timeout_timer2 != 0 || config_temperature_conv_fl != 0));
     }
