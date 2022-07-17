@@ -2293,6 +2293,7 @@ void config_screen_temp_sensors() {
         
         if (request_screen((char *) &reset_string) != 0) {
             _t_num[0] = 1; _t_num[1] = 2; _t_num[2] = 3;
+            temps[0] = DS18B20_TEMP_NONE; temps[1] = DS18B20_TEMP_NONE; temps[2] = DS18B20_TEMP_NONE;
             _memset(&tbuf, 0xFF, 8 * 3);
             timeout_timer1 = 0;
         }
