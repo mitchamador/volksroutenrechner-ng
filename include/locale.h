@@ -31,7 +31,7 @@ typedef enum {
         /* POS_SEC=9   */ 0xFF, 's',              \
         /* POS_CELS=10 */ 0xFF, 0xDF,             \
         /* POS_MAXS=11 */ 0xFF, '<',              \
-        /* POS_MAXS=12 */ 0xFF, 'm', 's',         \
+        /* POS_MS=12   */ 0xFF, 'm', 's',         \
         /* POS_NONE=13 */ 0xFF,                   \
         0xFF,                                     \
 }
@@ -58,9 +58,9 @@ typedef enum {
 #define ACCEL_MEAS_WAIT_STRING "wait for start"; 
 #define TIMEOUT_STRING "timeout"; 
 
-#define WARNING_STR "WARNING"; 
+#define WARNING_STR "warning"; 
 
-#define CONFIG_MENU_TITLE "CONFIG MENU";
+#define CONFIG_MENU_TITLE "config menu";
 #define SERVICE_COUNTERS "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
 
 #define SETTINGS_BITS "\0pair/par inj\0skip temp\0key sound\0serv alarm\0\0mh rpm\0daily trip\0in/out temp\0ds3231 temp\0\0\0\0\0\0\0";
@@ -77,10 +77,10 @@ typedef enum {
 typedef enum {
 
     FUEL_CONSTANT_INDEX = 1,
-#define FUEL_CONSTANT_STR "\0FUEL constant"
+#define FUEL_CONSTANT_STR "\0fuel constant"
 
     VSS_CONSTANT_INDEX,
-#define VSS_CONSTANT_STR "\0VSS constant"
+#define VSS_CONSTANT_STR "\0vss constant"
 
     TOTAL_TRIP_INDEX,
 #define TOTAL_TRIP_STR "\0total trip"
