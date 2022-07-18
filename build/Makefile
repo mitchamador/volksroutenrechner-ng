@@ -47,6 +47,7 @@ OUTPUTNAME=volksroutenrechner-ng
 DEBUGGABLE_SUFFIX=elf
 OUTPUT_SUFFIX=hex
 OBJECTDIR=${TARGET}
+OUTDIR=../firmware
 
 SRCS = src/onewire.c src/ds18b20.c src/ds1307.c src/hw-avr.c src/hw-pic.c src/i2c.c src/lcd.c src/main.c src/utils.c src/i2c-eeprom.c
 ifneq (,$(findstring pic16f,$(MCU)))
@@ -71,9 +72,9 @@ usage:
 	$(info make XC8-TOOLCHAIN=/path/to/xc8-toolchain AVR-GCC-TOOLCHAIN=/path/to/avr-gcc-toolchain release)
 
 build: $(TARGET)
-	${CP} ${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX} ../firmware/${OUTPUTNAME}.${MCU}${TARGET_SUFFIX}.${OUTPUT_SUFFIX}
+	${CP} ${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX} ${OUTDIR}/${OUTPUTNAME}.${MCU}${TARGET_SUFFIX}.${OUTPUT_SUFFIX}
 ifeq (,$(findstring pic16f,$(MCU)))
-	${CP} ${OBJECTDIR}/${OUTPUTNAME}.production.eep ../firmware/${OUTPUTNAME}.${MCU}${TARGET_SUFFIX}.eep
+	${CP} ${OBJECTDIR}/${OUTPUTNAME}.production.eep ${OUTDIR}/${OUTPUTNAME}.${MCU}${TARGET_SUFFIX}.eep
 endif
 ifeq ($(EEPROM),1)
 ifneq (,$(findstring pic16f,$(MCU)))
