@@ -2214,10 +2214,6 @@ void config_screen_min_speed() {
 
 __bit config_temperature_conv_fl;
 
-#ifdef DS18B20_CONFIG_EXT_SHOW_DEV            
-__bit config_temperature_show_temp;
-#endif
-
 /**
  * extended version of temp sensors' configuration (use onewire search)
  * all sensors can be connected at once
@@ -2236,9 +2232,6 @@ void config_screen_temp_sensors() {
     
     ds18b20_start_conversion(); config_temperature_conv_fl = 0; timeout_timer2 = 100;
 
-#ifdef DS18B20_CONFIG_EXT_SHOW_DEV            
-    config_temperature_show_temp = 0;
-#endif
     timeout_timer1 = 512;
     while (timeout_timer1 != 0) {
         screen_refresh = 0;
