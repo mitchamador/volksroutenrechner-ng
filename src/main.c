@@ -1987,19 +1987,27 @@ void journal_save_accel(uint8_t index) {
     journal_update_header();
 }
 
+//#define ALT_JOURNAL_DATE
+
 uint8_t journal_print_item_time(char *buf, trip_time_t *trip_time) {
     uint8_t len = 0;
     bcd8_to_str(&buf[len], trip_time->day);
     len += 2;
+#ifdef ALT_JOURNAL_DATE
+    len += strcpy2(&buf[len], (char *) &month_str, bcd8_to_bin(trip_time->month));
+#else
     buf[len++] = '.';
     bcd8_to_str(&buf[len], trip_time->month);
     len += 2;
     buf[len++] = '.';
+#endif
     bcd8_to_str(&buf[len], trip_time->year);
     len += 2;
     buf[len++] = ' ';
+#ifndef ALT_JOURNAL_DATE
     buf[len++] = ' ';
     buf[len++] = ' ';
+#endif
     bcd8_to_str(&buf[len], trip_time->hour);
     len += 2;
     buf[len++] = ':';
@@ -2101,7 +2109,13 @@ void screen_journal_viewer() {
                             
                             if (item_current != 0xFF) {
                                 LCD_CMD(0x80);
+#ifdef ALT_JOURNAL_DATE
+                                len = ultoa2(buf, item_num + 1, 10);
+                                buf[len++] = '.';
+                                LCD_Write_String16(buf, len + journal_print_item_time((char *) &buf[len], trip_time), ALIGN_LEFT);
+#else
                                 LCD_Write_String16(buf, journal_print_item_time((char *) &buf, trip_time), ALIGN_LEFT);
+#endif                                
 
                                 if (key2_press != 0) {
                                     timeout_timer1 = 5;
