@@ -5,11 +5,11 @@
 #include "hw.h"
 
 // temperature timeout
-#define TIMEOUT_TEMPERATURE (15 - 1)
-#define FORCED_TIMEOUT_TEMPERATURE (3 - 1)
+#define TIMEOUT_TEMPERATURE (30 - 1)
+#define FORCED_TIMEOUT_TEMPERATURE (5 - 1)
 
-// ds1307 read timeout (5*2 sec)
-#define TIMEOUT_DS_READ 5
+// ds1307 read timeout
+#define TIMEOUT_DS_READ 10
 
 // power supply threshold 
 // with default divider resistor's (8,2k (to Vcc) + 3,6k (to GND)) values

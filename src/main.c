@@ -76,9 +76,9 @@ volatile uint8_t shutdown_counter;
 // main interval
 volatile __bit screen_refresh;
 
-// timeout1
-volatile uint16_t timeout_timer1;
-// timeout2
+// timeout1 (resolution - 1 s)
+volatile uint8_t timeout_timer1;
+// timeout2 (resolution - 0.01 s)
 volatile uint8_t timeout_timer2;
 
 // misc flags
@@ -639,24 +639,25 @@ int_handler_GLOBAL_begin
                      trips.tripC.time++;
                 }
 
-#ifdef TEMPERATURE_SUPPORT
-                if (timeout_temperature > 0) {
-                    timeout_temperature--;
-                }
-#endif                
-                if (timeout_ds_read > 0) {
-                    timeout_ds_read--;
-                }
             } else {
                 time_increment_fl = 1;
+            }
+
+#ifdef TEMPERATURE_SUPPORT
+            if (timeout_temperature > 0) {
+                timeout_temperature--;
+            }
+#endif                
+            if (timeout_ds_read > 0) {
+                timeout_ds_read--;
+            }
+
+            if (timeout_timer1 > 0) {
+                timeout_timer1--;
             }
              
         }
         
-        if (timeout_timer1 > 0) {
-            timeout_timer1--;
-        }
-
         if (timeout_timer2 > 0) {
             timeout_timer2--;
         }
@@ -721,7 +722,7 @@ int_handler_GLOBAL_begin
             shutdown_counter = 0;
         } else {
             if (shutdown_counter == SHUTDOWN_COUNTER) {
-                screen_refresh = 1;
+                screen_refresh = 1; timeout_timer1 = 0;
             } else {
                 shutdown_counter++;
             }
@@ -798,7 +799,7 @@ void adc_handler_voltage(uint16_t adc_value) {
         shutdown_counter = 0;
     } else {
         if (shutdown_counter == SHUTDOWN_COUNTER) {
-            screen_refresh = 1;
+            screen_refresh = 1; timeout_timer1 = 0;
         } else {
             shutdown_counter++;
         }
@@ -833,7 +834,7 @@ void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value) {
         if (_v++ == max_value) {
             _v = min_value;
         }
-        timeout_timer1 = 512;
+        timeout_timer1 = 5;
     }
 #if !defined(KEY3_SUPPORT)
     if (key2_press != 0) {
@@ -848,7 +849,7 @@ void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value) {
         if (_v-- == min_value) {
             _v = max_value;
         }
-        timeout_timer1 = 512;
+        timeout_timer1 = 5;
     }
     *v = _v;
 }
@@ -860,7 +861,7 @@ void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
         if (_v++ == max_value) {
             _v = min_value;
         }
-        timeout_timer1 = 512;
+        timeout_timer1 = 5;
     }
 
 #if defined(KEY3_SUPPORT)
@@ -869,7 +870,7 @@ void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
         if (_v-- == min_value) {
             _v = max_value;
         }
-        timeout_timer1 = 512;
+        timeout_timer1 = 5;
     }
 #endif
     *v = _v;
@@ -884,7 +885,7 @@ void handle_keys_next_prev_enc(uint8_t *v, uint8_t min_value, uint8_t max_value)
         if (_v++ == max_value) {
             _v = min_value;
         }
-        timeout_timer1 = 512;
+        timeout_timer1 = 5;
     }
 
     // change cursor to prev position
@@ -892,7 +893,7 @@ void handle_keys_next_prev_enc(uint8_t *v, uint8_t min_value, uint8_t max_value)
         if (_v-- == min_value) {
             _v = max_value;
         }
-        timeout_timer1 = 512;
+        timeout_timer1 = 5;
     }
     *v = _v;
 }
@@ -1214,7 +1215,7 @@ void screen_time(void) {
         const char cursor_position[] = {0x81, 0x84, 0x89, 0x8c, 0x8f, 0xc0};
 
         LCD_Clear();
-        timeout_timer1 = 512;
+        timeout_timer1 = 5;
         while (timeout_timer1 != 0) {
             screen_refresh = 0;
 #if defined(ENCODER_SUPPORT)
@@ -1259,7 +1260,7 @@ void screen_time(void) {
                     set_day_of_week(&time);
                 }
 #endif                
-                timeout_timer1 = 512;
+                timeout_timer1 = 5;
             }
 
 
@@ -1288,7 +1289,7 @@ typedef enum {
 
 
 unsigned char edit_value_char(unsigned char v, edit_value_char_t mode, unsigned char min_value, unsigned char max_value) {
-    timeout_timer1 = 512;
+    timeout_timer1 = 5;
     while (timeout_timer1 != 0) {
         screen_refresh = 0;
 
@@ -1327,7 +1328,7 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
     unsigned char cursor_pos = 0xC0 + (16 - max_len) / 2U;
     unsigned char pos = 0;
 
-    timeout_timer1 = 512;
+    timeout_timer1 = 5;
     while (timeout_timer1 != 0) {
         screen_refresh = 0;
 
@@ -1355,7 +1356,7 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
                 buf[pos] = '0';
             }
 
-            timeout_timer1 = 512;
+            timeout_timer1 = 5;
         }
 
         LCD_CMD(LCD_CURSOR_OFF);
@@ -1381,7 +1382,7 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
 
     uint8_t pos = 0;
 
-    timeout_timer1 = 512;
+    timeout_timer1 = 5;
     while (timeout_timer1 != 0) {
         screen_refresh = 0;
 
@@ -1390,7 +1391,7 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
         // edit number in cursor position
         if (key2_press != 0) {
             v ^= (1 << (15 - pos));
-            timeout_timer1 = 512;
+            timeout_timer1 = 5;
         }
 
         LCD_CMD(LCD_CURSOR_OFF);
@@ -1432,7 +1433,7 @@ unsigned char request_screen(char* request_str) {
         LCD_CMD(0x80);
         LCD_Write_String16(buf, strcpy2(buf, request_str, 0), ALIGN_CENTER);
 
-        timeout_timer1 = 512;
+        timeout_timer1 = 5;
         while (timeout_timer1 != 0 && NO_KEY_PRESSED);
 
         if (key2_press != 0) {
@@ -1537,7 +1538,7 @@ void acceleration_measurement(uint8_t index) {
     _memset(buf, '=', 16);
 
     // 15 sec waiting for start
-    timeout_timer1 = 1536;
+    timeout_timer1 = 15;
 
     timeout_timer2 = 0;
     while (_accel_meas_exit == 0 && NO_KEY_PRESSED) {
@@ -1551,7 +1552,7 @@ void acceleration_measurement(uint8_t index) {
             if (timeout_timer1 != 0) {
                 if (accel_meas_ok_fl == 0 && accel_meas_process_fl == 0) {
                     // 30 sec for acceleration measurement
-                    timeout_timer1 = 3072;
+                    timeout_timer1 = 30;
                     accel_meas_process_fl = 1;
 
                     LCD_Clear();
@@ -1594,7 +1595,7 @@ void acceleration_measurement(uint8_t index) {
 #ifdef SOUND_SUPPORT
                     buzzer_mode_value = BUZZER_WARN;
 #endif
-                    timeout_timer1 = 1024; while (timeout_timer1 != 0 && NO_KEY_PRESSED);
+                    timeout_timer1 = 10; while (timeout_timer1 != 0 && NO_KEY_PRESSED);
                     _accel_meas_exit = 1;
                 }
             }
@@ -1612,7 +1613,7 @@ void select_acceleration_measurement() {
 
     uint8_t v = 0, max_value = sizeof (accel_meas_limits) / sizeof (accel_meas_limits[0]) - 1, index = 0xFF;
 
-    timeout_timer1 = 512;
+    timeout_timer1 = 5;
     while (timeout_timer1 != 0) {
         screen_refresh = 0;
 
@@ -2025,7 +2026,7 @@ void screen_journal_viewer() {
 
             uint8_t journal_type = 0;
 
-            timeout_timer1 = 512;
+            timeout_timer1 = 5;
             while (timeout_timer1 != 0) {
                 screen_refresh = 0;
 
@@ -2049,7 +2050,7 @@ void screen_journal_viewer() {
                     uint8_t item_prev = ~item_num;
 
                     // item buffer
-                    char item[sizeof(journal_trip_item_t) >= sizeof(journal_accel_item_t) ? sizeof(journal_trip_item_t) : sizeof(journal_accel_item_t)];
+                    unsigned char item[sizeof(journal_trip_item_t) >= sizeof(journal_accel_item_t) ? sizeof(journal_trip_item_t) : sizeof(journal_accel_item_t)];
                     journal_accel_item_t *accel_item;
                     journal_trip_item_t *trip_item;
                     trip_time_t *trip_time;
@@ -2057,7 +2058,7 @@ void screen_journal_viewer() {
                     uint8_t item_page = 0;
                     uint8_t item_page_max = journal_type == 3 ? 0 : 2;
 
-                    timeout_timer1 = 512;
+                    timeout_timer1 = 5;
                     while (timeout_timer1 != 0) {
                         screen_refresh = 0;
 
@@ -2103,7 +2104,7 @@ void screen_journal_viewer() {
                                 LCD_Write_String16(buf, journal_print_item_time((char *) &buf, trip_time), ALIGN_LEFT);
 
                                 if (key2_press != 0) {
-                                    timeout_timer1 = 512;
+                                    timeout_timer1 = 5;
                                     if (++item_page > item_page_max) {
                                         item_page = 0;
                                     }
@@ -2171,7 +2172,7 @@ void screen_journal_viewer() {
                         wait_refresh_timeout();
                     }
                     
-                    timeout_timer1 = 512;
+                    timeout_timer1 = 5;
                 } else if (key2_longpress != 0) {
                     timeout_timer1 = 0;
                     screen_refresh = 1;
@@ -2232,7 +2233,7 @@ void config_screen_temp_sensors() {
     
     ds18b20_start_conversion(); config_temperature_conv_fl = 0; timeout_timer2 = 100;
 
-    timeout_timer1 = 512;
+    timeout_timer1 = 5;
     while (timeout_timer1 != 0) {
         screen_refresh = 0;
         
@@ -2253,7 +2254,7 @@ void config_screen_temp_sensors() {
                 if (_t_num[current_device]++ == 3) {
                     _t_num[current_device] = 0;
                 }
-                timeout_timer1 = 512;
+                timeout_timer1 = 5;
             }
 
             if (config_temperature_conv_fl != 0) {
@@ -2326,7 +2327,7 @@ void config_screen_temp_sensors() {
 
     unsigned char t_num = 0;
     
-    timeout_timer1 = 512;
+    timeout_timer1 = 5;
     while (timeout_timer1 != 0) {
         screen_refresh = 0;
 
@@ -2344,7 +2345,7 @@ void config_screen_temp_sensors() {
             if (t_num >= 4) {
                 t_num = 0;
             }
-            timeout_timer1 = 512;
+            timeout_timer1 = 5;
         }
 
 #if defined(DS18B20_CONFIG_SHOW_TEMP)        
@@ -2400,7 +2401,7 @@ void config_screen_service_counters() {
             services.srv[c_sub_item - 1].limit = edit_value_char(services.srv[c_sub_item - 1].limit, CHAREDIT_MODE_10000KM, 0, 60);
         }
 
-        timeout_timer1 = 512;
+        timeout_timer1 = 5;
     }
     
 }
@@ -2414,6 +2415,9 @@ void config_screen_ua_const() {
 }
 
 void config_screen_version() {
+    if (key1_press || key2_press != 0) {
+        timeout_timer1 = 0;
+    }
     LCD_CMD(0xC0);
     LCD_Write_String16(buf, strcpy2(buf, (char*) &version_str, 0), ALIGN_LEFT);
 }
@@ -2437,7 +2441,7 @@ void config_screen(unsigned char c_item) {
     if (key2_press != 0 || force_item) {
         key2_press = 0;
         LCD_Clear();
-        timeout_timer1 = 512;
+        timeout_timer1 = 5;
         while (timeout_timer1 != 0) {
             screen_refresh = 0;
 
@@ -2486,7 +2490,7 @@ void print_warning_service_counters(unsigned char warn) {
             LCD_CMD(0xC0);
             LCD_Write_String16(buf, strcpy2(buf, (char*) &service_counters, i + 1), ALIGN_CENTER);
 
-            timeout_timer1 = 512;
+            timeout_timer1 = 5;
             while (timeout_timer1 != 0 && NO_KEY_PRESSED)
                 ;
             clear_keys_state();
