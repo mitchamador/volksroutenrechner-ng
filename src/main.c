@@ -1928,8 +1928,9 @@ void journal_save_trip(trip_t *trip) {
     }
 
     uint16_t odo = get_odometer(trip);
-    // skip if zero distance and trip A/B
-    if (odo == 0 && index != 0) return;
+
+    // // skip if zero distance and trip A/B
+    // if (odo == 0 && index != 0) return;
 
     if (odo != 0) {
         trip_item.status = JOURNAL_ITEM_OK;
@@ -2576,7 +2577,7 @@ uint16_t get_yday(uint8_t month, uint8_t day) {
     return yday + bcd8_to_bin(day);
 }
 
-unsigned char check_tripC_time() {
+uint8_t check_tripC_time() {
     // clear trip C if diff between dates is more than TRIPC_PAUSE_MINUTES minutes
     short diff;
 
@@ -2604,6 +2605,15 @@ unsigned char check_tripC_time() {
        return (unsigned char) diff; 
     }
     
+    return 0;
+}
+
+uint8_t check_tripB_month() {
+    if (config.settings.monthly_tripb != 0) {
+        if (trips.tripB_month != 0 && trips.tripB_month != time.month) {
+            return 1;
+        }
+    }
     return 0;
 }
 
@@ -2728,6 +2738,10 @@ void power_on() {
         trips.tripC_max_speed = 0;
     }
 
+    if (check_tripB_month() != 0) {
+        clear_trip(true, &trips.tripB);
+    }
+
 }
 
 void power_off() {
@@ -2738,6 +2752,11 @@ void power_off() {
     // save current time
     if (save_tripc_time_fl != 0) {
         fill_trip_time(&trips.tripC_time);
+        if (config.settings.monthly_tripb != 0) {
+            trips.tripB_month = time.month;
+        } else {
+            trips.tripB_month = 0;
+        }
     }
 
     config.selected_param.main_param = main_param;

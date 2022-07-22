@@ -63,7 +63,7 @@ typedef enum {
 #define CONFIG_MENU_TITLE "config menu";
 #define SERVICE_COUNTERS "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
 
-#define SETTINGS_BITS "\0pair/par inj\0skip temp\0key sound\0serv alarm\0\0mh rpm\0daily trip\0in/out temp\0ds3231 temp\0\0\0\0\0\0\0";
+#define SETTINGS_BITS "\0pair/par inj\0skip temp\0key sound\0serv alarm\0mh rpm\0trip B month\0trip C day\0in/out temp\0ds3231 temp\0\0\0\0\0\0\0";
 
 #define TEMP_SENSORS "\0---\0out\0in\0eng";
 #define TEMP_NO_SENSORS "no sensors found"

@@ -97,8 +97,8 @@ typedef union {
         unsigned ds3231_temp : 1;           // use ds3231 temperature as inner
         unsigned show_inner_temp : 1;       // show inner (outer by default) temperature on first screen
         unsigned daily_tripc : 1;           // use trip C as dayly counter (auto reset on next day)
+        unsigned monthly_tripb : 1;         // use trip B as monthly counter (auto reset on next month)
         unsigned mh_rpm : 1;                // show motorhours based on rpm (96000 per hour)
-        unsigned reserved : 1;              // reserved
         unsigned service_alarm : 1;         // alarm for service counters
         unsigned key_sound : 1;             // keys sound
         unsigned skip_temp_screen : 1;      // skip temperature screen
@@ -161,10 +161,11 @@ typedef struct {
 } services_t;
 
 typedef struct {
-    trip_t tripA, tripB, tripC;
-    trip_time_t tripC_time;
-    uint16_t tripC_max_speed;
-} trips_t;
+    trip_t tripA, tripB, tripC;     // 12 * 3 bytes
+    trip_time_t tripC_time;         // 5 bytes
+    uint16_t tripC_max_speed;       // 2 bytes
+    uint8_t tripB_month;            // 1 byte
+} trips_t;                          // 44 bytes total
 
 #define EEPROM_DS18B20_ADDRESS (((sizeof(config_t) - 1) / 8 + 1) * 8) + (((sizeof(trips_t) - 1) / 8 + 1) * 8) + (((sizeof(services_t) - 1) / 8 + 1) * 8)
 #define EEPROM_CUSTOM_CHARS_ADDRESS (EEPROM_DS18B20_ADDRESS + 8 * 3)
