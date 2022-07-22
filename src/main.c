@@ -1219,9 +1219,9 @@ void screen_time(void) {
         while (timeout_timer1 != 0) {
             screen_refresh = 0;
 #if defined(ENCODER_SUPPORT)
-            handle_keys_next_prev_enc(&c, 0, 6);            
+            handle_keys_next_prev_enc(&c, 0, 6 - 1);            
 #else
-            handle_keys_next_prev(&c, 0, 6);            
+            handle_keys_next_prev(&c, 0, 6 - 1);            
 #endif
 
             if (KEY_OK) {
