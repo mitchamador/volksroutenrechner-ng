@@ -43,16 +43,16 @@ void HW_Init(void) {
     OCR0B = 0x00;
 
     // Timer/Counter 1 initialization
-    // Mode: CTC top=OCR1A
+    // Mode: CTC top=ICR1
     // Timer Period: 10 ms
     TCCR1A = (0 << COM1A1) | (0 << COM1A0) | (0 << COM1B1) | (0 << COM1B0) | (0 << WGM11) | (0 << WGM10);
-    TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (0 << CS11) | (0 << CS10);
+    TCCR1B = (0 << ICNC1) | (0 << ICES1) | (1 << WGM13) | (1 << WGM12) | (0 << CS12) | (0 << CS11) | (0 << CS10);
     TCNT1H = 0x00;
     TCNT1L = 0x00;
-    ICR1H = 0x00;
-    ICR1L = 0x00;
-    OCR1AH = (TIMER1_VALUE - 1) >> 8;
-    OCR1AL = (TIMER1_VALUE - 1) & 0xFF;
+    ICR1H = (TIMER1_VALUE - 1) >> 8;
+    ICR1L = (TIMER1_VALUE - 1) & 0xFF;
+    OCR1AH = 0x00;
+    OCR1AL = 0x00;
     OCR1BH = 0x00;
     OCR1BL = 0x00;
 
@@ -67,10 +67,10 @@ void HW_Init(void) {
     //OCR2B = 0x00;
 
     // Timer/Counter 0 Interrupt(s) initialization
-    TIMSK0 = (0 << OCIE0B) | (1 << OCIE0A) | (0 << TOIE0);
+    TIMSK0 = (1 << OCIE0B) | (0 << OCIE0A) | (0 << TOIE0);
 
     // Timer/Counter 1 Interrupt(s) initialization
-    TIMSK1 = (0 << ICIE1) | (0 << OCIE1B) | (1 << OCIE1A) | (0 << TOIE1);
+    TIMSK1 = (1 << ICIE1) | (0 << OCIE1B) | (0 << OCIE1A) | (0 << TOIE1);
 
     // Timer/Counter 2 Interrupt(s) initialization
     //TIMSK2 = (0 << OCIE2B) | (1 << OCIE2A) | (0 << TOIE2);
@@ -105,15 +105,15 @@ void HW_Init(void) {
     DIDR1 = (0 << AIN0D) | (0 << AIN1D);
 
     // ADC initialization
-    // ADC Clock frequency: 1000,000 kHz
+    // ADC Clock frequency: 125,000 kHz
     // ADC Voltage Reference: AVCC pin
-    // ADC Auto Trigger Source: Timer/Counter1 compare match B
+    // ADC Auto Trigger Source: Timer/Counter1 capture event
     // Digital input buffers on ADC0: On, ADC1: On, ADC2: On, ADC3: On, ADC4: On, ADC5: On
     // ADC interrupt on
     DIDR0 = (0 << ADC5D) | (0 << ADC4D) | (0 << ADC3D) | (0 << ADC2D) | (0 << ADC1D) | (0 << ADC0D);
     ADMUX = ADC_VREF_TYPE | ADC_CHANNEL_POWER_SUPPLY;
-    ADCSRA = (1 << ADEN) | (1 << ADSC) | (1 << ADATE) | (0 << ADIF) | (1 << ADIE) | (1 << ADPS2) | (0 << ADPS1) | (0 << ADPS0);
-    ADCSRB = (1 << ADTS2) | (0 << ADTS1) | (1 << ADTS0);
+    ADCSRA = (1 << ADEN) | (0 << ADSC) | (1 << ADATE) | (0 << ADIF) | (1 << ADIE) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
+    ADCSRB = (1 << ADTS2) | (1 << ADTS1) | (1 << ADTS0);
 
     // SPI initialization
     // SPI disabled
@@ -191,9 +191,9 @@ unsigned char I2C_Master_Write(unsigned char data) {
     while (!(TWCR & (1 << TWINT)));
 
     // check value of TWI Status Register. Mask prescaler bits
-    twst = TW_STATUS & 0xF8;
-    if (twst != TW_MT_DATA_ACK) return 1;
-    return 0;
+    twst = TW_STATUS & TW_STATUS_MASK;
+    if (twst == TW_MT_SLA_ACK || twst == TW_MT_DATA_ACK) return ACK;
+    return NACK;
 }
 
 #endif

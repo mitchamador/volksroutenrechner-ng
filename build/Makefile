@@ -47,8 +47,9 @@ OUTPUTNAME=volksroutenrechner-ng
 DEBUGGABLE_SUFFIX=elf
 OUTPUT_SUFFIX=hex
 OBJECTDIR=${TARGET}
+OUTDIR=../firmware
 
-SRCS = src/onewire.c src/ds18b20.c src/ds1307.c src/hw-avr.c src/hw-pic.c src/i2c.c src/lcd.c src/main.c src/utils.c
+SRCS = src/onewire.c src/ds18b20.c src/ds1307.c src/hw-avr.c src/hw-pic.c src/i2c.c src/lcd.c src/main.c src/utils.c src/i2c-eeprom.c
 ifneq (,$(findstring pic16f,$(MCU)))
   OBJS = $(SRCS:%.c=${OBJECTDIR}/%.p1)
   DEPS := $(OBJS:.p1=.d)
@@ -71,9 +72,9 @@ usage:
 	$(info make XC8-TOOLCHAIN=/path/to/xc8-toolchain AVR-GCC-TOOLCHAIN=/path/to/avr-gcc-toolchain release)
 
 build: $(TARGET)
-	${CP} ${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX} ../firmware/${OUTPUTNAME}.${MCU}${TARGET_SUFFIX}.${OUTPUT_SUFFIX}
+	${CP} ${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX} ${OUTDIR}/${OUTPUTNAME}.${MCU}${TARGET_SUFFIX}.${OUTPUT_SUFFIX}
 ifeq (,$(findstring pic16f,$(MCU)))
-	${CP} ${OBJECTDIR}/${OUTPUTNAME}.production.eep ../firmware/${OUTPUTNAME}.${MCU}${TARGET_SUFFIX}.eep
+	${CP} ${OBJECTDIR}/${OUTPUTNAME}.production.eep ${OUTDIR}/${OUTPUTNAME}.${MCU}${TARGET_SUFFIX}.eep
 endif
 ifeq ($(EEPROM),1)
 ifneq (,$(findstring pic16f,$(MCU)))
@@ -107,7 +108,7 @@ clobber:
 $(TARGET): $(OBJS)
 	@${MKDIR} ${OBJECTDIR} 
 ifneq (,$(findstring pic16f,$(MCU)))
-	${MP_CC} $(MP_EXTRA_LD_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -Wl,-Map=${OBJECTDIR}/${OUTPUTNAME}.production.map  -DXPRJ_$(TARGET)=$(CND_CONF)  -Wl,--defsym=__MPLAB_BUILD=1   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -DHW_LEGACY -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall -std=c99 -gcoff -mstack=compiled:auto:auto     $(COMPARISON_BUILD) -Wl,--memorysummary,${OBJECTDIR}/memoryfile.xml -o ${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}  ${OBJS}      
+	${MP_CC} $(MP_EXTRA_LD_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -Wl,-Map=${OBJECTDIR}/${OUTPUTNAME}.production.map  -DXPRJ_$(TARGET)=$(CND_CONF)  -Wl,--defsym=__MPLAB_BUILD=1   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall -std=c99 -gcoff -mstack=compiled:auto:auto     $(COMPARISON_BUILD) -Wl,--memorysummary,${OBJECTDIR}/memoryfile.xml -o ${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}  ${OBJS}      
 else
 	${MP_CC} -o ${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} -mmcu=$(MCU) -Os -Wl,--gc-sections -flto -fuse-linker-plugin ${OBJS} 
 	${AVR_OBJCOPY} -O ihex -R .eeprom "${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" "${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}"
@@ -121,7 +122,7 @@ ${OBJECTDIR}/%.o : %.c
 
 ${OBJECTDIR}/%.p1 : %.c
 	@${MKDIR} "${OBJECTDIR}/src"
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -DHW_LEGACY -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall $(COMPARISON_BUILD)  -std=c99 -gcoff -mstack=compiled:auto:auto     -o $@ -c $<
+	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall $(COMPARISON_BUILD)  -std=c99 -gcoff -mstack=compiled:auto:auto     -o $@ -c $<
 	@${FIXDEPS} $(patsubst %.p1,%.d,$@) $(SILENT) -rsi ${MP_CC_DIR}../ 
 
 clean:

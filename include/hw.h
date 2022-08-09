@@ -1,6 +1,8 @@
 #ifndef HW_H
 #define	HW_H
 
+#include "config.h"
+
 #if defined(__XC8)
 #include <xc.h>
 #if defined(_16F876A) || defined(_16F1936) || defined(_16F1938)
@@ -74,7 +76,7 @@ typedef uint32_t uint24_t;
 // RA5 as digital 1wire pin
 
 // power control pin (RA0)
-#define PWR PORTAbits.RA0
+#define PWR       RA0
 #define PWR_MASK  (1 << _PORTA_RA0_POSITION)
 
 // adc power (AN1/RA1)
@@ -84,8 +86,8 @@ typedef uint32_t uint24_t;
 #define FUEL_TANK_TRIS_MASK (1 << _TRISA_TRISA2_POSITION)
 
 // DS18B20 data pin (RA5)
-#define ONEWIRE_PIN      PORTAbits.RA5
-#define ONEWIRE_PIN_Dir  TRISAbits.TRISA5
+#define ONEWIRE_PIN       RA5
+#define ONEWIRE_PIN_Dir   TRISA5
 #define ONEWIRE_TRIS_MASK (1 << _TRISA_TRISA5_POSITION)
 
 #if defined(_16F876A)
@@ -115,48 +117,50 @@ typedef uint32_t uint24_t;
 // RB6 - speed sensor
 // RB7 - fuel injector
 
-#define SDA       PORTBbits.RB0
-#define SDA_MASK  (1 << _PORTB_RB0_POSITION)
-#define SDA_TRIS  TRISBbits.TRISB0
+#define SDA             RB0
+#define SDA_MASK        (1 << _PORTB_RB0_POSITION)
+#define SDA_TRIS        TRISB0
 #define SDA_TRIS_MASK   (1 << _TRISB_TRISB0_POSITION)
 
-#define SCL       PORTBbits.RB1
-#define SCL_MASK  (1 << _PORTB_RB1_POSITION)
-#define SCL_TRIS  TRISBbits.TRISB1
+#define SCL             RB1
+#define SCL_MASK        (1 << _PORTB_RB1_POSITION)
+#define SCL_TRIS        TRISB1
 #define SCL_TRIS_MASK   (0 << _TRISB_TRISB1_POSITION)
 
-#define SDA_INPUT SDA_TRIS = 1
-#define SDA_OUTPUT SDA_TRIS = 0
-#define SDA_HIGH SDA = 1
-#define SDA_LOW SDA = 0
-#define SDA_GET() (SDA)
+#define SDA_INPUT   SDA_TRIS = 1
+#define SDA_OUTPUT  SDA_TRIS = 0
+#define SDA_HIGH    SDA = 1
+#define SDA_LOW     SDA = 0
+#define SDA_GET()   (SDA)
 
-#define SCL_INPUT SCL_TRIS = 1
-#define SCL_OUTPUT SCL_TRIS = 0
-#define SCL_HIGH SCL = 1
-#define SCL_LOW SCL = 0
+#define SCL_INPUT   SCL_TRIS = 1
+#define SCL_OUTPUT  SCL_TRIS = 0
+#define SCL_HIGH    SCL = 1
+#define SCL_LOW     SCL = 0
 
 // key1 and key2 (active ground) (legacy hardware)
-#define KEY1 PORTBbits.RB2
-#define KEY2 PORTBbits.RB3
+#define KEY1          RB2
+#define KEY2          RB3
 #ifdef KEY3_SUPPORT
-#define KEY3 PORTBbits.RB4
+#define KEY3          RB4
 #define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION) | (1 << _TRISB_TRISB4_POSITION)
+#define KEY_MASK      (1 << _PORTB_RB2_POSITION) | (1 << _PORTB_RB3_POSITION) | (1 << _PORTB_RB4_POSITION)
 #else
 #define KEY_TRIS_MASK (1 << _TRISB_TRISB2_POSITION) | (1 << _TRISB_TRISB3_POSITION)
+#define KEY_MASK      (1 << _PORTB_RB2_POSITION) | (1 << _PORTB_RB3_POSITION)
 #endif
 
 // speed sensor and injector
-#define TX PORTBbits.RB6
-#define TX_TRIS_MASK (1 << _TRISB_TRISB6_POSITION)
-#define FUEL PORTBbits.RB7
+#define TX             RB6
+#define TX_TRIS_MASK   (1 << _TRISB_TRISB6_POSITION)
+#define FUEL           RB7
 #define FUEL_TRIS_MASK (1 << _TRISB_TRISB7_POSITION)
 
 
 // PORTC definitions
 // RC0 - sound
 
-#define SND     PORTCbits.RC0
+#define SND     RC0
 #define SND_TRIS (1 << _TRISC_TRISC0_POSITION)
 
 #ifdef LCD_LEGACY
@@ -170,12 +174,12 @@ typedef uint32_t uint24_t;
 #define LCD_DATA_PORT_SHIFT 0
 #define LCD_DATA_PORT_MASK  (0xF0 >> LCD_DATA_PORT_SHIFT)
 
-#define RS_LOW  PORTCbits.RC1=0
-#define RS_HIGH PORTCbits.RC1=1
-#define RW_LOW  PORTCbits.RC2=0
-#define RW_HIGH PORTCbits.RC2=1
-#define EN_LOW  PORTCbits.RC3=0
-#define EN_HIGH PORTCbits.RC3=1
+#define RS_LOW  RC1=0
+#define RS_HIGH RC1=1
+#define RW_LOW  RC2=0
+#define RW_HIGH RC2=1
+#define EN_LOW  RC3=0
+#define EN_HIGH RC3=1
 
 #endif
 
@@ -186,7 +190,7 @@ typedef uint32_t uint24_t;
 
 // init values for port's data
 #define PORTA_INIT PWR_MASK
-#define PORTB_INIT 0 | SDA_MASK | SCL_MASK
+#define PORTB_INIT KEY_MASK | SDA_MASK | SCL_MASK
 #define PORTC_INIT 0
 
 // timer1 compare 10ms, 6250 with prescaler 1:8 at 20MHz
@@ -242,14 +246,40 @@ typedef uint32_t uint24_t;
 
 #elif defined(_16F1936) || defined(_16F1938)
 
+#if 1
+
 #define int_handler_fuel_speed_begin                       \
     /* Was it interrupt on change?*/                       \
     if (/*IOCIE && */IOCIF) {                              \
-        /* Clear interrupt flags*/                         \
         IOCBF = 0;                                         \
 
 #define int_handler_fuel_speed_end                         \
     }                                                      \
+
+#else
+
+#define int_handler_fuel_speed_begin                       \
+    /* Was it interrupt on change?*/                       \
+    if (/*IOCIE && */IOCIF) {                              \
+
+#define int_handler_fuel_speed_end                         \
+    }                                                      \
+
+#define int_handler_fuel_begin                             \
+    if (IOCBF7) {                                          \
+        IOCBF7 = 0;                                        \
+
+#define int_handler_fuel_end                               \
+    }                                                      \
+
+#define int_handler_speed_begin                            \
+    if (IOCBF6) {                                          \
+        IOCBF6 = 0;                                        \
+
+#define int_handler_speed_end                              \
+    }                                                      \
+
+#endif
 
 #endif
 
@@ -342,10 +372,13 @@ typedef uint32_t uint24_t;
         _timer1 = TIMER1_VALUE;                     \
     }                                               \
 
-#define timer1_overflow() ((TIFR1 & (1 << OCF1A)) != 0)
+#define timer1_overflow() ((TIFR1 & (1 << ICF1)) != 0)
 
 // start timer with prescaler 1:64
-#define start_timer1() TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (1 << CS11) | (1 << CS10);
+#define start_timer1() TCCR1B = (TCCR1B & ~((1 << CS12) | (1 << CS11) | (1 << CS10))) | ((0 << CS12) | (1 << CS11) | (1 << CS10));
+
+// start adc
+#define start_adc() ADCSRA = ADCSRA | (1 << ADSC);
 
 #ifdef __XC8
 #define enable_interrupts() ei();
@@ -371,7 +404,7 @@ typedef uint32_t uint24_t;
     
 #define int_handler_timer0_end }                            \
 
-#define int_handler_timer1_begin ISR(TIMER1_COMPA_vect) {   \
+#define int_handler_timer1_begin ISR(TIMER1_CAPT_vect) {    \
     
 #define int_handler_timer1_end }                            \
 
@@ -396,8 +429,6 @@ typedef uint32_t uint24_t;
 
 // Voltage Reference: AVCC pin, right aligned
 #define ADC_VREF_TYPE ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR))
-// clear OCF1B for ADC Auto Trigger
-#define restart_adc_event() TIFR1 = (1 << OCF1B)
 // mux for power supply pin (PC3/ADC3)
 #define ADC_CHANNEL_POWER_SUPPLY ((0 << MUX3) | (0 << MUX2) | (1 << MUX1) | (1 << MUX0))
 // mux for buttons pin (PC0/ADC0)

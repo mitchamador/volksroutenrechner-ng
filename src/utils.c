@@ -1,5 +1,9 @@
 #include "utils.h"
 
+#if defined(__AVR__)
+#include <util/crc16.h>
+#endif
+
 unsigned char bcd8_to_bin(unsigned char b) {
     unsigned char _t = b & 0x0F;
     b = (b & 0xF0) >> 1;
@@ -166,4 +170,22 @@ void buf_write_string(char* buf, unsigned char len, unsigned char max, align_t a
             buf[max] = buf[--len];
         }
     }
+}
+
+uint8_t crc8_dallas(const uint8_t *addr, uint8_t len) {
+    uint8_t crc = 0;
+    while (len--) {
+#if defined(__AVR__)
+        crc = _crc_ibutton_update(crc, *addr++);
+#else
+        uint8_t inbyte = *addr++;
+        for (uint8_t i = 8; i; i--) {
+            uint8_t mix = (crc ^ inbyte) & 0x01;
+            crc >>= 1;
+            if (mix) crc ^= 0x8C;
+            inbyte >>= 1;
+        }
+#endif
+    }
+    return crc;
 }

@@ -27,6 +27,7 @@ void I2C_Master_Stop()
     SDA_LOW;                      // SDA low
     delay_us(3.5);
     SCL_HIGH;                     // pull SCL high
+    delay_us(0.6);
     SDA_INPUT;                    // allow SDA to be pulled high
 }
 

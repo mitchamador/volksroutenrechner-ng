@@ -1,144 +1,15 @@
 #ifndef MAIN_H
 #define	MAIN_H
 
-#if defined(__AVR)
-
-#ifdef ARDUINO
-// 1602 lcd i2c
-#define LCD_1602_I2C
-// adc buttons connected to PC0/ADC0
-#define ADC_BUTTONS
-// save default eeprom in progmem
-#define PROGMEM_EEPROM
-#else
-// 1602 lcd 4bit
-#define LCD_LEGACY
-#endif
-
-// support for prev key
-#define KEY3_SUPPORT
-
-#elif !defined(_16F876A)
-
-// support for prev key
-//#define KEY3_SUPPORT
-
-#endif
-
-#include <hw.h>
-
-// disable temperature support
-#if !defined(NO_TEMPERATURE_SUPPORT)
-
-// use temp sensor from ds3231
-#ifndef NO_DS3231_TEMP
-#define DS3231_TEMP
-#endif
-
-// disable ds18b20 support
-#ifndef NO_DS18B20
-#define DS18B20_TEMP
-#endif
-
-#ifdef DS18B20_TEMP
-// disable ds18b20 config screen
-#ifndef NO_DS18B20_CONFIG
-#define DS18B20_CONFIG
-#endif
-#endif
-
-#if defined(DS18B20_TEMP) || defined(DS3231_TEMP)
-#define TEMPERATURE_SUPPORT
-#endif
-
-#ifdef DS18B20_CONFIG
-// extended ds18b20 config (use onewire search)
-#ifndef NO_DS18B20_CONFIG_EXT
-#define DS18B20_CONFIG_EXT
-// show device number in config (e.g. 1/3 - first of total three)
-//#define DS18B20_CONFIG_EXT_SHOW_DEV
-#endif
-#endif
+#include "config.h"
+#include "hw.h"
 
 // temperature timeout
-#define TIMEOUT_TEMPERATURE (15 - 1)
-#define FORCED_TIMEOUT_TEMPERATURE (3 - 1)
-#endif
+#define TIMEOUT_TEMPERATURE (30 - 1)
+#define FORCED_TIMEOUT_TEMPERATURE (5 - 1)
 
-// disable all service counters' support
-#ifdef NO_SERVICE_COUNTERS
-#ifndef NO_SERVICE_COUNTERS_CHECKS
-#define NO_SERVICE_COUNTERS_CHECKS
-#endif
-#else
-#define SERVICE_COUNTERS_SUPPORT
-#endif
-
-// disable service counters' configuration and checking
-#ifndef NO_SERVICE_COUNTERS_CHECKS
-#define SERVICE_COUNTERS_CHECKS_SUPPORT
-#endif
-
-// disable sound support
-#ifndef NO_SOUND
-#define SOUND_SUPPORT
-#endif
-
-// auto calculate day of week
-#define AUTO_DAY_OF_WEEK
-
-// min speed settings
-#define MIN_SPEED_CONFIG
-
-#if defined(HW_LEGACY)
-
-// simple adc handler
-#define SIMPLE_ADC
-
-// pic16f876a undefs
-#if defined(LOW_MEM_DEVICE) && defined(SERVICE_COUNTERS_SUPPORT)
-
-// disable either service counters checks (default) or ds18b20 temp support
-#if defined(SERVICE_COUNTERS_CHECKS_SUPPORT) && defined(DS18B20_TEMP)
-#undef SERVICE_COUNTERS_CHECKS_SUPPORT
-#endif
-
-#if defined(DS18B20_TEMP) && defined(DS3231_TEMP)
-// ds3231 temperature sensor support
-#undef DS3231_TEMP
-#endif
-
-// skip oled lcd reset sequence (though works ok without it after power up with EH1602 REV.J)
-//#define NO_LCD_OLED_RESET
-// simple checking time difference (decrease memory usage)
-//#define SIMPLE_TRIPC_TIME_CHECK
-// auto calculate day of week
-//#undef AUTO_DAY_OF_WEEK
-// min speed settings
-//#undef MIN_SPEED_CONFIG
-
-// speed 0-100 measurement only
-#if (defined(DS18B20_TEMP) || defined(SERVICE_COUNTERS_CHECKS_SUPPORT)) && !defined(NO_TEMPERATURE_SUPPORT)
-#define SIMPLE_ACCELERATION_MEASUREMENT
-#endif
-
-#endif
-
-#endif
-
-// disable config for 8k devices
-#if (defined(_16F876A) || defined(_16F1936)) && defined(DS18B20_CONFIG_EXT)
-#undef DS18B20_CONFIG_EXT
-#endif
-
-// show temp for sensors' configuration
-#if defined(_16F1936) && defined(DS18B20_CONFIG) && !defined(DS18B20_CONFIG_EXT)
-#define DS18B20_CONFIG_SHOW_TEMP
-#endif
-
-#ifdef DS18B20_CONFIG_EXT
-#define ONEWIRE_SEARCH
-#endif
+// ds1307 read timeout
+#define TIMEOUT_DS_READ 10
 
 // power supply threshold 
 // with default divider resistor's (8,2k (to Vcc) + 3,6k (to GND)) values
@@ -226,8 +97,8 @@ typedef union {
         unsigned ds3231_temp : 1;           // use ds3231 temperature as inner
         unsigned show_inner_temp : 1;       // show inner (outer by default) temperature on first screen
         unsigned daily_tripc : 1;           // use trip C as dayly counter (auto reset on next day)
+        unsigned monthly_tripb : 1;         // use trip B as monthly counter (auto reset on next month)
         unsigned mh_rpm : 1;                // show motorhours based on rpm (96000 per hour)
-        unsigned reserved : 1;              // reserved
         unsigned service_alarm : 1;         // alarm for service counters
         unsigned key_sound : 1;             // keys sound
         unsigned skip_temp_screen : 1;      // skip temperature screen
@@ -290,10 +161,11 @@ typedef struct {
 } services_t;
 
 typedef struct {
-    trip_t tripA, tripB, tripC;
-    trip_time_t tripC_time;
-    uint16_t tripC_max_speed;
-} trips_t;
+    trip_t tripA, tripB, tripC;     // 12 * 3 bytes
+    trip_time_t tripC_time;         // 5 bytes
+    uint16_t tripC_max_speed;       // 2 bytes
+    uint8_t tripB_month;            // 1 byte
+} trips_t;                          // 44 bytes total
 
 #define EEPROM_DS18B20_ADDRESS (((sizeof(config_t) - 1) / 8 + 1) * 8) + (((sizeof(trips_t) - 1) / 8 + 1) * 8) + (((sizeof(services_t) - 1) / 8 + 1) * 8)
 #define EEPROM_CUSTOM_CHARS_ADDRESS (EEPROM_DS18B20_ADDRESS + 8 * 3)
@@ -306,6 +178,87 @@ typedef struct {
     uint8_t str_index;
     void (*screen)(void);
 } config_screen_item_t;
+
+typedef struct {
+    uint8_t status;         // 1 byte
+    trip_time_t start_time; // 5 byte
+    trip_t trip;            // 12 bytes
+} journal_trip_item_t;      // 18 bytes total
+
+typedef struct {
+    uint8_t status;             // 1 byte
+    trip_time_t start_time;     // 5 byte
+    uint8_t lower;              // 1 byte
+    uint8_t upper;              // 1 byte
+    uint16_t time;              // 2 byte
+} journal_accel_item_t;         // 10 bytes total
+
+typedef struct {
+    uint8_t current;
+    uint8_t max;
+} journal_type_pos_t;
+
+typedef union {
+    uint8_t byte;
+
+    struct {
+        uint8_t dummy : 8;
+    };
+} journal_header_flags_u;
+
+typedef struct {
+    journal_type_pos_t journal_type_pos[4]; // 8
+    trip_time_t time_trip_c;                // 5
+    trip_time_t time_trip_a;                // 5
+    trip_time_t time_trip_b;                // 5
+    journal_header_flags_u flags;           // 1
+} journal_header_t;                         // 24
+
+#ifdef JOURNAL_SUPPORT
+#ifdef JOURNAL_EEPROM_INTERNAL
+
+// internal eeprom for atmega328p (768 bytes)
+
+#define JOURNAL_read_eeprom_block(p, ee_addr, length) HW_read_eeprom_block(p, ee_addr, length);
+#define JOURNAL_write_eeprom_block(p, ee_addr, length) HW_write_eeprom_block(p, ee_addr, length);
+
+#define J_EEPROM_START 256
+#define J_EEPROM_LENGTH 768
+
+// 768 - 32 = 736 bytes for data
+
+// (20 + 12 + 6) * 18 + 5 * 10 = 734
+#define J_EEPROM_TRIPC_COUNT 20
+#define J_EEPROM_TRIPA_COUNT 12
+#define J_EEPROM_TRIPB_COUNT 6
+#define J_EEPROM_ACCEL_COUNT 5
+
+#else
+
+// i2c eeprom 24lc16 ((2048-32) / 16 bytes per block = 126 data blocks)
+
+#define JOURNAL_read_eeprom_block(p, ee_addr, length) I2C_read_eeprom_block(p, ee_addr, length);
+#define JOURNAL_write_eeprom_block(p, ee_addr, length) I2C_write_eeprom_block(p, ee_addr, length);
+
+#define J_EEPROM_START 0
+#define J_EEPROM_LENGTH 2048
+
+// 2048 - 32 = 2016 bytes for data
+
+// (64 + 30 + 12) * 18 + 10 * 10 = 2008
+#define J_EEPROM_TRIPC_COUNT 64
+#define J_EEPROM_TRIPA_COUNT 30
+#define J_EEPROM_TRIPB_COUNT 12
+#define J_EEPROM_ACCEL_COUNT 10
+
+#endif
+
+#define J_EEPROM_MARK_POS J_EEPROM_START
+#define J_EEPROM_DATA J_EEPROM_START + 32
+
+#define JOURNAL_ITEM_OK 0xA5
+
+#endif
 
 #endif	/* MAIN_H */
 

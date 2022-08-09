@@ -1,4 +1,5 @@
 #include "onewire.h"
+#include "utils.h"
 #include <string.h>
 
 void onewire_write_bit(uint8_t value) {
@@ -70,26 +71,6 @@ void onewire_write_byte(uint8_t value) {
         value >>= 1;
     }
 }
-
-uint8_t onewire_crc8(const uint8_t *addr, uint8_t len) {
-    uint8_t crc = 0;
-    while (len--) {
-#if defined(__AVR__)
-		crc = _crc_ibutton_update(crc, *addr++);
-#else
-        uint8_t inbyte = *addr++;
-        for (uint8_t i = 8; i; i--) {
-            uint8_t mix = (crc ^ inbyte) & 0x01;
-            crc >>= 1;
-            if (mix) crc ^= 0x8C;
-            inbyte >>= 1;
-        }
-#endif
-    }
-    return crc;
-}
-
-#ifdef ONEWIRE_SEARCH
 
 uint8_t last_discrepancy = 0;
 __bit last_device_fl = 0;
@@ -194,7 +175,7 @@ __bit onewire_search() {
         // reset the search
         last_discrepancy = 0;
         last_device_fl = 0;
-        memset(_rom, 0x00, 8);
+        _memset(_rom, 0x00, 8);
     }
 
     return search_result;
@@ -212,5 +193,4 @@ uint8_t onewire_search_devices(uint8_t *ptr, int8_t max_devices) {
     }
     return num_devices;
 }
-#endif
 

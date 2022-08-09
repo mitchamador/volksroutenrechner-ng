@@ -3,16 +3,15 @@
 
 #include "hw.h"
 
-#ifdef I2C_SOFTWARE
-#define ACK 0x00
-#define NACK 0x80
-#else
 #define ACK 0
 #define NACK 1
-#endif
 
 // define i2c bus frequency
+#ifdef SLOW_I2C /* for slow devices like DS1307, anyway legacy hw uses software i2c */
 #define I2C_BaudRate 100000
+#else
+#define I2C_BaudRate 400000
+#endif
 
 //---[ I2C Routines ]---
 

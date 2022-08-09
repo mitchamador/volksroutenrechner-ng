@@ -13,10 +13,8 @@ void onewire_write_byte(uint8_t);
 __bit onewire_read_bit(void);
 uint8_t onewire_read_byte(void);
 uint8_t onewire_crc8(const uint8_t*, uint8_t);
-#ifdef ONEWIRE_SEARCH
 __bit onewire_search();
 uint8_t onewire_search_devices(uint8_t *buf, int8_t max_devices);
-#endif
 
 #endif	/* ONEWIRE_H */
 
