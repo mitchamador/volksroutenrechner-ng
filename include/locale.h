@@ -14,10 +14,14 @@ typedef enum {
     POS_KM,        
     POS_SEC,        
     POS_CELS,        
-    POS_MAXS,        
+    POS_MIN,
+    POS_MAX,        
     POS_MS,        
-    POS_NONE,
+    POS_NONE
 } symbols_t;
+
+//#define POS_MIN POS_NONE
+//#define POS_MAX POS_NONE
 
 #define SYMBOLS_STR {                             \
         /* POS_KMH=1   */ 0xFF, 0x00, 0x01,       \
@@ -30,9 +34,10 @@ typedef enum {
         /* POS_KM=8    */ 0xFF, 'k', 'm',         \
         /* POS_SEC=9   */ 0xFF, 's',              \
         /* POS_CELS=10 */ 0xFF, 0xDF,             \
-        /* POS_MAXS=11 */ 0xFF, '<',              \
-        /* POS_MS=12   */ 0xFF, 'm', 's',         \
-        /* POS_NONE=13 */ 0xFF,                   \
+        /* POS_MIN=11  */ 0xFF, '>',              \
+        /* POS_MAX=12  */ 0xFF, '<',              \
+        /* POS_MS=13   */ 0xFF, 'm', 's',         \
+        /* POS_NONE=14 */ 0xFF,                   \
         0xFF,                                     \
 }
 
@@ -51,6 +56,7 @@ typedef enum {
 #define ONOFF_STRING "\0 off\0  on";
 #define TIME_CORRECTION "time correction?";
 #define RESET_STRING "reset?"; 
+#define VOLTAGE_STRING "voltage";
 
 #define ACCEL_MEAS_STRING "\0 0-100\0 0-60\0 60-100\0 80-120"; 
 #define ACCEL_MEAS_STRING_TIMING "timing"; 
@@ -63,9 +69,37 @@ typedef enum {
 #define CONFIG_MENU_TITLE "config menu";
 #define SERVICE_COUNTERS "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
 
-#define SETTINGS_BITS "\0pair/par inj\0skip temp\0key sound\0serv alarm\0mh rpm\0trip B month\0trip C day\0in/out temp\0ds3231 temp\0\0\0\0\0\0\0";
+#define SETTING_SHOW_MISC_SCREEN        "\0misc screen"
 
-#define TEMP_SENSORS "\0---\0out\0in\0eng";
+#ifdef TEMPERATURE_SUPPORT
+#define SETTING_INOUT_TEMP              "\0in/out temp"
+#ifdef DS3231_TEMP
+#define SETTING_DS3231_TEMP             "\0ds3231 temp"
+#endif
+#endif
+
+#ifndef SETTING_INOUT_TEMP
+#define SETTING_INOUT_TEMP              "\0"
+#endif
+#ifndef DS3231_TEMP
+#define SETTING_DS3231_TEMP             "\0"
+#endif
+
+#ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
+#define SETTING_SERVICE_ALARM           "\0serv alarm"
+#else
+#define SETTING_SERVICE_ALARM           "\0"
+#endif
+
+#ifdef SOUND_SUPPORT
+#define SETTING_KEY_SOUND               "\0key sound"
+#else
+#define SETTING_KEY_SOUND               "\0"
+#endif
+
+#define SETTINGS_BITS "\0pair/par inj" SETTING_SHOW_MISC_SCREEN SETTING_KEY_SOUND SETTING_SERVICE_ALARM "\0mh rpm\0trip B month\0trip C day" SETTING_INOUT_TEMP SETTING_DS3231_TEMP "\0\0\0\0\0\0\0";
+
+#define TEMP_SENSORS "\0---\0out\0in\0 eng\0";
 #define TEMP_NO_SENSORS "no sensors found"
 
 // 8 symbols
@@ -139,6 +173,7 @@ PROGMEM const char trip_string[] = TRIP_STRING;
 PROGMEM const char onoff_string[] = ONOFF_STRING;
 PROGMEM const char time_correction[] = TIME_CORRECTION;
 PROGMEM const char reset_string[] = RESET_STRING;
+PROGMEM const char voltage_string[] = VOLTAGE_STRING;
 #ifdef SIMPLE_ACCELERATION_MEASUREMENT
 PROGMEM const char accel_meas_string[] = ACCEL_MEAS_SIMPLE_STRING;
 #else

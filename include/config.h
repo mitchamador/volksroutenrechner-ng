@@ -22,7 +22,7 @@
 // support for prev key
 #define KEY3_SUPPORT
 
-#elif defined(_16F876A) || defined(_16F1936) || defined (_16F1938)
+#elif defined(_16F876A) || defined(_16F1936) || defined (_16F1938) || defined(_18F252)
 // legacy hardware
 #define HW_LEGACY
 // simple adc handler
@@ -34,7 +34,7 @@
 // simple checking time difference (decrease memory usage)
 //#define SIMPLE_TRIPC_TIME_CHECK
 // auto calculate day of week
-//#define NO_AUTO_DAY_OF_WEEK
+#define NO_AUTO_DAY_OF_WEEK
 // min speed settings
 //#define NO_MIN_SPEED_CONFIG
 // speed 0-100 measurement only
@@ -65,7 +65,7 @@
 // disable all service counters' support
 //#define NO_SERVICE_COUNTERS
 // disable service counters' configuration and checking
-//#define NO_SERVICE_COUNTERS_CHECKS
+#define NO_SERVICE_COUNTERS_CHECKS
 // journal trip
 #define NO_JOURNAL_SUPPORT
 // disable temperature support
@@ -73,9 +73,9 @@
 // ds18b20 configuration
 //#define NO_DS18B20_CONFIG
 // extended ds18b20 configuration
-#define NO_DS18B20_CONFIG_EXT
+//#define NO_DS18B20_CONFIG_EXT
 // show temp for sensors' configuration
-#define DS18B20_CONFIG_SHOW_TEMP
+//#define DS18B20_CONFIG_SHOW_TEMP
 // use temp sensor from ds3231
 //#define NO_DS3231_TEMP
 // use ds18b20 temp sensors
@@ -84,7 +84,7 @@
 //#define KEY3_SUPPORT
 #endif /* _16F1936 */
 
-#if defined(_16F1938)
+#if defined(_16F1938) || defined(_18F252)
 // support for prev key for legacy hw
 //#define KEY3_SUPPORT
 #endif /* _16F1938 */

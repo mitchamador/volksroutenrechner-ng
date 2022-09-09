@@ -1,7 +1,7 @@
 #include "hw.h"
 #include "i2c.h"
 
-#if defined(_PIC14) || defined(_PIC14E)
+#if defined(_PIC14) || defined(_PIC14E) || defined(_PIC18)
 
 void HW_Init(void) {
 
@@ -18,7 +18,10 @@ void HW_Init(void) {
     TMR0 = 0; TMR1 = 0;
 
     // timer 0 init
-#if defined(_16F876A)
+#if defined(_18F252)
+    T0CON = (0 << _T0CON_TMR0ON_POSITION) | (1 << _T0CON_T08BIT_POSITION) | (0 << _T0CON_T0CS_POSITION) | (0 << _T0CON_T0SE_POSITION) | (1 << _T0CON_PSA_POSITION) \
+                 | (0 << _T0CON_T0PS2_POSITION) | (0 << _T0CON_T0PS1_POSITION) | (0 << _T0CON_T0PS0_POSITION);    
+#elif defined(_16F876A)
     OPTION_REG = (1 << _OPTION_REG_nRBPU_POSITION) | (1 << _OPTION_REG_T0CS_POSITION) | (1 << _OPTION_REG_T0SE_POSITION) | (1 << _OPTION_REG_PSA_POSITION) \
                  | (0 << _OPTION_REG_PS2_POSITION) | (0 << _OPTION_REG_PS1_POSITION) | (0 << _OPTION_REG_PS0_POSITION);
 #elif defined(_16F1936) || defined(_16F1938)
@@ -27,8 +30,13 @@ void HW_Init(void) {
 #endif
 
     // timer 1 init (prescaler 1:8, timer on)
+#if defined(_18F252)
+    T1CON = (1 << _T1CON_RD16_POSITION) | (1 << _T1CON_T1CKPS1_POSITION) | (1 << _T1CON_T1CKPS0_POSITION) | (0 << _T1CON_TMR1ON_POSITION);
+#else
     T1CON = (1 << _T1CON_T1CKPS1_POSITION) | (1 << _T1CON_T1CKPS0_POSITION) | (0 << _T1CON_TMR1ON_POSITION);
-#if defined(_16F876A)
+#endif
+
+#if defined(_16F876A) || defined(_18F252)
     // ccp2 init (compare special event trigger 10ms + start adc)
     CCP2CON = (1 << _CCP2CON_CCP2M3_POSITION) | (0 << _CCP2CON_CCP2M2_POSITION) | (1 << _CCP2CON_CCP2M1_POSITION) | (1 << _CCP2CON_CCP2M0_POSITION);
     CCPR2 = TIMER1_VALUE;
@@ -41,7 +49,7 @@ void HW_Init(void) {
     // adc interrupt
     PIE1 = (1 << _PIE1_ADIE_POSITION);
 
-#if defined(_16F876A)
+#if defined(_16F876A) || defined(_18F252)
     // ccp2 compare interrupt enable
     PIE2 = (1 << _PIE2_CCP2IE_POSITION);
 #elif defined(_16F1936) || defined(_16F1938)
@@ -56,7 +64,7 @@ void HW_Init(void) {
 #endif    
 
     // enable timer0 overflow interrupt, peripheral interrupt, pinb/io change interrupt
-#if defined(_16F876A)
+#if defined(_16F876A) || defined(_18F252)
     INTCON = (1 << _INTCON_T0IE_POSITION) | (1 << _INTCON_PEIE_POSITION) | (1 << _INTCON_RBIE_POSITION);
 #elif defined(_16F1936) || defined(_16F1938)
     INTCON = (1 << _INTCON_T0IE_POSITION) | (1 << _INTCON_PEIE_POSITION) | (1 << _INTCON_IOCIE_POSITION);
@@ -74,25 +82,81 @@ void HW_Init(void) {
     I2C_Master_Init();
 }
 
+#if defined(_PIC18)
+
+unsigned char eeprom18_read(unsigned int offset) {
+    EEADR = (unsigned char) offset;
+
+    EECON1bits.EEPGD = 0; //accesses data EEPROM memory
+    EECON1bits.CFGS = 0; //accesses data EEPROM memory
+
+//    // errata fix for some 18fxx2 early revisions
+//    STATUSbits.CARRY = 0;
+//	if (INTCONbits.GIE) {
+//		STATUSbits.CARRY = 1;
+//    }
+//	INTCONbits.GIE = 0;
+
+    EECON1bits.RD = 1; //initiates an EEPROM read
+    unsigned char _eedata = EEDATA;
+
+//    if (STATUSbits.CARRY) {
+//		INTCONbits.GIE = 1;
+//    }
+
+    return _eedata;
+}
+
+void eeprom18_write(unsigned int offset, unsigned char value) {
+    EEADR = (unsigned char) offset;
+    EEDATA = value;
+
+    EECON1bits.EEPGD = 0; //accesses data EEPROM memory
+    EECON1bits.CFGS = 0; //accesses data EEPROM memory
+
+    EECON1bits.WREN = 1; //allows write cycles
+
+    STATUSbits.CARRY = 0;
+    if (INTCONbits.GIE) {
+        STATUSbits.CARRY = 1;
+    }
+    INTCONbits.GIE = 0;
+
+    EECON2 = 0x55; //write sequence unlock
+    EECON2 = 0xAA; //write sequence unlock
+
+    EECON1bits.WR = 1; //initiates a data EEPROM erase/write cycle
+
+    if (STATUSbits.CARRY) {
+        INTCONbits.GIE = 1;
+    }
+
+    while (EECON1bits.WR); //waits for write cycle to complete
+
+    EECON1bits.WREN = 0; //disable write
+}
+
+#endif
+
 void HW_read_eeprom_block(unsigned char* p, eeaddr_t ee_addr, unsigned char length) {
     unsigned char i;
     for (i = 0; i < length; i++) {
+#if defined(_PIC18)
+        *p++ = eeprom18_read(ee_addr + i);
+#else
         *p++ = eeprom_read(ee_addr + i);
+#endif
     }
 }
 
 void HW_write_eeprom_block(unsigned char* p, eeaddr_t ee_addr, unsigned char length) {
-    unsigned char int_state = 0;
-    if (INTCONbits.GIE) {
-        int_state = 1;
-    }
-    disable_interrupts();
     unsigned char i;
     for (i = 0; i < length; i++) {
+#if defined(_PIC18)
+        eeprom18_write(ee_addr + i, *p++);
+#else
         eeprom_write(ee_addr + i, *p++);
-    }
-    if (int_state == 1) {
-        enable_interrupts();
+#endif
     }
 }
 
@@ -111,14 +175,16 @@ void I2C_Master_Init() {
     SSPADD = ((_XTAL_FREQ / 4) / I2C_BaudRate) - 1;
 }
 
-void I2C_Master_Start() {
+unsigned char I2C_Master_Start(unsinged char address) {
     I2C_Master_Wait;
     SEN = 1;
+    return I2C_Master_Write(address);
 }
 
-void I2C_Master_RepeatedStart() {
+unsigned char I2C_Master_RepeatedStart(unsigned char address) {
     I2C_Master_Wait;
     RSEN = 1;
+    return I2C_Master_Write(address);
 }
 
 void I2C_Master_Stop() {

@@ -65,13 +65,13 @@ volatile uint8_t adc_key;
 
 // key variables and flags
 volatile uint8_t key_repeat_counter;
-volatile __bit key1_press, key2_press, key1_longpress, key2_longpress, key_pressed;
+volatile __bit key1_press, key2_press, key1_longpress, key2_longpress, key_pressed, key_longpressed;
 
 #if defined(KEY3_SUPPORT)
 volatile __bit key3_press, key3_longpress;
 #endif
 
-volatile uint8_t shutdown_counter;
+volatile uint8_t acc_power_off_counter;
 
 // main interval
 volatile __bit screen_refresh;
@@ -82,7 +82,7 @@ volatile uint8_t timeout_timer1;
 volatile uint8_t timeout_timer2;
 
 // misc flags
-volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, drive_min_speed_fl;
+volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, drive_min_speed_fl, acc_power_off_fl, shutdown_fl;
 
 // acceleration measurement flags and variables
 volatile __bit accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl, accel_meas_final_fl, _accel_meas_exit;
@@ -94,13 +94,21 @@ volatile uint16_t accel_meas_timer1_prev, accel_meas_timer1_ticks;
 volatile uint8_t accel_meas_timer1_ofl;
 
 volatile uint16_t kmh_tmp, fuel_tmp;
-volatile uint16_t kmh, fuel, adc_voltage;
+volatile uint16_t kmh, fuel;
+
+typedef struct {
+    uint16_t current;
+    uint16_t min;
+    uint16_t max;
+} adc_voltage_t;
+
+volatile adc_voltage_t adc_voltage = {0, ADC_MAX, ADC_MIN};
 
 volatile uint24_t taho, taho_timer1_ticks;
 volatile uint16_t taho_timer1_prev, timer1;
 volatile uint8_t taho_timer1_ofl;
 
-// uint16_t - max ~26 ms for pic16f targets (* 2.5 for atmega)
+// uint16_t - max ~104 ms for pic16f targets (* 2.5 for atmega)
 volatile uint16_t fuel_duration;
 
 volatile __bit save_tripc_time_fl = 0;
@@ -111,14 +119,19 @@ volatile uint8_t timeout_ds_read = 0;
 #ifdef TEMPERATURE_SUPPORT
 volatile uint8_t timeout_temperature;
 __bit temperature_conv_fl;
-// ds18b20 temperatures and eeprom pointer
+
+// ds18b20 temperatures
+#define TEMP_NONE -1
 #define TEMP_OUT 0
 #define TEMP_IN 1
 #define TEMP_ENGINE 2
 #define TEMP_CONFIG 3
 
-#define PRINT_TEMP_PARAM_HEADER      0x80
-#define PRINT_TEMP_PARAM_MASK 0x0F
+#define PRINT_TEMP_PARAM_HEADER       0x80
+#define PRINT_TEMP_PARAM_FRACT        0x40
+#define PRINT_TEMP_PARAM_NO_PLUS_SIGN 0x20
+#define PRINT_TEMP_PARAM_DEG_SIGN     0x10
+#define PRINT_TEMP_PARAM_MASK         0x0F
 
 uint16_t _t;
 uint16_t temps[4] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE};
@@ -150,7 +163,7 @@ buzzer_t buzzer[3] = {
 
 #endif
 
-uint8_t tmp_param = 0, main_param = 0;
+uint8_t tmp_param = 0, main_param = 0, misc_param = 0;
 #ifdef SERVICE_COUNTERS_SUPPORT
 uint8_t service_param = 0;
 #endif
@@ -171,7 +184,7 @@ uint16_t odo_con4;
 
 void screen_main(void);
 void screen_tripC(void);
-void screen_temp(void);
+void screen_misc(void);
 void screen_max(void);
 void screen_tripA(void);
 void screen_tripB(void);
@@ -189,9 +202,7 @@ void screen_journal_viewer(void);
 const screen_item_t items_main[] = {
     {screen_main},
     {screen_tripC},
-#if defined(TEMPERATURE_SUPPORT)
-    {screen_temp},
-#endif
+    {screen_misc},
     {screen_tripA},
     {screen_tripB},
     {screen_time},
@@ -253,6 +264,19 @@ void journal_save_trip(trip_t *trip);
 void journal_save_accel(uint8_t index);
 #endif
 
+void save_eeprom(void);
+void save_eeprom_trips(void);
+void save_eeprom_config(void);
+
+#define MOVING_AVERAGE_FIRST_SAMPLE 0x80
+
+typedef struct {
+    uint16_t tmp;
+    uint8_t filter; // filter value (2^filter)
+} moving_average_t; // 3 bytes
+
+uint16_t calc_moving_average(moving_average_t *, uint16_t);
+
 #if !defined(SIMPLE_ADC)
 uint8_t _adc_ch;
 
@@ -265,19 +289,17 @@ void adc_handler_buttons(uint16_t adc_value);
 void adc_handler_fuel_tank(uint16_t adc_value);
 
 typedef struct {
-    void (*handle)(uint16_t adc_value);
-    uint16_t tmp;
-    uint8_t filter; // filter value (power of 2)
-    uint8_t channel; // adc channel
-    uint16_t dummy; // align to 8 byte
+    void (*handle)(uint16_t adc_value); // handler                  (2 bytes)
+    moving_average_t m_avg;             // moving average struct    (3 bytes)
+    uint8_t channel;                    // adc channel              (1 byte)
 } adc_item_t;
 
 adc_item_t adc_items[] = {
-    {adc_handler_voltage, 0xFFFF, 2, ADC_CHANNEL_POWER_SUPPLY},
+    {adc_handler_voltage,     {0, 2 | MOVING_AVERAGE_FIRST_SAMPLE}, ADC_CHANNEL_POWER_SUPPLY},
 #ifdef ADC_BUTTONS
-    {adc_handler_buttons, 0xFFFF, 0, ADC_CHANNEL_BUTTONS},
+    {adc_handler_buttons,     {0, 0}, ADC_CHANNEL_BUTTONS},
 #endif
-    //{adc_handler_fuel_tank, 0xFFFF, 4, ADC_CHANNEL_FUEL_TANK},
+    //{adc_handler_fuel_tank, {0, 4 | MOVING_AVERAGE_FIRST}, ADC_CHANNEL_FUEL_TANK},
 };
 #endif
 
@@ -519,10 +541,7 @@ int_handler_GLOBAL_begin
                 if (key1_counter == LONGKEY) {
                     // long keypress
                     key1_longpress = 1;
-                    key_pressed = 1;
-#ifdef SOUND_SUPPORT
-                    buzzer_mode_value = BUZZER_LONGKEY;
-#endif
+                    key_longpressed = 1;
                 }
             } else // key released
             {
@@ -530,9 +549,6 @@ int_handler_GLOBAL_begin
                     // key press
                     key1_press = 1;
                     key_pressed = 1;
-#ifdef SOUND_SUPPORT
-                    buzzer_mode_value = BUZZER_KEY;
-#endif
                 }
                 key1_counter = 0;
             }
@@ -546,10 +562,7 @@ int_handler_GLOBAL_begin
                 if (key2_counter == LONGKEY) {
                     // long keypress
                     key2_longpress = 1;
-                    key_pressed = 1;
-#ifdef SOUND_SUPPORT
-                    buzzer_mode_value = BUZZER_LONGKEY;
-#endif
+                    key_longpressed = 1;
                 }
             } else // key released
             {
@@ -557,9 +570,6 @@ int_handler_GLOBAL_begin
                     // key press
                     key2_press = 1;
                     key_pressed = 1;
-#ifdef SOUND_SUPPORT
-                    buzzer_mode_value = BUZZER_KEY;
-#endif
                 }
                 key2_counter = 0;
             }
@@ -573,10 +583,7 @@ int_handler_GLOBAL_begin
                 if (key3_counter == LONGKEY) {
                     // long keypress
                     key3_longpress = 1;
-                    key_pressed = 1;
-#ifdef SOUND_SUPPORT
-                    buzzer_mode_value = BUZZER_LONGKEY;
-#endif
+                    key_longpressed = 1;
                 }
             } else // key released
             {
@@ -584,9 +591,6 @@ int_handler_GLOBAL_begin
                     // key press
                     key3_press = 1;
                     key_pressed = 1;
-#ifdef SOUND_SUPPORT
-                    buzzer_mode_value = BUZZER_KEY;
-#endif
                 }
                 key3_counter = 0;
             }
@@ -595,25 +599,18 @@ int_handler_GLOBAL_begin
             key_repeat_counter--;
         }
 
-        if (key_pressed == 1) {
-            key_pressed = 0; screen_refresh = 1;
+        if (key_pressed != 0 || key_longpressed != 0) {
+#ifdef SOUND_SUPPORT
+            if (key_pressed != 0) {
+                buzzer_mode_value = BUZZER_KEY;
+            } else {
+                buzzer_mode_value = BUZZER_LONGKEY;
+            }
+#endif
+            key_pressed = 0; key_longpressed = 0; screen_refresh = 1;
             key_repeat_counter = KEY_REPEAT_PAUSE; 
         }
 
-#ifdef SOUND_SUPPORT
-        static __bit buzzer_snd_fl, buzzer_repeat_fl;
-        static uint8_t buzzer_counter_r;
-        static uint8_t buzzer_counter, buzzer_counter_01sec;
-
-        if (buzzer_mode_value != BUZZER_NONE) {
-            if (config.settings.key_sound != 0 || buzzer_mode_value == BUZZER_WARN) {
-                buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[buzzer_mode_value];
-                buzzer_counter_01sec = 1;
-            }
-            buzzer_mode_value = BUZZER_NONE;
-        }
-#endif    
-    
         if (--main_interval_counter == 0) {
             main_interval_counter = MAIN_INTERVAL;
 
@@ -666,7 +663,29 @@ int_handler_GLOBAL_begin
             accel_meas_timer++;
         }
 
+        if (acc_power_off_fl != 0) {
+            if (acc_power_off_counter++ == SHUTDOWN) {
+                screen_refresh = 1;
+                timeout_timer1 = 0;
+                shutdown_fl = 1;
+            }
+        } else {
+            acc_power_off_counter = 0;
+        }
+
 #ifdef SOUND_SUPPORT
+        static __bit buzzer_snd_fl, buzzer_repeat_fl;
+        static uint8_t buzzer_counter_r;
+        static uint8_t buzzer_counter, buzzer_counter_01sec;
+
+        if (buzzer_mode_value != BUZZER_NONE) {
+            if (config.settings.key_sound != 0 || buzzer_mode_value == BUZZER_WARN) {
+                buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[buzzer_mode_value];
+                buzzer_counter_01sec = 1;
+            }
+            buzzer_mode_value = BUZZER_NONE;
+        }
+
         if (buzzer_fl != 0) {
             if (--buzzer_counter_01sec == 0) {
                 buzzer_counter_01sec = TIMER_01SEC_INTERVAL;
@@ -710,42 +729,34 @@ int_handler_GLOBAL_begin
 
 #if defined(SIMPLE_ADC)
 
-        adc_voltage = adc_read_value();
+        adc_voltage.current = adc_read_value();
 
-#if defined(__DEBUG)
-        // RA0 is configured as analog pin
-        PWR_ON;
-#endif
+        if (adc_voltage.current < adc_voltage.min) {
+            adc_voltage.min = adc_voltage.current;
+        } else if (adc_voltage.current > adc_voltage.max) {
+            adc_voltage.max = adc_voltage.current;
+        }
 
         // read power supply status
-        if (adc_voltage > THRESHOLD_VOLTAGE_ADC_VALUE) {
-            shutdown_counter = 0;
+        if (adc_voltage.current > THRESHOLD_VOLTAGE_ADC_VALUE) {
+            acc_power_off_fl = 0;
         } else {
-            if (shutdown_counter == SHUTDOWN_COUNTER) {
-                screen_refresh = 1; timeout_timer1 = 0;
-            } else {
-                shutdown_counter++;
-            }
+            acc_power_off_fl = 1;
         }
 
 #else
         adc_item_t* h = &adc_items[_adc_ch];
-        if (h->filter == 0) {
-            h->handle(adc_read_value());
-        } else {
-            if (h->tmp == 0xFFFF) {
-                h->tmp = adc_read_value() << h->filter;
-            } else {
-                h->tmp = h->tmp - ((h->tmp + (1 << (h->filter - 1))) >> h->filter) + adc_read_value();
-            }
-            h->handle((h->tmp + (1 << (h->filter - 1))) >> h->filter);
-        }
-        _adc_ch++;
-        if (_adc_ch >= sizeof (adc_items) / sizeof (adc_item_t)) {
+
+        if (++_adc_ch >= sizeof (adc_items) / sizeof (adc_item_t)) {
             _adc_ch = 0;
         }
+        
         set_adc_channel(adc_items[_adc_ch].channel);
+
+        h->handle(calc_moving_average(&h->m_avg, adc_read_value()));
+
         if (_adc_ch != 0) {
+            // start next adc channel (first channel is started from auto trigger)
             start_adc();
         }
 #endif
@@ -755,6 +766,20 @@ int_handler_GLOBAL_begin
 int_handler_GLOBAL_end
     
 // interrupt routines ends
+
+uint16_t calc_moving_average(moving_average_t *m_avg, uint16_t v) {
+    if (m_avg->filter == 0) {
+        return v;
+    } else {
+        if ((m_avg->filter & MOVING_AVERAGE_FIRST_SAMPLE) != 0) {
+            m_avg->filter &= ~MOVING_AVERAGE_FIRST_SAMPLE;
+            m_avg->tmp = v << m_avg->filter;
+        } else {
+            m_avg->tmp = m_avg->tmp - ((m_avg->tmp + (1 << (m_avg->filter - 1))) >> m_avg->filter) + v;
+        }
+        return ((m_avg->tmp + (1 << (m_avg->filter - 1))) >> m_avg->filter);
+    }
+}
 
 #ifdef ENCODER_SUPPORT
 // A valid CW or CCW move returns 1, invalid returns 0.
@@ -793,17 +818,20 @@ void read_rotary() {
 #if !defined(SIMPLE_ADC)
 
 void adc_handler_voltage(uint16_t adc_value) {
-    adc_voltage = adc_value;
-    // read power supply status
-    if (adc_voltage > THRESHOLD_VOLTAGE_ADC_VALUE) {
-        shutdown_counter = 0;
-    } else {
-        if (shutdown_counter == SHUTDOWN_COUNTER) {
-            screen_refresh = 1; timeout_timer1 = 0;
-        } else {
-            shutdown_counter++;
-        }
+    adc_voltage.current = adc_value;
+
+    if (adc_voltage.current < adc_voltage.min) {
+        adc_voltage.min = adc_voltage.current;
+    } else if (adc_voltage.current > adc_voltage.max) {
+        adc_voltage.max = adc_voltage.current;
     }
+
+    if (adc_voltage.current > THRESHOLD_VOLTAGE_ADC_VALUE) {
+        acc_power_off_fl = 0;
+    } else {
+        acc_power_off_fl = 1;
+    }
+
 };
 
 #ifdef ADC_BUTTONS
@@ -1145,60 +1173,76 @@ void print_main_odo(align_t align) {
 #if defined(TEMPERATURE_SUPPORT)
 uint8_t print_temp(uint8_t index, align_t align) {
 
-    uint8_t _print_header = (index & PRINT_TEMP_PARAM_HEADER) != 0;
+    uint8_t param = index & ~PRINT_TEMP_PARAM_MASK;
     index &= PRINT_TEMP_PARAM_MASK;
 
     _t = temps[index];
 
     if (_t == DS18B20_TEMP_NONE) {
-        if (index == TEMP_ENGINE || index == TEMP_CONFIG) {
-            buf[0] = '-'; buf[1] = '-';
-            len = 2;
-        } else {
-            len = strcpy2(buf, (char *) &empty_string, 0);
-        }
+        len = strcpy2(buf, (char *) &temp_sensors, 1);
     } else {
-        uint8_t _index = 0;
-        if (_t & 0x8000) // if the temperature is negative
+        uint8_t _pos = 0;
+        if (_t & 0x8000)         // if the temperature is negative
         {
-            buf[0] = '-'; // put minus sign (-)
-            _t = (~_t) + 1; // change temperature value to positive form
-            _index++;
+            _t = (~_t) + 1;      // change temperature value to positive form
+            buf[_pos++] = '-';   // put minus sign (-)
         } else {
-            if (index != TEMP_ENGINE) {
-              buf[0] = '+';
-              _index++;
+            if ((param & PRINT_TEMP_PARAM_NO_PLUS_SIGN) == 0) {
+              buf[_pos++] = '+'; // put plus sign (+)
             }
         }
         _t = (unsigned short) ((_t >> 4) * 10 + (((_t & 0x000F) * 10) >> 4));
 
-        if (index == TEMP_ENGINE || index == TEMP_CONFIG) {
-            len = ultoa2(&buf[_index], _t / 10, 10) + _index;
-        } else {
-            len = print_fract(&buf[1], _t, 1) + 1;
+        // if ((param & PRINT_TEMP_PARAM_FRACT) != 0)
+        // {
+        //     len = print_fract(&buf[_pos], _t, 1) + 1;
+        // }
+        // else
+        {
+            len = ultoa2(&buf[_pos], _t / 10, 10) + _pos;
         }
     }
 
-    if (_print_header) {
+    if ((param & PRINT_TEMP_PARAM_HEADER) != 0) {
         add_leading_symbols(buf, ' ', len, 8);
         strcpy2(buf, (char *) &temp_sensors, (index + 1) + 1);
         len = 8;
-    } else if (index != TEMP_CONFIG) {
+    }
+
+    if ((param & PRINT_TEMP_PARAM_DEG_SIGN) != 0) {
         len += print_symbols_str(len, POS_CELS);
     }
+
     LCD_Write_String8(buf, len, align);
     return len;
 }
 
 #endif
 
-void print_voltage(align_t align) {
-    len = print_fract(buf, (unsigned short) (adc_voltage << 5) / config.vcc_const, 1);
+#if 1
+#define VOLTAGE_SYMBOLS_ALIGN(s, align) s, align
+void print_voltage(uint16_t *adc_voltage, uint8_t pos, align_t align) {
+    len = print_symbols_str(0, pos);
+    len += print_fract(&buf[len], (unsigned short) (*adc_voltage << 5) / config.vcc_const, 1);
 
     _print(len, POS_VOLT, align);
 }
+#else
+#define VOLTAGE_SYMBOLS_ALIGN(s, align) align
+void print_voltage(uint16_t *adc_voltage, align_t align) {
+    len = print_fract(buf, (unsigned short) (*adc_voltage << 5) / config.vcc_const, 1);
+
+    _print(len, POS_VOLT, align);
+}
+#endif
 
 void wait_refresh_timeout() {
+
+    if (key2_longpress != 0) {
+        screen_refresh = 1;
+        timeout_timer1 = 0;
+    }
+
     clear_keys_state();
     while (screen_refresh == 0 && timeout_timer1 != 0);
 }
@@ -1209,7 +1253,7 @@ void screen_time(void) {
 
     if (request_screen((char *) &time_correction) != 0) {
 
-        uint8_t c = 0;
+        uint8_t c = 0, save_time = 0;
         uint8_t *p, min, max;
 
         const char cursor_position[] = {0x81, 0x84, 0x89, 0x8c, 0x8f, 0xc0};
@@ -1225,6 +1269,7 @@ void screen_time(void) {
 #endif
 
             if (KEY_OK) {
+                save_time = 1;
                 switch (c) {
                     case 0:
                         p = &time.hour; min = 0; max = 23;
@@ -1268,13 +1313,15 @@ void screen_time(void) {
             print_time(&time);
             LCD_CMD(cursor_position[c]);
             LCD_CMD(LCD_BLINK_CURSOR_ON);
-
+            
             wait_refresh_timeout();
         }
         LCD_CMD(LCD_CURSOR_OFF);
         // save time
-        set_ds_time(&time);
-        key2_longpress = 0;
+        if (save_time != 0) {
+            set_ds_time(&time);
+        }
+        screen_refresh = 1;
 
     } else {
         print_time(&time);
@@ -1378,8 +1425,6 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
 
 uint16_t edit_value_bits(uint16_t v, char* str) {
 
-#define cursor_pos 0xC0
-
     uint8_t pos = 0;
 
     timeout_timer1 = 5;
@@ -1400,7 +1445,18 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
 
         unsigned char _onoff = (buf[pos] - '0') + 1;
 
-        LCD_CMD(cursor_pos);
+        char *p = &buf[0];
+        uint8_t _i = 16;
+        while (_i-- > 0) {
+            // replace 0 with '-' and '1' with '*'
+            if (*p == '0') {
+                *p++ = '-';
+            } else {
+                *p++ = '*';
+            }
+        }
+
+        LCD_CMD(0xC0);
         LCD_Write_String16(buf, 16, ALIGN_LEFT);
 
         _memset(buf, ' ', 16);
@@ -1412,7 +1468,7 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
         LCD_CMD(0x80);
         LCD_Write_String16(buf, 16, ALIGN_LEFT);
 
-        LCD_CMD(cursor_pos + pos);
+        LCD_CMD(0xC0 + pos);
         LCD_CMD(LCD_BLINK_CURSOR_ON);
 
         wait_refresh_timeout();
@@ -1463,13 +1519,13 @@ void print_selected_param1(align_t align) {
     switch (select_param(&main_param, NUM_PARAMS)) {
         case 0:
 #if defined(TEMPERATURE_SUPPORT)
-            print_temp(config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT, align);
+            print_temp((config.settings.show_inner_temp != 0 ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, align);
             break;
 #else
             main_param++;
 #endif            
         case 1:
-            print_voltage(align);
+            print_voltage((uint16_t *) &adc_voltage.current, VOLTAGE_SYMBOLS_ALIGN(POS_NONE, align));
             break;
         case 2:
             print_trip_time(&trips.tripC, align);
@@ -1487,7 +1543,7 @@ void print_selected_param1(align_t align) {
             print_trip_total_fuel(&trips.tripC, align);
             break;
         case 7:
-            print_speed(trips.tripC_max_speed, print_symbols_str(0, POS_MAXS), align);
+            print_speed(trips.tripC_max_speed, print_symbols_str(0, POS_MAX), align);
             break;
         case 8:
             print_fuel_duration(align);
@@ -1570,7 +1626,7 @@ void acceleration_measurement(uint8_t index) {
             }
 
             if (timeout_timer1 != 0 && accel_meas_ok_fl == 0) {
-                timeout_timer2 = (uint8_t) (TIMER_01SEC_INTERVAL / 2.5); while (timeout_timer2 != 0);
+                timeout_timer2 = (uint8_t) (TIMER_01SEC_INTERVAL * 2.5f); while (timeout_timer2 != 0);
             } else {
                 if (accel_meas_ok_fl != 0 && accel_meas_final_fl == 0) {
                     // print final result
@@ -1633,7 +1689,6 @@ void select_acceleration_measurement() {
         wait_refresh_timeout();
     }
 
-
     if (index != 0xFF) {
         acceleration_measurement(index);
     }
@@ -1656,11 +1711,11 @@ void screen_main(void) {
 
             LCD_CMD(0xC0);
 #if defined(TEMPERATURE_SUPPORT)
-            print_temp(config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT, ALIGN_LEFT);
+            print_temp((config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, ALIGN_LEFT);
 #else
             print_trip_odometer(&trips.tripC, ALIGN_LEFT);
 #endif
-            print_voltage(ALIGN_RIGHT);
+            print_voltage((uint16_t *) &adc_voltage.current, VOLTAGE_SYMBOLS_ALIGN(POS_NONE, ALIGN_RIGHT));
         } else {
 //; 2) на месте с работающим двигателем
 //; время текущее       тахометр (об/мин)
@@ -1699,6 +1754,8 @@ void clear_trip(bool force, trip_t* trip) {
         journal_save_trip(trip);
 #endif
         _memset(trip, 0, sizeof(trip_t));
+        
+        save_eeprom_trips();
     }
 }
 
@@ -1740,40 +1797,58 @@ void screen_tripB() {
     screen_trip(&trips.tripB, TRIPS_POS_B);
 }
 
-#ifdef TEMPERATURE_SUPPORT
-void screen_temp() {
-    if (config.settings.skip_temp_screen) {
+void screen_misc() {
+    if (config.settings.show_misc_screen == 0) {
         item_skip = 1;
     } else {
         LCD_CMD(0x80);
-        print_temp(TEMP_OUT | PRINT_TEMP_PARAM_HEADER, ALIGN_RIGHT);
-        LCD_CMD(0xC0);
-        print_temp(TEMP_IN | PRINT_TEMP_PARAM_HEADER, ALIGN_RIGHT);
-
-        LCD_CMD(0x88);
-        LCD_Write_String8(buf, 0, ALIGN_RIGHT); //empty 
-        LCD_CMD(0xC8);
-        print_temp(TEMP_ENGINE, ALIGN_RIGHT);
-
-        // force faster temperature update
-        if (temperature_conv_fl == 0 && timeout_temperature > FORCED_TIMEOUT_TEMPERATURE) {
-            timeout_temperature = FORCED_TIMEOUT_TEMPERATURE;
-        }
-// show temp sensors config on ok key longpress
+        switch(select_param(&misc_param, 2)) {
+            case 0:
+#if defined(TEMPERATURE_SUPPORT)
+                // show temp sensors config on ok key longpress
 #if defined(DS18B20_CONFIG)
-        if (key2_longpress != 0) {
-            key2_longpress = 0;
+                if (key2_longpress != 0) {
+                    key2_longpress = 0;
 
-            LCD_CMD(0x80);
-            LCD_Write_String16(buf, strcpy2(buf, (char *) service_menu_str, TEMP_SENSOR_INDEX), ALIGN_LEFT);
-            config_screen_temp_sensors();
-            clear_keys_state();
-            screen_refresh = 1;
-        }
+                    LCD_Write_String16(buf, strcpy2(buf, (char *) service_menu_str, TEMP_SENSOR_INDEX), ALIGN_LEFT);
+                    config_screen_temp_sensors();
+                    clear_keys_state();
+                    screen_refresh = 1;
+                } else
 #endif
+                {
+                    print_temp(TEMP_OUT | PRINT_TEMP_PARAM_HEADER | PRINT_TEMP_PARAM_FRACT, ALIGN_RIGHT);
+                    LCD_Write_String8(buf, 0, ALIGN_RIGHT); //empty 
+
+                    LCD_CMD(0xC0);
+                    print_temp(TEMP_IN | PRINT_TEMP_PARAM_HEADER | PRINT_TEMP_PARAM_FRACT, ALIGN_RIGHT);
+                    print_temp(TEMP_ENGINE | PRINT_TEMP_PARAM_HEADER | PRINT_TEMP_PARAM_NO_PLUS_SIGN, ALIGN_RIGHT);
+
+                    // force faster temperature update
+                    if (temperature_conv_fl == 0 && timeout_temperature > FORCED_TIMEOUT_TEMPERATURE) {
+                        timeout_temperature = FORCED_TIMEOUT_TEMPERATURE;
+                    }
+                }
+                break;
+#else
+                misc_param++;
+#endif
+            case 1:
+                if (request_screen((char *) &reset_string) != 0) {
+                    adc_voltage.min = adc_voltage.max = adc_voltage.current;
+                }
+                LCD_Write_String8(buf, strcpy2(buf, (char *) voltage_string, 0), ALIGN_LEFT);
+                print_voltage((uint16_t*) & adc_voltage.current, VOLTAGE_SYMBOLS_ALIGN(POS_NONE, ALIGN_RIGHT));
+
+                LCD_CMD(0xC0);
+                print_voltage((uint16_t*) &adc_voltage.min, VOLTAGE_SYMBOLS_ALIGN(POS_MIN, ALIGN_LEFT));
+                print_voltage((uint16_t*) &adc_voltage.max, VOLTAGE_SYMBOLS_ALIGN(POS_MAX, ALIGN_RIGHT));
+                break;
+
+        }
+
     }
 }
-#endif        
 
 #ifdef SERVICE_COUNTERS_SUPPORT
 /**
@@ -1929,9 +2004,7 @@ void journal_save_trip(trip_t *trip) {
 
     uint16_t odo = get_odometer(trip);
 
-    // // skip if zero distance and trip A/B
-    // if (odo == 0 && index != 0) return;
-
+    // skip if zero distance
     if (odo != 0) {
         trip_item.status = JOURNAL_ITEM_OK;
         memcpy(&trip_item.trip, trip, sizeof(trip_t));
@@ -1988,27 +2061,28 @@ void journal_save_accel(uint8_t index) {
     journal_update_header();
 }
 
-//#define ALT_JOURNAL_DATE
 
 uint8_t journal_print_item_time(char *buf, trip_time_t *trip_time) {
     uint8_t len = 0;
     bcd8_to_str(&buf[len], trip_time->day);
     len += 2;
-#ifdef ALT_JOURNAL_DATE
-    len += strcpy2(&buf[len], (char *) &month_str, bcd8_to_bin(trip_time->month));
-#else
-    buf[len++] = '.';
-    bcd8_to_str(&buf[len], trip_time->month);
-    len += 2;
-    buf[len++] = '.';
-#endif
+    {
+        len += strcpy2(&buf[len], (char *) &month_str, bcd8_to_bin(trip_time->month));
+        buf[len++] = '\'';
+    }
+//    {
+//        buf[len++] = '.';
+//        bcd8_to_str(&buf[len], trip_time->month);
+//        len += 2;
+//        buf[len++] = '.';
+//    }
     bcd8_to_str(&buf[len], trip_time->year);
     len += 2;
     buf[len++] = ' ';
-#ifndef ALT_JOURNAL_DATE
-    buf[len++] = ' ';
-    buf[len++] = ' ';
-#endif
+//    {
+//        buf[len++] = ' ';
+//        buf[len++] = ' ';
+//    }
     bcd8_to_str(&buf[len], trip_time->hour);
     len += 2;
     buf[len++] = ':';
@@ -2018,6 +2092,7 @@ uint8_t journal_print_item_time(char *buf, trip_time_t *trip_time) {
 }
 
 void screen_journal_viewer() {
+    char _buf[18];  // 4 symbols for index (iii.) + 14 symbols as date (ddmmm'yy hh:mm)
 
     if (journal_support == 0) {
         item_skip = 1;
@@ -2026,9 +2101,8 @@ void screen_journal_viewer() {
         LCD_CMD(0x80);
         LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_str, 0), ALIGN_LEFT);
 
-        _memset(buf, ' ', 16);
         LCD_CMD(0xC0);
-        LCD_Write_String16(buf, 16, ALIGN_LEFT);
+        LCD_Write_String16(buf, 0, ALIGN_NONE);
 
         if (key2_press != 0) {
             key2_press = 0;
@@ -2110,13 +2184,15 @@ void screen_journal_viewer() {
                             
                             if (item_current != 0xFF) {
                                 LCD_CMD(0x80);
-#ifdef ALT_JOURNAL_DATE
-                                len = ultoa2(buf, item_num + 1, 10);
-                                buf[len++] = '.';
-                                LCD_Write_String16(buf, len + journal_print_item_time((char *) &buf[len], trip_time), ALIGN_LEFT);
-#else
-                                LCD_Write_String16(buf, journal_print_item_time((char *) &buf, trip_time), ALIGN_LEFT);
-#endif                                
+
+                                {
+                                    len = ultoa2(_buf, item_num + 1, 10);
+                                    _buf[len++] = '.';
+                                }
+//                                {
+//                                    len = 0;
+//                                }
+                                LCD_Write_String16(_buf, len + journal_print_item_time((char *) &_buf[len], trip_time), ALIGN_LEFT);
 
                                 if (key2_press != 0) {
                                     timeout_timer1 = 5;
@@ -2177,20 +2253,12 @@ void screen_journal_viewer() {
                                 timeout_timer1 = 0;
                                 screen_refresh = 1;
                             }
-                        } else {
-                            if (key2_longpress != 0) {
-                                timeout_timer1 = 0;
-                                screen_refresh = 1;
-                            }
                         }
 
                         wait_refresh_timeout();
                     }
                     
                     timeout_timer1 = 5;
-                } else if (key2_longpress != 0) {
-                    timeout_timer1 = 0;
-                    screen_refresh = 1;
                 }
 
                 wait_refresh_timeout();
@@ -2222,7 +2290,7 @@ void config_screen_settings_bits() {
 
 #ifdef MIN_SPEED_CONFIG
 void config_screen_min_speed() {
-    config.min_speed = edit_value_char(config.min_speed, CHAREDIT_MODE_KMH, 1, 10);
+    config.selected_param.min_speed = edit_value_char(config.selected_param.min_speed, CHAREDIT_MODE_KMH, 1, 10);
 }
 #endif
 
@@ -2407,8 +2475,7 @@ void config_screen_service_counters() {
         LCD_CMD(0x80);
         LCD_Write_String16(buf, strcpy2(buf, (char *) &service_counters, c_sub_item + 1), ALIGN_LEFT);
         LCD_CMD(0xC0);
-        _memset(buf, ' ', 16);
-        LCD_Write_String16(buf, 16, ALIGN_LEFT);
+        LCD_Write_String16(buf, 0, ALIGN_NONE);
 
         if (c_sub_item == 0) {
             services.mh.limit = (unsigned short) edit_value_long(services.mh.limit, 1999L);
@@ -2426,7 +2493,7 @@ void config_screen_ua_const() {
     handle_keys_up_down(&config.vcc_const, 140, 230);
 
     LCD_CMD(0xC4);
-    print_voltage(ALIGN_RIGHT);
+    print_voltage((uint16_t *) &adc_voltage.current, VOLTAGE_SYMBOLS_ALIGN(POS_NONE, ALIGN_RIGHT));
 }
 
 void config_screen_version() {
@@ -2517,7 +2584,6 @@ void print_warning_service_counters(unsigned char warn) {
 
 
 void read_eeprom() {
-    unsigned char ee_addr = 0;
 
 #if defined(PROGMEM_EEPROM)
     // check eeprom special mark and save default eeprom content if mark not exists
@@ -2542,35 +2608,38 @@ void read_eeprom() {
     }
 #endif
     
-    HW_read_eeprom_block((unsigned char*) &config, ee_addr, sizeof(config_t));
-    ee_addr += ((sizeof(config_t) - 1) / 8 + 1) * 8;
+    HW_read_eeprom_block((unsigned char*) &config, EEPROM_CONFIG_ADDRESS, sizeof(config_t));
     
-    HW_read_eeprom_block((unsigned char*) &trips, ee_addr, sizeof(trips_t));
-    ee_addr += ((sizeof(trips_t) - 1) / 8 + 1) * 8;
+    HW_read_eeprom_block((unsigned char*) &trips, EEPROM_TRIPS_ADDRESS, sizeof(trips_t));
 
 #ifdef SERVICE_COUNTERS_SUPPORT
-    HW_read_eeprom_block((unsigned char*) &services, ee_addr, sizeof(services_t));
+    HW_read_eeprom_block((unsigned char*) &services, EEPROM_SERVICES_ADDRESS, sizeof(services_t));
 #endif
 }
 
+void save_eeprom_config() {
+    HW_write_eeprom_block((unsigned char*) &config, EEPROM_CONFIG_ADDRESS, sizeof (config_t));
+}
+
+void save_eeprom_trips() {
+    HW_write_eeprom_block((unsigned char*) &trips, EEPROM_TRIPS_ADDRESS, sizeof (trips_t));
+}
+
 void save_eeprom() {
-    unsigned char ee_addr = 0;
-    HW_write_eeprom_block((unsigned char*) &config, ee_addr, sizeof(config_t));
-    ee_addr += ((sizeof(config_t) - 1) / 8 + 1) * 8;
+    save_eeprom_config();
     
-    HW_write_eeprom_block((unsigned char*) &trips, ee_addr, sizeof(trips_t));
-    ee_addr += ((sizeof(trips_t) - 1) / 8 + 1) * 8;
+    save_eeprom_trips();
 
 #ifdef SERVICE_COUNTERS_SUPPORT
-    HW_write_eeprom_block((unsigned char*) &services, ee_addr, sizeof(services_t));
+    HW_write_eeprom_block((unsigned char*) &services, EEPROM_SERVICES_ADDRESS, sizeof (services_t));
 #endif
 }
 
 const uint8_t ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273 - 256, 304 - 256, 334 - 256, 365 - 256};
 
 uint16_t get_yday(uint8_t month, uint8_t day) {
-    unsigned char m = bcd8_to_bin(month) - 1;
-    unsigned short yday = ydayArray[m];
+    uint8_t m = bcd8_to_bin(month) - 1;
+    uint16_t yday = ydayArray[m];
     if (m >= 9) {
         yday += 256;
     }
@@ -2579,30 +2648,31 @@ uint16_t get_yday(uint8_t month, uint8_t day) {
 
 uint8_t check_tripC_time() {
     // clear trip C if diff between dates is more than TRIPC_PAUSE_MINUTES minutes
-    short diff;
+    int8_t diff;
 
 #ifndef SIMPLE_TRIPC_TIME_CHECK    
     diff = bcd_subtract(time.year, trips.tripC_time.year);
-    if (diff < 0 || diff > 1) return 1;
+    if (diff < 0) return 0; else if (diff > 1) return 1;
 
-    unsigned short yday = get_yday(time.month, time.day);
-    unsigned short yday_c = get_yday(trips.tripC_time.month, trips.tripC_time.day);
+    uint16_t yday = get_yday(time.month, time.day);
+    uint16_t yday_c = get_yday(trips.tripC_time.month, trips.tripC_time.day);
     
-    diff = (short) ((diff == 1 ? 365 : 0) + yday - yday_c);
+    int16_t diff_day = (int16_t) ((diff == 0 ? 0 : 365) + yday - yday_c);
+    if (diff_day < 0) return 0; else if (diff_day > 1) return 1;
+
+    diff = (int8_t) diff_day;
 #else    
     diff = bcd_subtract(time.day,trips.tripC_time.day);
+    if (diff < 0) return 0; else if (diff > 1) return 1;
 #endif
     
-    if (diff < 0 || diff > 1) return 1;
-
     if (config.settings.daily_tripc == 0) {
-        diff = (diff == 1 ? 24 : 0) + bcd_subtract(time.hour, trips.tripC_time.hour);
-        if (diff < 0) return 1;
+        diff = (diff == 0 ? 0 : 24) + bcd_subtract(time.hour, trips.tripC_time.hour);
+        if (diff < 0) return 0;
 
-        diff = 60 * diff + bcd_subtract(time.minute, trips.tripC_time.minute);
-        if (diff > TRIPC_PAUSE_MINUTES) return 1;
+        if ((int16_t) (60 * diff) + bcd_subtract(time.minute, trips.tripC_time.minute) > TRIPC_PAUSE_MINUTES) return 1;
     } else {
-       return (unsigned char) diff; 
+        return (uint8_t) diff;
     }
     
     return 0;
@@ -2630,6 +2700,7 @@ void set_consts() {
     }
 
     main_param = config.selected_param.main_param;
+    misc_param = config.selected_param.misc_param;
 #ifdef SERVICE_COUNTERS_SUPPORT
     service_param = config.selected_param.service_param;
 #endif
@@ -2641,8 +2712,12 @@ void set_consts() {
 
 #if defined(TEMPERATURE_SUPPORT)
 
+//#define TEMP_CRC_ERROR
+
 #if defined(DS18B20_TEMP)
+#if defined(TEMP_CRC_ERROR)
 uint8_t t_error[3] = {0, 0, 0};
+#endif
 #endif
 
 void handle_temp() {
@@ -2655,14 +2730,20 @@ void handle_temp() {
         for (unsigned char i = 0; i < 3; i++) {
             HW_read_eeprom_block((unsigned char *) &buf, _temps_ee_addr, 8);
             if (ds18b20_read_temp_matchrom((unsigned char *) &buf, &_t) == 0) {
+#if defined(TEMP_CRC_ERROR)
                 if (t_error[i] >= 5) { // max sequential crc errors
                     temps[i] = DS18B20_TEMP_NONE;
                 } else {
                     t_error[i]++;
                 }
+#else
+                temps[i] = DS18B20_TEMP_NONE;
+#endif                
             } else {
                 temps[i] = _t;
+#if defined(TEMP_CRC_ERROR)
                 t_error[i] = 0;
+#endif
             }
             _temps_ee_addr += 8;
         }
@@ -2698,7 +2779,7 @@ void handle_temp() {
 void handle_misc_values() {
     speed = (unsigned short) ((36000UL * (unsigned long) kmh) / (unsigned long) config.odo_const);
 
-    drive_min_speed_fl = speed >= config.min_speed * 10;
+    drive_min_speed_fl = speed >= config.selected_param.min_speed * 10;
 
     if (trips.tripC_max_speed < speed) {
         trips.tripC_max_speed = speed;
@@ -2732,16 +2813,18 @@ void power_on() {
     journal_check_eeprom();
 #endif
 
-    if (check_tripC_time() != 0) {
-        // clear tripC
-        clear_trip(true, &trips.tripC);
-        trips.tripC_max_speed = 0;
-    }
+    if (time.flags.is_valid) {
+        if (check_tripC_time() != 0) {
+            // clear tripC
+            clear_trip(true, &trips.tripC);
+            trips.tripC_max_speed = 0;
+        }
 
-    if (check_tripB_month() != 0) {
-        clear_trip(true, &trips.tripB);
+        if (check_tripB_month() != 0) {
+            clear_trip(true, &trips.tripB);
+        }
     }
-
+    
 }
 
 void power_off() {
@@ -2749,17 +2832,23 @@ void power_off() {
     // save and shutdown;
     disable_interrupts();
 
-    // save current time
     if (save_tripc_time_fl != 0) {
+        // save current time for tripC
         fill_trip_time(&trips.tripC_time);
-        if (config.settings.monthly_tripb != 0) {
-            trips.tripB_month = time.month;
-        } else {
-            trips.tripB_month = 0;
-        }
     }
 
+    // save tripB month
+    if (config.settings.monthly_tripb != 0) {
+        if (save_tripc_time_fl != 0 || trips.tripB_month == 0) {
+            trips.tripB_month = time.month;
+        }
+    } else {
+        trips.tripB_month = 0;
+    }
+
+
     config.selected_param.main_param = main_param;
+    config.selected_param.misc_param = misc_param;
 #ifdef SERVICE_COUNTERS_SUPPORT
     config.selected_param.service_param = service_param;
 #endif
@@ -2794,7 +2883,7 @@ void main() {
     clear_keys_state();
     
     // wait first adc conversion
-    while (adc_voltage == 0 && screen_refresh == 0)
+    while (adc_voltage.current == 0 && screen_refresh == 0)
         ;
     
     
@@ -2802,7 +2891,7 @@ void main() {
         screen_refresh = 0;
 
         // check power
-        if (shutdown_counter == SHUTDOWN_COUNTER) {
+        if (shutdown_fl != 0) {
             power_off();
         }
 
@@ -2821,7 +2910,7 @@ void main() {
                 //LCD_Clear();
                 clear_keys_state();
                 // save config
-                HW_write_eeprom_block((unsigned char*) &config, 0, sizeof(config_t));
+                save_eeprom_config();
                 // set consts
                 set_consts();
             }

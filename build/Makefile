@@ -1,14 +1,18 @@
 MCU := $(or $(MCU),pic16f1938)
+FIRMWARE := $(or $(FIRMWARE),1)
 
 ifeq ($(MCU),pic16f876a)
- DFP_DIR := ${XC8-TOOLCHAIN}/PIC16Fxxx_DFP/1.2.33
+ DFP_DIR := ${XC8-TOOLCHAIN}/packs/PIC16Fxxx_DFP/1.2.33
  MP_PROCESSOR_OPTION := 16F876A
 else ifeq ($(MCU),pic16f1936)
- DFP_DIR := ${XC8-TOOLCHAIN}/PIC12-16F1xxx_DFP/1.2.63
+ DFP_DIR := ${XC8-TOOLCHAIN}/packs/PIC12-16F1xxx_DFP/1.2.63
  MP_PROCESSOR_OPTION := 16F1936
 else ifeq ($(MCU),pic16f1938)
- DFP_DIR := ${XC8-TOOLCHAIN}/PIC12-16F1xxx_DFP/1.2.63
+ DFP_DIR := ${XC8-TOOLCHAIN}/packs/PIC12-16F1xxx_DFP/1.2.63
  MP_PROCESSOR_OPTION := 16F1938
+else ifeq ($(MCU),pic18f252)
+ DFP_DIR := ${XC8-TOOLCHAIN}/packs/PIC18Fxxxx_DFP/1.2.26
+ MP_PROCESSOR_OPTION := 18F252
 else ifeq ($(MCU),atmega328p)
  MP_PROCESSOR_OPTION := ATMega328P
  ifeq ($(ARDUINO),1)
@@ -21,11 +25,17 @@ else
  $(error MCU=${MCU} not supported)
 endif
 
-ifneq (,$(findstring pic16f,$(MCU)))
+ifneq (,$(filter pic16f% pic18f%,$(MCU)))
   MP_CC_DIR=${XC8-TOOLCHAIN}/xc8/v2.32/bin
   MP_CC=${XC8-TOOLCHAIN}/xc8/v2.32/bin/xc8-cc
   FIXDEPS=${XC8-TOOLCHAIN}/xc8/v2.32/bin/fixDeps
   AVR_OBJCOPY=${XC8-TOOLCHAIN}/xc8/v2.32/bin/avr-objcopy
+ifneq (,$(findstring pic16f,$(MCU)))
+  XC8_OPTIONS=-mno-osccal -mno-resetbits -mno-save-resetbits -mno-stackcall -mstack=compiled:auto:auto
+else
+  XC8_OPTIONS=-mdefault-config-bits -memi=wordwrite -merrata=none -mstack=compiled:auto:auto:auto
+endif
+
 else
   MP_CC=${AVR-GCC-TOOLCHAIN}/bin/avr-gcc
   AVR_OBJCOPY=${AVR-GCC-TOOLCHAIN}/bin/avr-objcopy
@@ -39,7 +49,7 @@ RM=rm -f
 MV=mv 
 CP=cp  
 
-ifneq (,$(findstring pic16f,$(MCU)))
+ifneq (,$(filter pic16f% pic18f%,$(MCU)))
   TARGET=PIC${MP_PROCESSOR_OPTION}_legacy
 endif
 
@@ -50,7 +60,7 @@ OBJECTDIR=${TARGET}
 OUTDIR=../firmware
 
 SRCS = src/onewire.c src/ds18b20.c src/ds1307.c src/hw-avr.c src/hw-pic.c src/i2c.c src/lcd.c src/main.c src/utils.c src/i2c-eeprom.c
-ifneq (,$(findstring pic16f,$(MCU)))
+ifneq (,$(filter pic16f% pic18f%,$(MCU)))
   OBJS = $(SRCS:%.c=${OBJECTDIR}/%.p1)
   DEPS := $(OBJS:.p1=.d)
 else
@@ -67,21 +77,27 @@ VPATH = ..
 usage:
 	$(info usage:)
 	$(info make XC8-TOOLCHAIN=/path/to/xc8-toolchain or AVR-GCC-TOOLCHAIN=/path/to/avr-gcc-toolchain MCU=TARGET_CPU)
-	$(info TARGET_CPU is one of pic16F876a, pic16f1936, pic16f1938 (default), atmega168p, atmega328p)
+	$(info TARGET_CPU is one of pic16F876a, pic16f1936, pic16f1938 (default), pic18f252, atmega168p, atmega328p)
 	$(info creating release:)
 	$(info make XC8-TOOLCHAIN=/path/to/xc8-toolchain AVR-GCC-TOOLCHAIN=/path/to/avr-gcc-toolchain release)
 
 build: $(TARGET)
+ifeq ($(FIRMWARE),1)
 	${CP} ${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX} ${OUTDIR}/${OUTPUTNAME}.${MCU}${TARGET_SUFFIX}.${OUTPUT_SUFFIX}
-ifeq (,$(findstring pic16f,$(MCU)))
+ifeq (,$(filter pic16f% pic18f%,$(MCU)))
 	${CP} ${OBJECTDIR}/${OUTPUTNAME}.production.eep ${OUTDIR}/${OUTPUTNAME}.${MCU}${TARGET_SUFFIX}.eep
+endif
 endif
 ifeq ($(EEPROM),1)
 ifneq (,$(findstring pic16f,$(MCU)))
 	${AVR_OBJCOPY} -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} ../proteus/eeprom_$(MP_PROCESSOR_OPTION).bin
 else
+ifneq (,$(findstring pic18f,$(MCU)))
+	${AVR_OBJCOPY} -b 0 -i 1 -O binary -I elf32-little -j eeprom_data ${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} ../proteus/eeprom_$(MP_PROCESSOR_OPTION).bin
+else
 ifneq ($(ARDUINO),1)
 	${AVR_OBJCOPY} -j .eeprom --set-section-flags=.eeprom=alloc,load --change-section-lma .eeprom=0 --no-change-warnings -O binary ${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} ../proteus/eeprom_$(MP_PROCESSOR_OPTION).bin
+endif
 endif
 endif
 endif
@@ -91,6 +107,7 @@ ifdef XC8-TOOLCHAIN
 	MCU=pic16f876a $(MAKE) -f $(firstword $(MAKEFILE_LIST)) build
 	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) build
 	MCU=pic16f1938 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) build
+	MCU=pic18f252 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) build
 endif
 ifdef AVR-GCC-TOOLCHAIN
 	MCU=atmega328p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) build
@@ -102,13 +119,14 @@ clobber:
 	MCU=pic16f876a $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=pic16f1938 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=pic18f252 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=atmega328p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 
 $(TARGET): $(OBJS)
 	@${MKDIR} ${OBJECTDIR} 
-ifneq (,$(findstring pic16f,$(MCU)))
-	${MP_CC} $(MP_EXTRA_LD_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -Wl,-Map=${OBJECTDIR}/${OUTPUTNAME}.production.map  -DXPRJ_$(TARGET)=$(CND_CONF)  -Wl,--defsym=__MPLAB_BUILD=1   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall -std=c99 -gcoff -mstack=compiled:auto:auto     $(COMPARISON_BUILD) -Wl,--memorysummary,${OBJECTDIR}/memoryfile.xml -o ${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}  ${OBJS}      
+ifneq (,$(filter pic16f% pic18f%,$(MCU)))
+	${MP_CC} $(MP_EXTRA_LD_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -Wl,-Map=${OBJECTDIR}/${OUTPUTNAME}.production.map  -DXPRJ_$(TARGET)=$(CND_CONF)  -Wl,--defsym=__MPLAB_BUILD=1   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) -std=c99 -gcoff $(COMPARISON_BUILD) -Wl,--memorysummary,${OBJECTDIR}/memoryfile.xml -o ${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}  ${OBJS}      
 else
 	${MP_CC} -o ${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} -mmcu=$(MCU) -Os -Wl,--gc-sections -flto -fuse-linker-plugin ${OBJS} 
 	${AVR_OBJCOPY} -O ihex -R .eeprom "${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" "${OBJECTDIR}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}"
@@ -122,7 +140,7 @@ ${OBJECTDIR}/%.o : %.c
 
 ${OBJECTDIR}/%.p1 : %.c
 	@${MKDIR} "${OBJECTDIR}/src"
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-osccal -mno-resetbits -mno-save-resetbits -mno-download -mno-stackcall $(COMPARISON_BUILD)  -std=c99 -gcoff -mstack=compiled:auto:auto     -o $@ -c $<
+	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) $(COMPARISON_BUILD)  -std=c99 -gcoff -o $@ -c $<
 	@${FIXDEPS} $(patsubst %.p1,%.d,$@) $(SILENT) -rsi ${MP_CC_DIR}../ 
 
 clean:

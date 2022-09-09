@@ -2,6 +2,9 @@
 
 #ifdef I2C_SOFTWARE
 
+unsigned char bit_in(void);
+void bit_out(unsigned char);
+
 void I2C_Master_Init()
 {
 /*
@@ -12,14 +15,64 @@ void I2C_Master_Init()
 */
 }
 
-void I2C_Master_Start()
+#if defined(LOW_STACK_DEVICE)
+
+unsigned char _I2C_Master_Write(unsigned char address, unsigned char start)
+{
+    if (start != 0) {
+        //SDA_INPUT;                  // ensure SDA & SCL are high
+        SCL_HIGH;
+        delay_us(0.6);
+        SDA_OUTPUT;                   // SDA = output
+        SDA_LOW;                      // pull SDA low
+        delay_us(3.5);
+    }
+
+    unsigned char mask = 0x80;    // mask
+
+    do {
+        bit_out(address & mask);     // output MSB bit
+        mask = mask >> 1;
+    } while (mask != 0);
+
+    mask = bit_in();              // input ACK bit
+    delay_us(1);
+    SCL_LOW;                      // pull SCL low
+    return mask;
+
+}
+
+#else
+
+unsigned char I2C_Master_Start(unsigned char address)
 {
     //SDA_INPUT;                  // ensure SDA & SCL are high
     SCL_HIGH;
+    delay_us(0.6);
     SDA_OUTPUT;                   // SDA = output
     SDA_LOW;                      // pull SDA low
     delay_us(3.5);
+
+    return I2C_Master_Write(address);
 }
+
+unsigned char I2C_Master_Write(unsigned char data)
+{
+    unsigned char mask = 0x80;    // mask
+
+    do {
+        bit_out(data & mask);     // output MSB bit
+        mask = mask >> 1;
+    } while (mask != 0);
+
+    mask = bit_in();              // input ACK bit
+    delay_us(1);
+    SCL_LOW;                      // pull SCL low
+    return mask;
+
+}
+
+#endif
 
 void I2C_Master_Stop()
 {
@@ -60,21 +113,6 @@ unsigned char bit_in()
     SCL_HIGH;                     // bring SCL high to begin transfer
     delay_us(2);
     return SDA_GET();             // input the received bit
-}
-
-unsigned char I2C_Master_Write(unsigned char data)
-{
-    unsigned char mask = 0x80;    // mask
-
-    do {
-        bit_out(data & mask);     // output MSB bit
-        mask = mask >> 1;
-    } while (mask != 0);
-
-    mask = bit_in();              // input ACK bit
-    delay_us(1);
-    SCL_LOW;                      // pull SCL low
-    return mask;
 }
 
 unsigned char I2C_Read_Byte(unsigned char ack)

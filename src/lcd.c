@@ -10,6 +10,9 @@ void LCD_Write_Char(char);
 void LCD_Write_String0_8(char*, align_t);
 void LCD_Write_String0_16(char*, align_t);
 
+#ifndef LCD_LEGACY
+    unsigned char lcd_i2c_skip = 0;
+#endif
 
 void LCD_Init(void) {
 
@@ -19,9 +22,11 @@ void LCD_Init(void) {
     RS_HIGH;
     EN_HIGH;
 #else
-    I2C_Master_Start();
-    I2C_Master_Write(LCD_I2C_ADDRESS); // Initialize LCD module with I2C address = 0x4E ((0x27<<1) for PCF8574) or 0x7E ((0x3F<<1) for PCF8574A)
-    I2C_Master_Write((RS | EN) | LCD_BACKLIGHT);
+    if (I2C_Master_Start(LCD_I2C_ADDRESS) == ACK) { // Initialize LCD module with I2C address = 0x4E ((0x27<<1) for PCF8574) or 0x7E ((0x3F<<1) for PCF8574A)
+        I2C_Master_Write((RS | EN) | LCD_BACKLIGHT);
+    } else {
+        lcd_i2c_skip = 1;
+    }
     I2C_Master_Stop();
 #endif
 
@@ -104,13 +109,13 @@ void LCD_Write_Char(char data) {
 #else
 
 void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode) {
-    I2C_Master_Start();
-    I2C_Master_Write(LCD_I2C_ADDRESS);
+    if (lcd_i2c_skip != 0) return;
+
+    I2C_Master_Start(LCD_I2C_ADDRESS);
     I2C_Master_Write((Nibble | EN) | mode | LCD_BACKLIGHT);
     I2C_Master_Stop();
 
-    I2C_Master_Start();
-    I2C_Master_Write(LCD_I2C_ADDRESS);
+    I2C_Master_Start(LCD_I2C_ADDRESS);
     I2C_Master_Write((Nibble & ~EN) | mode | LCD_BACKLIGHT);
     I2C_Master_Stop();
 }

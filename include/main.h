@@ -17,8 +17,6 @@
 // 2,048V ~ 128
 #define THRESHOLD_VOLTAGE_ADC_VALUE 128
 
-// number of measurements with power supply threshold before shutdown
-#define SHUTDOWN_COUNTER 10
 
 #ifdef ADC_BUTTONS
 // threshold for buttons +-0,2v
@@ -33,6 +31,8 @@
 #define LONGKEY ((uint8_t) (1.0f / TIMER1_PERIOD))
 #define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / TIMER1_PERIOD))
 #define TIMER_01SEC_INTERVAL ((uint8_t) (0.1f / TIMER1_PERIOD))
+// time with power supply measurements lower than threshold before shutdown
+#define SHUTDOWN ((uint8_t) (0.25f / TIMER1_PERIOD))
 
 //show average speed (or fuel consumption) after distance AVERAGE_MIN_DIST * 0.1 km
 #define AVERAGE_MIN_DIST 3
@@ -101,7 +101,7 @@ typedef union {
         unsigned mh_rpm : 1;                // show motorhours based on rpm (96000 per hour)
         unsigned service_alarm : 1;         // alarm for service counters
         unsigned key_sound : 1;             // keys sound
-        unsigned skip_temp_screen : 1;      // skip temperature screen
+        unsigned show_misc_screen : 1;      // show temperature/misc screen
         unsigned par_injection : 1;         // pair/parallel injection
     };
 } settings_u;
@@ -118,12 +118,15 @@ typedef struct {
     uint8_t minute, hour, day, month, year;
 } trip_time_t;
 
+// little endian
 typedef union {
-    uint8_t byte;
+    uint16_t word;
     
     struct {
         uint8_t main_param : 4;
         uint8_t service_param : 4;
+        uint8_t min_speed : 4;
+        uint8_t misc_param : 4;
     };
 } param_u;
 
@@ -144,11 +147,8 @@ typedef struct {
     // settings (uint16_t)
     settings_u settings;
 
-    // selected params
+    // selected params + min speed
     param_u selected_param;
-
-    // min speed for drive mode
-    uint8_t min_speed;
 
     // dummy bytes
     uint8_t dummy[2];
@@ -167,7 +167,10 @@ typedef struct {
     uint8_t tripB_month;            // 1 byte
 } trips_t;                          // 44 bytes total
 
-#define EEPROM_DS18B20_ADDRESS (((sizeof(config_t) - 1) / 8 + 1) * 8) + (((sizeof(trips_t) - 1) / 8 + 1) * 8) + (((sizeof(services_t) - 1) / 8 + 1) * 8)
+#define EEPROM_CONFIG_ADDRESS       0
+#define EEPROM_TRIPS_ADDRESS        (((sizeof(config_t) - 1) / 8 + 1) * 8)
+#define EEPROM_SERVICES_ADDRESS     (((sizeof(config_t) - 1) / 8 + 1) * 8) + (((sizeof(trips_t) - 1) / 8 + 1) * 8)
+#define EEPROM_DS18B20_ADDRESS      (((sizeof(config_t) - 1) / 8 + 1) * 8) + (((sizeof(trips_t) - 1) / 8 + 1) * 8) + (((sizeof(services_t) - 1) / 8 + 1) * 8)
 #define EEPROM_CUSTOM_CHARS_ADDRESS (EEPROM_DS18B20_ADDRESS + 8 * 3)
 
 typedef struct {
