@@ -43,26 +43,6 @@ volatile uint8_t adc_key;
 
 #endif
 
-#ifdef ENCODER_SUPPORT
-
-// todo config.settings.alt_buttons
-#define ALT_BUTTONS 1
-#define KEY_NEXT ((key1_press != 0 && ALT_BUTTONS == 0) || (key2_press != 0 && ALT_BUTTONS != 0))
-#define KEY_OK   ((key2_press != 0 && ALT_BUTTONS == 0) || (key1_press != 0 && ALT_BUTTONS != 0) || (key3_press != 0 && ALT_BUTTONS != 0))
-#define KEY_PREV (key3_press != 0 && ALT_BUTTONS == 0)
-#define KEY_UP   ((key2_press != 0 && ALT_BUTTONS == 0) || (key1_press != 0 && ALT_BUTTONS != 0))
-#define KEY_DOWN (key3_press != 0 && ALT_BUTTONS != 0)
-
-#else
-
-#define KEY_NEXT (key1_press != 0)
-#define KEY_OK (key2_press != 0)
-#ifdef KEY3_SUPPORT
-#define KEY_PREV (key3_press != 0)
-#endif
-
-#endif
-
 // key variables and flags
 volatile uint8_t key_repeat_counter;
 volatile __bit key1_press, key2_press, key1_longpress, key2_longpress, key_pressed, key_longpressed;
@@ -120,38 +100,14 @@ volatile uint8_t timeout_ds_read = 0;
 volatile uint8_t timeout_temperature;
 __bit temperature_conv_fl;
 
-// ds18b20 temperatures
-#define TEMP_NONE -1
-#define TEMP_OUT 0
-#define TEMP_IN 1
-#define TEMP_ENGINE 2
-#define TEMP_CONFIG 3
-
-#define PRINT_TEMP_PARAM_HEADER       0x80
-#define PRINT_TEMP_PARAM_FRACT        0x40
-#define PRINT_TEMP_PARAM_NO_PLUS_SIGN 0x20
-#define PRINT_TEMP_PARAM_DEG_SIGN     0x10
-#define PRINT_TEMP_PARAM_MASK         0x0F
-
 uint16_t _t;
 uint16_t temps[4] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE};
 #endif
 
 #ifdef SOUND_SUPPORT
 
-#define BUZZER_KEY 0
-#define BUZZER_LONGKEY 1
-#define BUZZER_WARN 2
-#define BUZZER_NONE -1
-
 volatile int8_t buzzer_mode_value = BUZZER_NONE;
 volatile __bit buzzer_fl, buzzer_init_fl;
-
-typedef struct {
-    uint8_t counter; // number of repeats
-    uint8_t sound;   // sound on duration  (*0.1ms)
-    uint8_t pause;   // sound off duration (*0.1ms)
-} buzzer_t;
 
 buzzer_t *buzzer_mode;
 
@@ -268,44 +224,52 @@ void save_eeprom(void);
 void save_eeprom_trips(void);
 void save_eeprom_config(void);
 
-#define MOVING_AVERAGE_FIRST_SAMPLE 0x80
-
-typedef struct {
-    uint16_t tmp;
-    uint8_t filter; // filter value (2^filter)
-} moving_average_t; // 3 bytes
-
-uint16_t calc_moving_average(moving_average_t *, uint16_t);
+uint16_t calc_filtered_value(filtered_value_t *, uint16_t);
 
 #if !defined(SIMPLE_ADC)
+
+uint16_t adc_value;
+
+void adc_handler_voltage(filtered_value_t *f);
+void adc_handler_buttons(filtered_value_t *f);
+void adc_handler_fuel_tank(filtered_value_t *f);
+
+#if defined(ADC_BUTTONS) || defined(FUEL_TANK_SUPPORT)
+
 uint8_t _adc_ch;
 
-typedef void (*handle)(uint16_t adc_value);
-
-void adc_handler_voltage(uint16_t adc_value);
-#ifdef ADC_BUTTONS
-void adc_handler_buttons(uint16_t adc_value);
+#if defined(FUEL_TANK_SUPPORT)
+uint8_t adc_fuel_tank_counter;
+uint16_t adc_fuel_tank;
 #endif
-void adc_handler_fuel_tank(uint16_t adc_value);
-
-typedef struct {
-    void (*handle)(uint16_t adc_value); // handler                  (2 bytes)
-    moving_average_t m_avg;             // moving average struct    (3 bytes)
-    uint8_t channel;                    // adc channel              (1 byte)
-} adc_item_t;
 
 adc_item_t adc_items[] = {
-    {adc_handler_voltage,     {0, 2 | MOVING_AVERAGE_FIRST_SAMPLE}, ADC_CHANNEL_POWER_SUPPLY},
+    {adc_handler_voltage, {0, 1 | FILTERED_VALUE_FIRST_SAMPLE}, ADC_CHANNEL_POWER_SUPPLY},
 #ifdef ADC_BUTTONS
-    {adc_handler_buttons,     {0, 0}, ADC_CHANNEL_BUTTONS},
+    {adc_handler_buttons, {0, 0}, ADC_CHANNEL_BUTTONS},
 #endif
-    //{adc_handler_fuel_tank, {0, 4 | MOVING_AVERAGE_FIRST}, ADC_CHANNEL_FUEL_TANK},
+#ifdef FUEL_TANK_SUPPORT
+    {adc_handler_fuel_tank, {0, 3 | FILTERED_VALUE_FIRST_SAMPLE}, ADC_CHANNEL_FUEL_TANK},
+#endif
 };
+#else
+adc_item_t adc_item = {adc_handler_voltage, {0, 1 | FILTERED_VALUE_FIRST_SAMPLE}, ADC_CHANNEL_POWER_SUPPLY};
 #endif
 
-#ifdef ENCODER_SUPPORT
-void read_rotary(void);
 #endif
+
+void read_rotary(void);
+
+#ifdef CONTINUOUS_DATA_SUPPORT
+continuous_data_t cd;
+__bit continuous_data_fl, drive_min_cd_speed_fl;
+volatile uint16_t cd_kmh, cd_fuel;
+uint16_t cd_speed;
+void cd_init(void);
+void cd_increment_filter(void);
+#endif
+
+uint16_t get_speed(uint16_t);
 
 // interrupt routines starts
 
@@ -344,9 +308,9 @@ int_handler_GLOBAL_begin
                 save_tripc_time_fl = 1;
 
 #ifdef SERVICE_COUNTERS_SUPPORT
-                services.mh.counter_rpm ++;
+                services.mh.rpm++;
                 if (config.settings.par_injection == 0) {
-                    services.mh.counter_rpm++;
+                    services.mh.rpm++;
                 }
 #endif
 
@@ -617,27 +581,31 @@ int_handler_GLOBAL_begin
             // screen refresh_flag
             screen_refresh = 1;
              
+#ifdef CONTINUOUS_DATA_SUPPORT
+            if (motor_fl != 0 || drive_fl != 0) {
+                if (cd.filter < CD_FILTER_VALUE_MAX) {
+                    if (cd.time < cd.time_threshold) {
+                        cd.time++;
+                    } else {
+                        cd_increment_filter();
+                    }
+                }
+                cd_fuel = calc_filtered_value(&cd.f_fuel, fuel_tmp);
+                cd_kmh = calc_filtered_value(&cd.f_kmh, kmh_tmp);
+            }
+#endif
             // copy temp interval variables to main
             fuel = fuel_tmp;
             fuel_tmp = 0;
             kmh = kmh_tmp;
             kmh_tmp = 0;
              
-            static __bit time_increment_fl = 0;
- 
-            // time counters every second time
-            if (time_increment_fl != 0) {
-                time_increment_fl = 0;
-                // increment time counters
-                if (motor_fl != 0 || drive_fl != 0) {
-                     services.mh.counter++;
-                     trips.tripA.time++;
-                     trips.tripB.time++;
-                     trips.tripC.time++;
-                }
-
-            } else {
-                time_increment_fl = 1;
+            // increment time counters
+            if (motor_fl != 0 || drive_fl != 0) {
+                services.mh.time++;
+                trips.tripA.time++;
+                trips.tripB.time++;
+                trips.tripC.time++;
             }
 
 #ifdef TEMPERATURE_SUPPORT
@@ -654,7 +622,7 @@ int_handler_GLOBAL_begin
             }
              
         }
-        
+
         if (timeout_timer2 > 0) {
             timeout_timer2--;
         }
@@ -745,20 +713,26 @@ int_handler_GLOBAL_begin
         }
 
 #else
+        adc_value = adc_read_value();
+#if defined(ADC_BUTTONS) || defined(FUEL_TANK_SUPPORT)        
         adc_item_t* h = &adc_items[_adc_ch];
 
         if (++_adc_ch >= sizeof (adc_items) / sizeof (adc_item_t)) {
             _adc_ch = 0;
         }
         
+        // set next channel
         set_adc_channel(adc_items[_adc_ch].channel);
 
-        h->handle(calc_moving_average(&h->m_avg, adc_read_value()));
+        h->handle(&h->f);
 
         if (_adc_ch != 0) {
             // start next adc channel (first channel is started from auto trigger)
             start_adc();
         }
+#else
+        adc_item.handle(&adc_item.f);
+#endif
 #endif
 
     int_handler_adc_end
@@ -767,19 +741,99 @@ int_handler_GLOBAL_end
     
 // interrupt routines ends
 
-uint16_t calc_moving_average(moving_average_t *m_avg, uint16_t v) {
-    if (m_avg->filter == 0) {
-        return v;
+#if !defined(SIMPLE_ADC)
+
+void adc_handler_voltage(filtered_value_t *f) {
+    adc_voltage.current = calc_filtered_value(f, adc_value);
+    //adc_voltage.current = adc_value;
+
+    if (adc_voltage.current < adc_voltage.min) {
+        adc_voltage.min = adc_voltage.current;
+    } else if (adc_voltage.current > adc_voltage.max) {
+        adc_voltage.max = adc_voltage.current;
+    }
+
+    if (adc_voltage.current > THRESHOLD_VOLTAGE_ADC_VALUE) {
+        acc_power_off_fl = 0;
     } else {
-        if ((m_avg->filter & MOVING_AVERAGE_FIRST_SAMPLE) != 0) {
-            m_avg->filter &= ~MOVING_AVERAGE_FIRST_SAMPLE;
-            m_avg->tmp = v << m_avg->filter;
-        } else {
-            m_avg->tmp = m_avg->tmp - ((m_avg->tmp + (1 << (m_avg->filter - 1))) >> m_avg->filter) + v;
-        }
-        return ((m_avg->tmp + (1 << (m_avg->filter - 1))) >> m_avg->filter);
+        acc_power_off_fl = 1;
+    }
+};
+
+#ifdef ADC_BUTTONS
+void adc_handler_buttons(filtered_value_t *f) {
+    if (/*   adc_value >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */adc_value <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
+        if (adc_key == 0 || adc_key == ADC_KEY_OK)
+            adc_key = ADC_KEY_OK;
+    } else if (adc_value >= (ADC_BUTTONS_1V * 1 - ADC_BUTTONS_THRESHOLD) && adc_value <= (ADC_BUTTONS_1V * 1 + ADC_BUTTONS_THRESHOLD)) {
+        if (adc_key == 0 || adc_key == ADC_KEY_NEXT)
+            adc_key = ADC_KEY_NEXT;
+    } else if (adc_value >= (ADC_BUTTONS_1V * 2 - ADC_BUTTONS_THRESHOLD) && adc_value <= (ADC_BUTTONS_1V * 2 + ADC_BUTTONS_THRESHOLD)) {
+        if (adc_key == 0 || adc_key == ADC_KEY_PREV)
+            adc_key = ADC_KEY_PREV;
+    } else {
+        adc_key = 0;
     }
 }
+#endif
+
+#ifdef FUEL_TANK_SUPPORT
+void adc_handler_fuel_tank(filtered_value_t *f) {
+    if (adc_fuel_tank_counter-- == 0) {
+        adc_fuel_tank_counter = FUEL_TANK_ADC_INTERVAL;
+        // normalize with adc_voltage.current
+        if (config.settings.adc_fuel_normalize != 0) {
+            adc_value = (uint16_t) ((uint24_t) adc_value * 1024 / adc_voltage.current);
+        }
+        adc_fuel_tank = calc_filtered_value(f, adc_value);
+    }
+}
+#endif
+
+#endif
+
+#if 1
+uint16_t calc_filtered_value(filtered_value_t *f, uint16_t v) {
+    if (f->filter == 0) {
+        f->tmp = v;
+        return (uint16_t) f->tmp;
+    } else {
+        if ((f->filter & FILTERED_VALUE_FIRST_SAMPLE) != 0) {
+            f->filter &= ~FILTERED_VALUE_FIRST_SAMPLE;
+            if (f->filter != 0) {
+                f->tmp = v << f->filter;
+            }
+        } else {
+            f->tmp = f->tmp - ((f->tmp + (uint16_t) (1 << (f->filter - 1))) >> f->filter) + v;
+        }
+        return (uint16_t) ((f->tmp + (uint16_t) (1 << (f->filter - 1))) >> f->filter);
+    }
+}
+#else
+uint16_t calc_filtered_value(filtered_value_t *f, uint16_t v) {
+    uint32_t tmp = f->tmp;
+    uint8_t filter = f->filter;
+    if (filter == 0) {
+        tmp = v;
+    } else {
+        if ((filter & FILTERED_VALUE_FIRST_SAMPLE) != 0) {
+            filter &= ~FILTERED_VALUE_FIRST_SAMPLE;
+            if (filter != 0) {
+                tmp = v << filter;
+            }
+        } else {
+            tmp = tmp - ((tmp + (uint16_t) (1 << (filter - 1))) >> filter) + v;
+        }
+    }
+    f->filter = filter;
+    f->tmp = tmp;
+    if (filter == 0) {
+        return (uint16_t) tmp;
+    } else {
+        return (uint16_t) ((tmp + (uint16_t) (1 << (filter - 1))) >> filter);
+    }
+}
+#endif
 
 #ifdef ENCODER_SUPPORT
 // A valid CW or CCW move returns 1, invalid returns 0.
@@ -813,47 +867,6 @@ void read_rotary() {
         }
     }
 }
-#endif
-
-#if !defined(SIMPLE_ADC)
-
-void adc_handler_voltage(uint16_t adc_value) {
-    adc_voltage.current = adc_value;
-
-    if (adc_voltage.current < adc_voltage.min) {
-        adc_voltage.min = adc_voltage.current;
-    } else if (adc_voltage.current > adc_voltage.max) {
-        adc_voltage.max = adc_voltage.current;
-    }
-
-    if (adc_voltage.current > THRESHOLD_VOLTAGE_ADC_VALUE) {
-        acc_power_off_fl = 0;
-    } else {
-        acc_power_off_fl = 1;
-    }
-
-};
-
-#ifdef ADC_BUTTONS
-void adc_handler_buttons(uint16_t adc_value) {
-    if (/*   adc_value >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */adc_value <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
-        if (adc_key == 0 || adc_key == ADC_KEY_OK)
-            adc_key = ADC_KEY_OK;
-    } else if (adc_value >= (ADC_BUTTONS_1V * 1 - ADC_BUTTONS_THRESHOLD) && adc_value <= (ADC_BUTTONS_1V * 1 + ADC_BUTTONS_THRESHOLD)) {
-        if (adc_key == 0 || adc_key == ADC_KEY_NEXT)
-            adc_key = ADC_KEY_NEXT;
-    } else if (adc_value >= (ADC_BUTTONS_1V * 2 - ADC_BUTTONS_THRESHOLD) && adc_value <= (ADC_BUTTONS_1V * 2 + ADC_BUTTONS_THRESHOLD)) {
-        if (adc_key == 0 || adc_key == ADC_KEY_PREV)
-            adc_key = ADC_KEY_PREV;
-    } else {
-        adc_key = 0;
-    }
-}
-#endif
-
-void adc_handler_fuel_tank(uint16_t adc_value) {
-}
-
 #endif
 
 void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value) {
@@ -903,29 +916,6 @@ void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
 #endif
     *v = _v;
 }
-
-#if defined(ENCODER_SUPPORT)
-
-void handle_keys_next_prev_enc(uint8_t *v, uint8_t min_value, uint8_t max_value) {
-    uint8_t _v = *v;
-    // change cursor to next position
-    if (KEY_NEXT) {
-        if (_v++ == max_value) {
-            _v = min_value;
-        }
-        timeout_timer1 = 5;
-    }
-
-    // change cursor to prev position
-    if (KEY_PREV) {
-        if (_v-- == min_value) {
-            _v = max_value;
-        }
-        timeout_timer1 = 5;
-    }
-    *v = _v;
-}
-#endif
 
 void read_ds_time() {
     if (timeout_ds_read == 0) {
@@ -1026,9 +1016,9 @@ unsigned char print_fract(char * buf, uint16_t num, uint8_t frac) {
  * @param align
  */
 void print_trip_time(trip_t* t, align_t align) {
-    unsigned short time = (unsigned short) (t->time / 30);
+    uint16_t time = (uint16_t) (t->time / 60);
 
-    len = ultoa2(buf, (unsigned short) (time / 60), 10);
+    len = ultoa2(buf, (uint16_t) (time / 60), 10);
     buf[len++] = ':';
 
     bcd8_to_str(&buf[len], bin8_to_bcd(time % 60));
@@ -1040,7 +1030,7 @@ void print_trip_time(trip_t* t, align_t align) {
 uint16_t get_average_speed(trip_t* t) {
     uint16_t average_speed = 0;
     if (t->time > 0) {
-        average_speed = (uint16_t) ((uint32_t) ((t->odo * 18000UL) + (t->odo_temp * 18000UL / config.odo_const)) / t->time);
+        average_speed = (uint16_t) ((uint32_t) ((t->odo * 36000UL) + (t->odo_temp * 36000UL / config.odo_const)) / t->time);
     }
     return average_speed;
 }
@@ -1111,7 +1101,7 @@ void print_trip_average_fuel(trip_t* t, align_t align) {
     _print(len, POS_LKM, align);
 }
 
-void print_speed(unsigned short speed, unsigned short i, align_t align) {
+void print_speed(uint16_t speed, uint8_t i, align_t align) {
     // use fractional by default
     len = print_fract(&buf[i], speed, 1);
 
@@ -1150,15 +1140,23 @@ void print_fuel_duration(align_t align) {
     _print(len, POS_MS, align);
 }
 
-void print_current_fuel_km(align_t align) {
-    unsigned short t = (unsigned short) ((((unsigned long) fuel * (unsigned long) odo_con4) / (unsigned long) kmh) / (unsigned char) config.fuel_const);
+#ifdef CONTINUOUS_DATA_SUPPORT
+void print_fuel_km(uint16_t fuel, uint16_t kmh, align_t align) {
+#else
+void print_fuel_km(align_t align) {
+#endif
+    uint16_t t = (uint16_t) ((((uint32_t) fuel * (uint32_t) odo_con4) / (uint32_t) kmh) / (uint8_t) config.fuel_const);
     len = print_fract(buf, t, 1);
 
     _print(len, POS_LKM, align);
 }
 
-void print_current_fuel_lh(align_t align) {
-    unsigned short t = (unsigned short) (((unsigned long) fuel * (unsigned long) fuel2_const / (unsigned long) config.fuel_const) / 10UL);
+#ifdef CONTINUOUS_DATA_SUPPORT
+void print_fuel_lh(uint16_t fuel, align_t align) {
+#else
+void print_fuel_lh(align_t align) {
+#endif
+    uint16_t t = (uint16_t) (((uint32_t) fuel * (uint32_t) fuel2_const / (uint32_t) config.fuel_const) / 10UL);
     len = print_fract(buf, t, 1);
 
     _print(len, POS_LH, align);
@@ -1219,22 +1217,12 @@ uint8_t print_temp(uint8_t index, align_t align) {
 
 #endif
 
-#if 1
-#define VOLTAGE_SYMBOLS_ALIGN(s, align) s, align
-void print_voltage(uint16_t *adc_voltage, uint8_t pos, align_t align) {
-    len = print_symbols_str(0, pos);
-    len += print_fract(&buf[len], (unsigned short) (*adc_voltage << 5) / config.vcc_const, 1);
+void print_voltage(uint16_t *adc_voltage, uint8_t prefix_pos, align_t align) {
+    len = print_symbols_str(0, prefix_pos);
+    len += print_fract(&buf[len], (uint16_t) (*adc_voltage << 5) / (uint8_t) (VOLTAGE_ADJUST_CONST_MAX - (config.vcc_const - VOLTAGE_ADJUST_CONST_MIN)), 1);
 
     _print(len, POS_VOLT, align);
 }
-#else
-#define VOLTAGE_SYMBOLS_ALIGN(s, align) align
-void print_voltage(uint16_t *adc_voltage, align_t align) {
-    len = print_fract(buf, (unsigned short) (*adc_voltage << 5) / config.vcc_const, 1);
-
-    _print(len, POS_VOLT, align);
-}
-#endif
 
 void wait_refresh_timeout() {
 
@@ -1258,17 +1246,25 @@ void screen_time(void) {
 
         const char cursor_position[] = {0x81, 0x84, 0x89, 0x8c, 0x8f, 0xc0};
 
+#if defined(ENCODER_SUPPORT)
+        uint8_t edit_mode = 0;
+#endif
         LCD_Clear();
         timeout_timer1 = 5;
         while (timeout_timer1 != 0) {
             screen_refresh = 0;
 #if defined(ENCODER_SUPPORT)
-            handle_keys_next_prev_enc(&c, 0, 6 - 1);            
+            if (key2_press != 0) {
+                edit_mode = ~edit_mode;
+            }
+            if (edit_mode == 0) {
+                handle_keys_next_prev(&c, 0, 6 - 1);
+            } else if (key1_press != 0 || key3_press != 0) {           
 #else
             handle_keys_next_prev(&c, 0, 6 - 1);            
+            if (key2_press) {
 #endif
 
-            if (KEY_OK) {
                 save_time = 1;
                 switch (c) {
                     case 0:
@@ -1293,9 +1289,9 @@ void screen_time(void) {
 #if !defined(ENCODER_SUPPORT)
                 *p = bcd8_inc(*p, min, max);
 #else
-                if (KEY_DOWN) {
+                if (key3_press != 0) {
                     *p = bcd8_dec(*p, min, max);
-                } else {
+                } else if (key1_press != 0) {
                     *p = bcd8_inc(*p, min, max);
                 }
 #endif
@@ -1312,7 +1308,11 @@ void screen_time(void) {
             LCD_CMD(LCD_CURSOR_OFF);
             print_time(&time);
             LCD_CMD(cursor_position[c]);
+#if defined(ENCODER_SUPPORT)
+            LCD_CMD(edit_mode == 0 ? LCD_UNDERLINE_ON : LCD_BLINK_CURSOR_ON);
+#else
             LCD_CMD(LCD_BLINK_CURSOR_ON);
+#endif
             
             wait_refresh_timeout();
         }
@@ -1363,6 +1363,9 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
 #ifdef KEY3_SUPPORT        
     unsigned char _max_symbol_pos0 = buf[0];
 #endif    
+#if defined(ENCODER_SUPPORT)
+    uint8_t edit_mode = 0, buf_prev;
+#endif
     if (v > max_value) {
         v = max_value;
     }
@@ -1380,30 +1383,37 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
         screen_refresh = 0;
 
 #if defined(ENCODER_SUPPORT)
-        handle_keys_next_prev_enc(&pos, 0, max_len - 1);
+        if (edit_mode == 0) {
+            handle_keys_next_prev(&pos, 0, max_len - 1);
+        } else {
+            buf_prev = buf[pos];
+            handle_keys_next_prev(&buf[pos], '0', '9');
+        }
 #else
         handle_keys_next_prev(&pos, 0, max_len - 1);
 #endif
 
         // edit number in cursor position
-        if (KEY_OK) {
+        if (key2_press != 0) {
+            key2_press = 0;
 #if defined(ENCODER_SUPPORT)
-            if (KEY_DOWN) {
-                if (--buf[pos] < '0') {
-                    buf[pos] = pos == 0 ? _max_symbol_pos0 : '9';
-                }
-            } else
+            edit_mode = ~edit_mode;
+#else
+            if (++buf[pos] > '9') {
+                buf[pos] = '0';
+            }
 #endif            
-                if (++buf[pos] > '9') {
-                buf[pos] = '0';
-            }
-
-            unsigned long _t = strtoul2(buf);
-            if (_t > max_value) {
-                buf[pos] = '0';
-            }
 
             timeout_timer1 = 5;
+        }
+
+        unsigned long _t = strtoul2(buf);
+        if (_t > max_value) {
+#if defined(ENCODER_SUPPORT)
+            buf[pos] = buf_prev;
+#else
+            buf[pos] = '0';
+#endif
         }
 
         LCD_CMD(LCD_CURSOR_OFF);
@@ -1412,8 +1422,11 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
         LCD_Write_String8(buf, max_len, ALIGN_LEFT);
 
         LCD_CMD(cursor_pos + pos);
+#if defined(ENCODER_SUPPORT)
+        LCD_CMD(edit_mode == 0 ? LCD_UNDERLINE_ON : LCD_BLINK_CURSOR_ON);
+#else
         LCD_CMD(LCD_BLINK_CURSOR_ON);
-
+#endif
         wait_refresh_timeout();
     }
 
@@ -1525,7 +1538,7 @@ void print_selected_param1(align_t align) {
             main_param++;
 #endif            
         case 1:
-            print_voltage((uint16_t *) &adc_voltage.current, VOLTAGE_SYMBOLS_ALIGN(POS_NONE, align));
+            print_voltage((uint16_t *) &adc_voltage.current, POS_NONE, align);
             break;
         case 2:
             print_trip_time(&trips.tripC, align);
@@ -1715,7 +1728,7 @@ void screen_main(void) {
 #else
             print_trip_odometer(&trips.tripC, ALIGN_LEFT);
 #endif
-            print_voltage((uint16_t *) &adc_voltage.current, VOLTAGE_SYMBOLS_ALIGN(POS_NONE, ALIGN_RIGHT));
+            print_voltage((uint16_t *) &adc_voltage.current, POS_NONE, ALIGN_RIGHT);
         } else {
 //; 2) на месте с работающим двигателем
 //; время текущее       тахометр (об/мин)
@@ -1723,7 +1736,11 @@ void screen_main(void) {
             print_taho(ALIGN_RIGHT);
             LCD_CMD(0xC0);
             print_selected_param1(ALIGN_LEFT);
-            print_current_fuel_lh(ALIGN_RIGHT);
+#ifdef CONTINUOUS_DATA_SUPPORT
+            print_fuel_lh(fuel, ALIGN_RIGHT);
+#else
+            print_fuel_lh(ALIGN_RIGHT);
+#endif
         }
     } else {
 //; 3) в движении
@@ -1734,7 +1751,11 @@ void screen_main(void) {
 
         LCD_CMD(0xC0);
         print_selected_param1(ALIGN_LEFT);
-        print_current_fuel_km(ALIGN_RIGHT);
+#ifdef CONTINUOUS_DATA_SUPPORT
+        print_fuel_km(fuel, kmh, ALIGN_RIGHT);
+#else
+        print_fuel_km(ALIGN_RIGHT);
+#endif        
     }
 
 #ifdef SIMPLE_ACCELERATION_MEASUREMENT
@@ -1797,12 +1818,18 @@ void screen_tripB() {
     screen_trip(&trips.tripB, TRIPS_POS_B);
 }
 
+#if !defined(CONTINUOUS_DATA_SUPPORT)
+#define SCREEN_MISC_MAX 2
+#else
+#define SCREEN_MISC_MAX 3
+#endif
+
 void screen_misc() {
     if (config.settings.show_misc_screen == 0) {
         item_skip = 1;
     } else {
         LCD_CMD(0x80);
-        switch(select_param(&misc_param, 2)) {
+        switch(select_param(&misc_param, SCREEN_MISC_MAX)) {
             case 0:
 #if defined(TEMPERATURE_SUPPORT)
                 // show temp sensors config on ok key longpress
@@ -1838,13 +1865,41 @@ void screen_misc() {
                     adc_voltage.min = adc_voltage.max = adc_voltage.current;
                 }
                 LCD_Write_String8(buf, strcpy2(buf, (char *) voltage_string, 0), ALIGN_LEFT);
-                print_voltage((uint16_t*) & adc_voltage.current, VOLTAGE_SYMBOLS_ALIGN(POS_NONE, ALIGN_RIGHT));
+                print_voltage((uint16_t*) &adc_voltage.current, POS_NONE, ALIGN_RIGHT);
 
                 LCD_CMD(0xC0);
-                print_voltage((uint16_t*) &adc_voltage.min, VOLTAGE_SYMBOLS_ALIGN(POS_MIN, ALIGN_LEFT));
-                print_voltage((uint16_t*) &adc_voltage.max, VOLTAGE_SYMBOLS_ALIGN(POS_MAX, ALIGN_RIGHT));
+                print_voltage((uint16_t*) &adc_voltage.min, POS_MIN, ALIGN_LEFT);
+                print_voltage((uint16_t*) &adc_voltage.max, POS_MAX, ALIGN_RIGHT);
                 break;
+#if defined(CONTINUOUS_DATA_SUPPORT)
+            case 2:
+                if (request_screen((char *) &reset_string) != 0) {
+                    cd.filter = 0;
+                    cd_init();
+                }
 
+#ifdef FUEL_TANK_SUPPORT
+                add_leading_symbols(buf, ' ', ultoa2(buf, adc_fuel_tank, 10), 16);
+                strcpy2(buf, (char *) continuous_data_string, 0);
+                LCD_Write_String16(buf, 16, ALIGN_LEFT);
+#else
+                LCD_Write_String16(buf, strcpy2(buf, (char *) continuous_data_string, 0), ALIGN_LEFT);
+#endif
+                
+                LCD_CMD(0xC0);
+                if (continuous_data_fl != 0) {
+                    print_speed(cd_speed, 0, ALIGN_LEFT);
+                    if (drive_min_cd_speed_fl != 0) {
+                        print_fuel_km(cd_fuel, cd_kmh, ALIGN_RIGHT);
+                    } else {
+                        print_fuel_lh(cd_fuel, ALIGN_RIGHT);
+                    }
+                } else {
+                    len = strcpy2(buf, (char *) &empty_string, 0);
+                    _print(len, POS_KMH, ALIGN_LEFT);
+                    _print(len, POS_LKM, ALIGN_RIGHT);
+                }
+#endif
         }
 
     }
@@ -1858,10 +1913,10 @@ void screen_misc() {
 uint16_t get_mh() {
     if (config.settings.mh_rpm != 0) {
         // rpm based motor hours (rpm / 96000)
-        return (uint16_t) (services.mh.counter_rpm / 96000UL);
+        return (uint16_t) (services.mh.rpm / 96000UL);
     } else {
         // time based motor hours
-        return (uint16_t) (services.mh.counter / 1800UL);
+        return (uint16_t) (services.mh.time / 3600UL);
     }
 }
 
@@ -1900,8 +1955,8 @@ void screen_service_counters() {
     if (request_screen((char *) &reset_string) != 0) {
         read_ds_time();
         if (service_param == 0 || service_param == 1) {
-            services.mh.counter = 0;
-            services.mh.counter_rpm = 0;
+            services.mh.time = 0;
+            services.mh.rpm = 0;
         }
         srv->counter = 0;
         srv->time.day = time.day;
@@ -2340,17 +2395,17 @@ void config_screen_temp_sensors() {
                 timeout_timer1 = 5;
             }
 
+            // print temp for current device (if converted)
             if (config_temperature_conv_fl != 0) {
                 temps[TEMP_CONFIG] = _temps[current_device];
-                add_leading_symbols(&buf[0], ' ', print_temp(TEMP_CONFIG, ALIGN_LEFT), 4);
-                memcpy(&buf[12], &buf[0], 4);
+                len = print_temp(TEMP_CONFIG, ALIGN_LEFT);
             } else {
-                _memset(&buf[12], ' ', 4);
+                len = 0;
             }
+            add_leading_symbols(buf, ' ', len, 16);
 
+            // print t.sensor + number/total
             strcpy2(buf, (char *) &temp_sensor, 0);
-
-            buf[8] = ' ';
             buf[9]= '1' + current_device;
             buf[10] = '/';
             buf[11] = '0' + num_devices;
@@ -2358,8 +2413,10 @@ void config_screen_temp_sensors() {
             LCD_CMD(0x80);
             LCD_Write_String16(buf, 16, ALIGN_LEFT);
 
+            // convert id to hex string
             llptrtohex((unsigned char*) &tbuf[current_device * 8], (unsigned char*) buf);
 
+            // print sensor string (in/out/eng)
             len = strcpy2(&buf[12], (char *) &temp_sensors, _t_num[current_device] + 1);
             add_leading_symbols(&buf[12], ' ', len, 4);
 
@@ -2490,10 +2547,10 @@ void config_screen_service_counters() {
 #endif
 
 void config_screen_ua_const() {
-    handle_keys_up_down(&config.vcc_const, 140, 230);
+    handle_keys_up_down(&config.vcc_const, VOLTAGE_ADJUST_CONST_MIN, VOLTAGE_ADJUST_CONST_MAX);
 
     LCD_CMD(0xC4);
-    print_voltage((uint16_t *) &adc_voltage.current, VOLTAGE_SYMBOLS_ALIGN(POS_NONE, ALIGN_RIGHT));
+    print_voltage((uint16_t *) &adc_voltage.current, POS_NONE, ALIGN_RIGHT);
 }
 
 void config_screen_version() {
@@ -2615,6 +2672,10 @@ void read_eeprom() {
 #ifdef SERVICE_COUNTERS_SUPPORT
     HW_read_eeprom_block((unsigned char*) &services, EEPROM_SERVICES_ADDRESS, sizeof(services_t));
 #endif
+    
+#ifdef CONTINUOUS_DATA_SUPPORT
+    HW_read_eeprom_block((unsigned char*) &cd, EEPROM_CONTINUOUS_DATA_ADDRESS, sizeof (continuous_data_t));
+#endif
 }
 
 void save_eeprom_config() {
@@ -2632,6 +2693,10 @@ void save_eeprom() {
 
 #ifdef SERVICE_COUNTERS_SUPPORT
     HW_write_eeprom_block((unsigned char*) &services, EEPROM_SERVICES_ADDRESS, sizeof (services_t));
+#endif
+
+#ifdef CONTINUOUS_DATA_SUPPORT
+    HW_write_eeprom_block((unsigned char*) &cd, EEPROM_CONTINUOUS_DATA_ADDRESS, sizeof (continuous_data_t));
 #endif
 }
 
@@ -2708,6 +2773,7 @@ void set_consts() {
 #ifdef SIMPLE_ACCELERATION_MEASUREMENT
     accel_meas_upper_const = (unsigned short) (speed_const(100) / config.odo_const);
 #endif
+
 }
 
 #if defined(TEMPERATURE_SUPPORT)
@@ -2776,9 +2842,43 @@ void handle_temp() {
 
 #endif
 
-void handle_misc_values() {
-    speed = (unsigned short) ((36000UL * (unsigned long) kmh) / (unsigned long) config.odo_const);
+#ifdef CONTINUOUS_DATA_SUPPORT
 
+void cd_init() {
+    if (cd.filter < CD_FILTER_VALUE_MIN || cd.filter > CD_FILTER_VALUE_MAX) {
+        continuous_data_fl = 0;
+        cd.time = 0;
+        cd.time_threshold = CD_TIME_THRESHOLD_INIT;
+        cd.filter = cd.f_kmh.filter = cd.f_fuel.filter = CD_FILTER_VALUE_MIN;
+        cd.f_kmh.tmp = cd.f_fuel.tmp = 0;
+        cd_fuel = 0;
+        cd_kmh = 0;
+    } else if (cd.filter > CD_FILTER_VALUE_MIN) {
+        cd_fuel = (uint16_t) (cd.f_fuel.tmp >> cd.f_fuel.filter);
+        cd_kmh = (uint16_t) (cd.f_kmh.tmp >> cd.f_kmh.filter);
+        continuous_data_fl = 1;
+    }
+}
+
+void cd_increment_filter() {
+    if (cd.filter >= CD_FILTER_VALUE_MIN && cd.filter < CD_FILTER_VALUE_MAX) {
+        continuous_data_fl = 1;
+        cd.filter++;
+        cd.f_kmh.filter = cd.f_fuel.filter = cd.filter;
+        cd.f_kmh.tmp <<= 1;
+        cd.f_fuel.tmp <<= 1;
+        cd.time = 0;
+        cd.time_threshold <<= 1; 
+    }
+}
+#endif
+
+uint16_t get_speed(uint16_t kmh) {
+    return (unsigned short) ((36000UL * (unsigned long) kmh) / (unsigned long) config.odo_const);
+}
+
+void handle_misc_values() {
+    speed = get_speed((uint16_t) kmh);
     drive_min_speed_fl = speed >= config.selected_param.min_speed * 10;
 
     if (trips.tripC_max_speed < speed) {
@@ -2796,6 +2896,11 @@ void handle_misc_values() {
     if (trips.tripB.odo > MAX_ODO_TRIPB) {
         clear_trip(true, &trips.tripB);
     }
+
+#ifdef CONTINUOUS_DATA_SUPPORT
+    cd_speed = get_speed((uint16_t) cd_kmh);
+    drive_min_cd_speed_fl = cd_speed >= config.selected_param.min_speed * 10;
+#endif    
 }
 
 void power_on() {
@@ -2824,6 +2929,10 @@ void power_on() {
             clear_trip(true, &trips.tripB);
         }
     }
+
+#if defined(CONTINUOUS_DATA_SUPPORT)
+    cd_init();
+#endif
     
 }
 

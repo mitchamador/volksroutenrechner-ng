@@ -9,7 +9,7 @@ dayofweek=$((dayofweek += 1))
 echo \#ifndef VERSION_H >../include/version.h
 echo \#define VERSION_H >>../include/version.h
 echo >>../include/version.h
-echo \#define VERSION_STRING \"$(date +"%H:%M %d.%m.%Y")\"\; >>../include/version.h
+echo \#define VERSION_STRING \"$(date +"%H:%M %d.%m.%Y")\" >>../include/version.h
 echo >>../include/version.h
 echo \#define VERSION_MINUTE_BCD 0x$(date +%M) >>../include/version.h
 echo \#define VERSION_HOUR_BCD 0x$(date +%H) >>../include/version.h
@@ -35,7 +35,7 @@ echo #define	VERSION_H >>..\include\version.h
 echo. >>..\include\version.h
 set _time=%TIME: =0%
 set /a "dayofweek=%dayofweek%+1"
-echo #define VERSION_STRING "%_time:~0,5% %date%"; >>..\include\version.h
+echo #define VERSION_STRING "%_time:~0,5% %date%" >>..\include\version.h
 echo. >>..\include\version.h
 echo #define VERSION_MINUTE_BCD 0x%_time:~3,2% >>..\include\version.h
 echo #define VERSION_HOUR_BCD 0x%_time:~0,2% >>..\include\version.h

@@ -50,24 +50,29 @@ typedef enum {
 
 #define TRIPS_STR "\0cur\0day\0A\0B"
 
-#define EMPTY_STRING "----";
-#define NO_TIME_STRING "-----'--";
-#define TRIP_STRING "trip ";
-#define ONOFF_STRING "\0 off\0  on";
-#define TIME_CORRECTION "time correction?";
-#define RESET_STRING "reset?"; 
-#define VOLTAGE_STRING "voltage";
+#define EMPTY_STRING "----"
+#define NO_TIME_STRING "-----'--"
+#define TRIP_STRING "trip "
+#define ONOFF_STRING "\0 off\0  on"
+#define TIME_CORRECTION "time correction?"
+#define RESET_STRING "reset?"
+#define VOLTAGE_STRING "voltage"
+#ifdef FUEL_TANK_SUPPORT
+#define CONTINUOUS_DATA_STRING "cont./fuel"
+#else
+#define CONTINUOUS_DATA_STRING "cont. data"
+#endif
 
-#define ACCEL_MEAS_STRING "\0 0-100\0 0-60\0 60-100\0 80-120"; 
-#define ACCEL_MEAS_STRING_TIMING "timing"; 
-#define ACCEL_MEAS_SIMPLE_STRING "0-100 timing"; 
-#define ACCEL_MEAS_WAIT_STRING "wait for start"; 
-#define TIMEOUT_STRING "timeout"; 
+#define ACCEL_MEAS_STRING "\0 0-100\0 0-60\0 60-100\0 80-120"
+#define ACCEL_MEAS_STRING_TIMING "timing"
+#define ACCEL_MEAS_SIMPLE_STRING "0-100 timing"
+#define ACCEL_MEAS_WAIT_STRING "wait for start"
+#define TIMEOUT_STRING "timeout" 
 
-#define WARNING_STR "warning"; 
+#define WARNING_STR "warning"
 
-#define CONFIG_MENU_TITLE "config menu";
-#define SERVICE_COUNTERS "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs";
+#define CONFIG_MENU_TITLE "config menu"
+#define SERVICE_COUNTERS "\0engine hours\0engine oil\0gearbox oil\0air filter\0spark plugs"
 
 #define SETTING_SHOW_MISC_SCREEN        "\0misc screen"
 
@@ -97,9 +102,15 @@ typedef enum {
 #define SETTING_KEY_SOUND               "\0"
 #endif
 
-#define SETTINGS_BITS "\0pair/par inj" SETTING_SHOW_MISC_SCREEN SETTING_KEY_SOUND SETTING_SERVICE_ALARM "\0mh rpm\0trip B month\0trip C day" SETTING_INOUT_TEMP SETTING_DS3231_TEMP "\0\0\0\0\0\0\0";
+#ifdef FUEL_TANK_SUPPORT
+#define SETTING_ADC_FUEL_NORMALIZE      "\0adc fuel nor"
+#else
+#define SETTING_ADC_FUEL_NORMALIZE      "\0"
+#endif
 
-#define TEMP_SENSORS "\0---\0out\0in\0 eng\0";
+#define SETTINGS_BITS "\0pair/par inj" SETTING_SHOW_MISC_SCREEN SETTING_KEY_SOUND SETTING_SERVICE_ALARM "\0mh rpm\0trip B month\0trip C day" SETTING_INOUT_TEMP SETTING_DS3231_TEMP SETTING_ADC_FUEL_NORMALIZE "\0\0\0\0\0\0"
+
+#define TEMP_SENSORS "\0---\0out\0in\0 eng\0"
 #define TEMP_NO_SENSORS "no sensors found"
 
 // 8 symbols
@@ -153,8 +164,10 @@ typedef enum {
 
 #define SERVICES_STR FUEL_CONSTANT_STR VSS_CONSTANT_STR TOTAL_TRIP_STR VOLTAGE_ADJUST_STR SETTINGS_BITS_STR TEMP_SENSOR_STR SERVICE_COUNTERS_STR MIN_SPEED_STR VERSION_INFO_STR
 
-#define DAY_OF_WEEK_STR "\0sunday\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday";
-#define MONTH_STR "\0jan\0feb\0mar\0apr\0may\0jun\0jul\0aug\0sep\0oct\0nov\0dec";
+#define DAY_OF_WEEK_STR "\0sunday\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday"
+#define MONTH_STR "\0jan\0feb\0mar\0apr\0may\0jun\0jul\0aug\0sep\0oct\0nov\0dec"
+
+#define TEMP_SENSOR "t.sensor"
 
 #define TEMP_SENSOR "t.sensor"
 
@@ -174,6 +187,7 @@ PROGMEM const char onoff_string[] = ONOFF_STRING;
 PROGMEM const char time_correction[] = TIME_CORRECTION;
 PROGMEM const char reset_string[] = RESET_STRING;
 PROGMEM const char voltage_string[] = VOLTAGE_STRING;
+PROGMEM const char continuous_data_string[] = CONTINUOUS_DATA_STRING;
 #ifdef SIMPLE_ACCELERATION_MEASUREMENT
 PROGMEM const char accel_meas_string[] = ACCEL_MEAS_SIMPLE_STRING;
 #else

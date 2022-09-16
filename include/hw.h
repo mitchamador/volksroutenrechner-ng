@@ -168,8 +168,10 @@ typedef unsigned char eeaddr_t;
 #define ADCON1_INIT                 ((0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (0 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
 #elif defined(_16F1936) || defined(_16F1938)
 #define ADC_CHANNEL_MASK            ((1 << _ADCON0_CHS4_POSITION) | (1 << _ADCON0_CHS3_POSITION) | (1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+// AN1
 #define ADC_CHANNEL_POWER_SUPPLY    ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
-#define ADC_CHANNEL_FUEL_TANK       ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
+// AN3
+#define ADC_CHANNEL_FUEL_TANK       ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADCON0_INIT                 0
 #define ADCON1_INIT                 ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADCS1_POSITION) | (0 << _ADCON1_ADCS0_POSITION))
 // PORTA AN1/RA1 (adc power) and AN3/RA3 as analog input (fuel tank)
@@ -178,7 +180,11 @@ typedef unsigned char eeaddr_t;
 
 #endif
 
+#if defined(_16F876A) || defined(_18F252)
 #define start_adc()                 ADCON0bits.GO_DONE = 1;
+#else
+#define start_adc()                 ADCON0bits.GO = 1;
+#endif
 
 #define set_adc_channel(ch)         ADCON0 = (ADCON0 & ~ADC_CHANNEL_MASK) | ch
 

@@ -25,10 +25,10 @@
 #elif defined(_16F876A) || defined(_16F1936) || defined (_16F1938) || defined(_18F252)
 // legacy hardware
 #define HW_LEGACY
-// simple adc handler
-#define SIMPLE_ADC
 
 #if defined(_16F876A)
+// simple adc handler
+#define SIMPLE_ADC
 // skip oled lcd reset sequence (though works ok without it after power up with EH1602 REV.J)
 //#define NO_LCD_OLED_RESET
 // simple checking time difference (decrease memory usage)
@@ -57,9 +57,13 @@
 #define NO_DS3231_TEMP
 // use ds18b20 temp sensors
 //#define NO_DS18B20
+// no fuel tank support
+#define NO_FUEL_TANK_SUPPORT
 #endif /* _16F876A */
 
 #if defined(_16F1936)
+// simple adc handler
+#define SIMPLE_ADC
 // speed 0-100 measurement only
 //#define SIMPLE_ACCELERATION_MEASUREMENT
 // disable all service counters' support
@@ -82,6 +86,8 @@
 //#define NO_DS18B20
 // support for prev key for legacy hw
 //#define KEY3_SUPPORT
+// no fuel tank support
+#define NO_FUEL_TANK_SUPPORT
 #endif /* _16F1936 */
 
 #if defined(_16F1938) || defined(_18F252)
@@ -161,6 +167,16 @@
 // min speed settings
 #ifndef NO_MIN_SPEED_CONFIG
 #define MIN_SPEED_CONFIG
+#endif
+
+#if defined(SIMPLE_ADC) && defined(FUEL_TANK_SUPPORT)
+#undef FUEL_TANK_SUPPORT
+#endif
+
+// fuel tank and continuous fuel/speed support
+#ifndef NO_FUEL_TANK_SUPPORT
+//#define FUEL_TANK_SUPPORT
+#define CONTINUOUS_DATA_SUPPORT
 #endif
 
 #endif	/* CONFIG_H */
