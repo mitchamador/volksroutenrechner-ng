@@ -15,7 +15,7 @@ void I2C_Master_Init()
 */
 }
 
-#if defined(LOW_STACK_DEVICE)
+#if defined(_16F876A)
 
 unsigned char _I2C_Master_Write(unsigned char address, unsigned char start)
 {

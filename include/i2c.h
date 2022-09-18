@@ -18,7 +18,8 @@
 #define I2C_Master_RepeatedStart(address) I2C_Master_Start(address)
 
 void I2C_Master_Init(void);
-#if defined(I2C_SOFTWARE) && defined(LOW_STACK_DEVICE)
+
+#if defined(I2C_SOFTWARE) && defined(_16F876A)
 unsigned char _I2C_Master_Write(unsigned char, unsigned char);
 #define I2C_Master_Start(address) _I2C_Master_Write(address, 1)
 #define I2C_Master_Write(address) _I2C_Master_Write(address, 0)
