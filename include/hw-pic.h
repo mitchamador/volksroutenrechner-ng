@@ -291,71 +291,56 @@ typedef unsigned char eeaddr_t;
 #define PORTC_INIT 0
 
 // timer1 compare 10ms, 6250 with prescaler 1:8 at 20MHz
-#define TIMER1_PERIOD 0.01f
-#define TIMER1_VALUE 6250
+#define TIMER_MAIN_PERIOD 0.01f
+#define TIMER_MAIN_TICKS_PER_PERIOD 6250
 
 /* ======================================= */
 
 #define adc_read_value()    ((uint16_t) (ADRESH << 8) | ADRESL)
 
 #if defined(_18F252)
-#define start_timer_fuel()  (TMR0ON = 1)
-#define stop_timer_fuel()   (TMR0ON = 0)
+#define start_fuel_timer()  (TMR0ON = 1)
+#define stop_fuel_timer()   (TMR0ON = 0)
 #else
-#define start_timer_fuel()  (T0CS = 0)
-#define stop_timer_fuel()   (T0CS = 1)
+#define start_fuel_timer()  (T0CS = 0)
+#define stop_fuel_timer()   (T0CS = 1)
 #endif
 
-#define start_timer1()      (TMR1ON = 1)
+#define start_main_timer()  (TMR1ON = 1)
+
+#if defined(_16F876A) || defined(_18F252)
+#define main_timer_overflow() CCP2IF
+#elif defined(_16F1936) || defined(_16F1938)
+#define main_timer_overflow() CCP5IF
+#endif
 
 // read 16bit TMR1 value (read TMR1H, TMR1L; if TMR1L == 0x00, re-read TMR1H)
 // if overflow occurs during reading (between start of interrupt and TMR1 reading) - set to max value
 #if defined(_18F252)
 // read 16bit TMR1 value with RD16 = 1
 
-#define get_timer1(_timer1)                                 \
-    *((uint8_t*) (&_timer1) + 0) = TMR1L;                   \
-    *((uint8_t*) (&_timer1) + 1) = TMR1H;                   \
-    if (timer1_overflow()) {                                \
-        _timer1 += TIMER1_VALUE;                             \
+#define capture_main_timer(_main_timer)                     \
+    *((uint8_t*) (&_main_timer) + 0) = TMR1L;               \
+    *((uint8_t*) (&_main_timer) + 1) = TMR1H;               \
+    if (main_timer_overflow()) {                            \
+        _main_timer += TIMER_MAIN_TICKS_PER_PERIOD;         \
     }                                                       \
 
 #else
 
-#if 0
-
-#define get_timer1(_timer1)                                 \
-    *((uint8_t*)(&_timer1) + 1) = TMR1H;                    \
-    *((uint8_t*)(&_timer1) + 0) = TMR1L;                    \
-    if (*((uint8_t*)(&_timer1) + 0) == 0x00) {              \
-        *((uint8_t*)(&_timer1) + 1) = TMR1H;                \
+#define capture_main_timer(_main_timer)                     \
+    *((uint8_t*)(&_main_timer) + 1) = TMR1H;                \
+    *((uint8_t*)(&_main_timer) + 0) = TMR1L;                \
+    if (*((uint8_t*)(&_main_timer) + 1) != TMR1H) {         \
+      *((uint8_t*)(&_main_timer) + 1) = TMR1H;              \
+      *((uint8_t*)(&_main_timer) + 0) = TMR1L;              \
     }                                                       \
-    if (timer1_overflow()) {                                \
-        _timer1 += TIMER1_VALUE;                             \
-    }                                                       \
-
-#else
-
-#define get_timer1(_timer1)                                 \
-    *((uint8_t*)(&_timer1) + 1) = TMR1H;                    \
-    *((uint8_t*)(&_timer1) + 0) = TMR1L;                    \
-    if (*((uint8_t*)(&_timer1) + 1) != TMR1H) {             \
-      *((uint8_t*)(&_timer1) + 1) = TMR1H;                  \
-      *((uint8_t*)(&_timer1) + 0) = TMR1L;                  \
-    }                                                       \
-    if (timer1_overflow()) {                                \
-        _timer1 += TIMER1_VALUE;                             \
+    if (main_timer_overflow()) {                            \
+        _main_timer += TIMER_MAIN_TICKS_PER_PERIOD;         \
     }                                                       \
 
 #endif
 
-#endif
-
-#if defined(_16F876A) || defined(_18F252)
-#define timer1_overflow() CCP2IF
-#elif defined(_16F1936) || defined(_16F1938)
-#define timer1_overflow() CCP5IF
-#endif
 
 #define enable_interrupts() ei();
 #define disable_interrupts() di();
@@ -418,46 +403,46 @@ typedef unsigned char eeaddr_t;
 
 #if defined(_18F252)
 
-#define int_handler_timer0_begin                           \
+#define int_handler_fuel_timer_overflow_begin              \
     /* Timer0 interrupt */                                 \
     if (/*T0IE && */TMR0IF) {                              \
         TMR0IF = 0;                                        \
 
-#define int_handler_timer0_end                             \
+#define int_handler_fuel_timer_overflow_end                \
     }                                                      \
 
 #else
 
-#define int_handler_timer0_begin                           \
+#define int_handler_fuel_timer_overflow_begin              \
     /* Timer0 interrupt */                                 \
     if (/*T0IE && */T0IF) {                                \
         T0IF = 0;                                          \
 
-#define int_handler_timer0_end                             \
+#define int_handler_fuel_timer_overflow_end                \
     }                                                      \
 
 #endif
 
 #if defined(_16F876A) || defined(_18F252)
 
-#define int_handler_timer1_begin                           \
+#define int_handler_main_timer_overflow_begin              \
     /* Timer1 interrupt */                                 \
     if (/*CCP2IE && */CCP2IF) {                            \
         /* Reset the interrupt flag */                     \
         CCP2IF = 0;                                        \
         
-#define int_handler_timer1_end                             \
+#define int_handler_main_timer_overflow_end                \
     }                                                      \
 
 #elif defined(_16F1936) || defined(_16F1938)
 
-#define int_handler_timer1_begin                           \
+#define int_handler_main_timer_overflow_begin              \
     /* Timer1 interrupt */                                 \
     if (/*CCP5IE && */CCP5IF) {                            \
         /* Reset the interrupt flag */                     \
         CCP5IF = 0;                                        \
         
-#define int_handler_timer1_end                             \
+#define int_handler_main_timer_overflow_end                \
     }                                                      \
 
 #endif

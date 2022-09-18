@@ -70,8 +70,8 @@ volatile __bit accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_mea
 volatile uint16_t accel_meas_lower_const;
 #endif
 volatile uint16_t accel_meas_upper_const, accel_meas_timer, accel_meas_speed;
-volatile uint16_t accel_meas_timer1_prev, accel_meas_timer1_ticks;
-volatile uint8_t accel_meas_timer1_ofl;
+volatile uint16_t accel_meas_main_timer_prev, accel_meas_main_timer_ticks;
+volatile uint8_t accel_meas_main_timer_ofl;
 
 volatile uint16_t kmh_tmp, fuel_tmp;
 volatile uint16_t kmh, fuel;
@@ -84,9 +84,9 @@ typedef struct {
 
 volatile adc_voltage_t adc_voltage = {0, ADC_MAX, ADC_MIN};
 
-volatile uint24_t taho, taho_timer1_ticks;
-volatile uint16_t taho_timer1_prev, timer1;
-volatile uint8_t taho_timer1_ofl;
+volatile uint24_t taho, taho_main_timer_ticks;
+volatile uint16_t taho_main_timer_prev, main_timer;
+volatile uint8_t taho_main_timer_ofl;
 
 // uint16_t - max ~104 ms for pic16f targets (* 2.5 for atmega)
 volatile uint16_t fuel_duration;
@@ -285,9 +285,9 @@ int_handler_GLOBAL_begin
 #if defined(int_handler_fuel_speed_begin) && defined(int_handler_fuel_speed_end)
     int_handler_fuel_speed_begin
 
-#if defined(get_timer1)
+#if defined(capture_main_timer)
         // capture 0.01s timer value
-        get_timer1(timer1);
+        capture_main_timer(main_timer);
 #endif
 #endif
 #if defined(int_handler_fuel_begin) && defined(int_handler_fuel_end)
@@ -295,14 +295,14 @@ int_handler_GLOBAL_begin
 
 #if defined(capture_fuel)
         // capture fuel level change timer value
-        capture_fuel(timer1);
+        capture_fuel(main_timer);
 #endif
 #endif
         // fuel injector
         if (FUEL_ACTIVE) {
             if (fuel_fl == 0) {
-                // start timer0
-                start_timer_fuel();
+                // start fuel timer
+                start_fuel_timer();
                 fuel_fl = 1;
                 motor_fl = 1;
                 save_tripc_time_fl = 1;
@@ -318,26 +318,26 @@ int_handler_GLOBAL_begin
                 if (taho_measure_fl == 0) {
                     taho_measure_fl = 1;
 
-                    taho_timer1_ticks = 0;
-                    taho_timer1_prev = timer1;
-                    taho_timer1_ofl = 0;
+                    taho_main_timer_ticks = 0;
+                    taho_main_timer_prev = main_timer;
+                    taho_main_timer_ofl = 0;
                 } else {
-                    taho = taho_timer1_ticks + timer1 - taho_timer1_prev;
+                    taho = taho_main_timer_ticks + main_timer - taho_main_timer_prev;
                     taho_fl = 1;
 
-                    taho_timer1_ticks = 0;
-                    taho_timer1_prev = timer1;
-                    taho_timer1_ofl = 0;
+                    taho_main_timer_ticks = 0;
+                    taho_main_timer_prev = main_timer;
+                    taho_main_timer_ofl = 0;
                 }
             }
         } else {
             if (fuel_fl != 0) {
-                // stop timer0
-                stop_timer_fuel();
+                // stop fuel timer
+                stop_fuel_timer();
                 fuel_fl = 0;
                 // measure fuel duration                
                 if (taho_measure_fl != 0) {
-                    fuel_duration = (uint16_t) (taho_timer1_ticks + timer1 - taho_timer1_prev);
+                    fuel_duration = (uint16_t) (taho_main_timer_ticks + main_timer - taho_main_timer_prev);
                 }
             }
         }
@@ -350,7 +350,7 @@ int_handler_GLOBAL_begin
 
 #if defined(capture_speed)
         // capture speed level change timer value
-        capture_speed(timer1);
+        capture_speed(main_timer);
 #endif
 #endif    
         // speed sensor
@@ -363,11 +363,11 @@ int_handler_GLOBAL_begin
                 if (accel_meas_process_fl != 0) {
                     if (accel_meas_fl == 0) {
                         accel_meas_fl = 1;
-                        accel_meas_timer1_prev = timer1;
-                        accel_meas_timer1_ticks = 0;
-                        accel_meas_timer1_ofl = 0;
+                        accel_meas_main_timer_prev = main_timer;
+                        accel_meas_main_timer_ticks = 0;
+                        accel_meas_main_timer_ofl = 0;
                     } else {
-                        accel_meas_speed = accel_meas_timer1_ticks + timer1 - accel_meas_timer1_prev;
+                        accel_meas_speed = accel_meas_main_timer_ticks + main_timer - accel_meas_main_timer_prev;
                         accel_meas_drive_fl = 1;
 #ifndef SIMPLE_ACCELERATION_MEASUREMENT
                         if (accel_meas_timer_fl == 0 && (accel_meas_speed <= accel_meas_lower_const || accel_meas_lower_const == 0)) {
@@ -381,9 +381,9 @@ int_handler_GLOBAL_begin
                             accel_meas_timer_fl = 0;
                             accel_meas_process_fl = 0;
                         } else {
-                            accel_meas_timer1_prev = timer1;
-                            accel_meas_timer1_ticks = 0;
-                            accel_meas_timer1_ofl = 0;
+                            accel_meas_main_timer_prev = main_timer;
+                            accel_meas_main_timer_ticks = 0;
+                            accel_meas_main_timer_ofl = 0;
                         }
                     }
                 } else {
@@ -434,7 +434,7 @@ int_handler_GLOBAL_begin
     int_handler_fuel_speed_end
 #endif
 
-    int_handler_timer0_begin
+    int_handler_fuel_timer_overflow_begin
             
         fuel_tmp++;
 
@@ -465,9 +465,9 @@ int_handler_GLOBAL_begin
             }
         }
         
-    int_handler_timer0_end
+    int_handler_fuel_timer_overflow_end
 
-    int_handler_timer1_begin
+    int_handler_main_timer_overflow_begin
 
         static uint8_t key1_counter = 0, key2_counter = 0;
 #ifdef KEY3_SUPPORT
@@ -476,23 +476,23 @@ int_handler_GLOBAL_begin
         static uint8_t main_interval_counter = MAIN_INTERVAL;
 
         if (taho_measure_fl != 0) {
-            if (++taho_timer1_ofl == TAHO_OVERFLOW) {
+            if (++taho_main_timer_ofl == TAHO_OVERFLOW) {
                 taho_measure_fl = 0;
-                stop_timer_fuel();
+                stop_fuel_timer();
                 taho_fl = 0;
                 fuel_duration = 0;
                 motor_fl = 0;
             } else {
-                taho_timer1_ticks += TIMER1_VALUE;
+                taho_main_timer_ticks += TIMER_MAIN_TICKS_PER_PERIOD;
             }
         }
 
         if (accel_meas_fl != 0) {
-            if (++accel_meas_timer1_ofl == ACCEL_MEAS_OVERFLOW) {
+            if (++accel_meas_main_timer_ofl == ACCEL_MEAS_OVERFLOW) {
                 accel_meas_fl = 0;
                 accel_meas_drive_fl = 0;
             } else {
-                accel_meas_timer1_ticks += TIMER1_VALUE;
+                accel_meas_main_timer_ticks += TIMER_MAIN_TICKS_PER_PERIOD;
             }
         }
 
@@ -727,7 +727,7 @@ int_handler_GLOBAL_begin
             }
         }
 #endif                
-    int_handler_timer1_end
+    int_handler_main_timer_overflow_end
 
     int_handler_adc_begin
 
@@ -1170,7 +1170,7 @@ void print_fuel_duration(align_t align) {
 //        len = strcpy2(buf, (char *) &empty_string, 0);
 //    } else
     {
-        uint16_t res = (uint16_t) (fuel_duration * (1000 / 250) / (TIMER1_VALUE / 250));
+        uint16_t res = (uint16_t) (fuel_duration * (1000 / 250) / (TIMER_MAIN_TICKS_PER_PERIOD / 250));
         len = print_fract(buf, res, 2);
     }
     _print(len, POS_MS, align);
@@ -1667,7 +1667,7 @@ void acceleration_measurement(uint8_t index) {
                 len += print_symbols_str(len, POS_SEC);
                 add_leading_symbols(buf, ' ', len, 16);
 
-                len = ultoa2((char*) buf, accel_meas_drive_fl != 0 ? (uint16_t) ((360000UL * TIMER1_VALUE / config.odo_const) / accel_meas_speed) : 0, 10); // integer
+                len = ultoa2((char*) buf, accel_meas_drive_fl != 0 ? (uint16_t) ((360000UL * TIMER_MAIN_TICKS_PER_PERIOD / config.odo_const) / accel_meas_speed) : 0, 10); // integer
                 /*len += */print_symbols_str(len, POS_KMH);
 
                 LCD_CMD(0xC0);
@@ -3011,7 +3011,8 @@ void main() {
 
     power_on();
     
-    start_timer1();
+    start_main_timer();
+
     enable_interrupts();
     
 #ifdef TEMPERATURE_SUPPORT

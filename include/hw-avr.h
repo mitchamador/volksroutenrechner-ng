@@ -31,39 +31,35 @@ typedef uint16_t eeaddr_t;
 #define ADC_MIN     0
 #define ADC_MAX     1023
 
-#define start_timer_fuel() TCCR0B = (0 << WGM02) | (0 << CS02) | (1 << CS01) | (0 << CS00);
+#define start_fuel_timer() TCCR0B = (0 << WGM02) | (0 << CS02) | (1 << CS01) | (0 << CS00);
 
-#define stop_timer_fuel()  TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
+#define stop_fuel_timer()  TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
 
 // timer1 compare 10ms, 2500 with prescaler 1:64 running at 16Mhz
-#define TIMER1_PERIOD 0.01f
-#define TIMER1_VALUE 2500
-
-#define get_timer1(_timer1)                         \
-    _timer1 = TCNT1;                                \
-    if (timer1_overflow()) {                        \
-        _timer1 = TIMER1_VALUE;                     \
-    }                                               \
-
-#if defined(PROTEUS_DEBUG)
-#define timer1_overflow() ((TIFR1 & (1 << OCF1A)) != 0)
-#else
-#define timer1_overflow() ((TIFR1 & (1 << ICF1)) != 0)
-#endif
+#define TIMER_MAIN_PERIOD 0.01f
+#define TIMER_MAIN_TICKS_PER_PERIOD 2500
 
 // start timer with prescaler 1:64
-#define start_timer1() TCCR1B = (TCCR1B & ~((1 << CS12) | (1 << CS11) | (1 << CS10))) | ((0 << CS12) | (1 << CS11) | (1 << CS10));
+#define start_main_timer() TCCR1B = (TCCR1B & ~((1 << CS12) | (1 << CS11) | (1 << CS10))) | ((0 << CS12) | (1 << CS11) | (1 << CS10));
+
+#if defined(PROTEUS_DEBUG)
+#define main_timer_overflow() ((TIFR1 & (1 << OCF1A)) != 0)
+#else
+#define main_timer_overflow() ((TIFR1 & (1 << ICF1)) != 0)
+#endif
+
+#define capture_main_timer(_main_timer)             \
+    _main_timer = TCNT1;                            \
+    if (main_timer_overflow()) {                    \
+        _main_timer += TIMER_MAIN_TICKS_PER_PERIOD; \
+    }                                               \
+
 
 // start adc
 #define start_adc() ADCSRA = ADCSRA | (1 << ADSC);
 
-#ifdef __XC8
-#define enable_interrupts() ei();
-#define disable_interrupts() di();
-#else
 #define enable_interrupts() sei();
 #define disable_interrupts() cli();
-#endif
 
 #define int_handler_GLOBAL_begin
 
@@ -77,22 +73,22 @@ typedef uint16_t eeaddr_t;
 
 #define int_handler_encoder_end }                           \
 
-#define int_handler_timer0_begin ISR(TIMER0_COMPA_vect) {   \
+#define int_handler_fuel_timer_overflow_begin ISR(TIMER0_COMPA_vect) {   \
     
-#define int_handler_timer0_end }                            \
+#define int_handler_fuel_timer_overflow_end }                            \
 
 #if defined(PROTEUS_DEBUG)
 
-#define int_handler_timer1_begin ISR(TIMER1_COMPA_vect) {   \
-      TIFR1 = (1 << OCF1B);                                 \
+#define int_handler_main_timer_overflow_begin ISR(TIMER1_COMPA_vect) {   \
+      TIFR1 = (1 << OCF1B);                                              \
 
-#define int_handler_timer1_end }                            \
+#define int_handler_main_timer_overflow_end }                            \
 
 #else
 
-#define int_handler_timer1_begin ISR(TIMER1_CAPT_vect) {    \
+#define int_handler_main_timer_overflow_begin ISR(TIMER1_CAPT_vect) {    \
 
-#define int_handler_timer1_end }                            \
+#define int_handler_main_timer_overflow_end }                            \
 
 #endif
     

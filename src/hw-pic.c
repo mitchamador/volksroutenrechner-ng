@@ -39,11 +39,11 @@ void HW_Init(void) {
 #if defined(_16F876A) || defined(_18F252)
     // ccp2 init (compare special event trigger 10ms + start adc)
     CCP2CON = (1 << _CCP2CON_CCP2M3_POSITION) | (0 << _CCP2CON_CCP2M2_POSITION) | (1 << _CCP2CON_CCP2M1_POSITION) | (1 << _CCP2CON_CCP2M0_POSITION);
-    CCPR2 = TIMER1_VALUE;
+    CCPR2 = TIMER_MAIN_TICKS_PER_PERIOD;
 #elif defined(_16F1936) || defined(_16F1938)
     // ccp5 init (compare special event trigger 10ms + start adc)
     CCP5CON = (1 << _CCP5CON_CCP5M3_POSITION) | (0 << _CCP5CON_CCP5M2_POSITION) | (1 << _CCP5CON_CCP5M1_POSITION) | (1 << _CCP5CON_CCP5M0_POSITION);
-    CCPR5 = TIMER1_VALUE;
+    CCPR5 = TIMER_MAIN_TICKS_PER_PERIOD;
 #endif    
 
     // adc interrupt

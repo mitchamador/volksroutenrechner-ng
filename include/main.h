@@ -28,14 +28,14 @@
 #endif
 
 // misc constants (in seconds)
-#define MAIN_INTERVAL ((uint8_t) (1.0f / TIMER1_PERIOD))
-#define DEBOUNCE ((uint8_t) (0.04f / TIMER1_PERIOD))
-#define SHORTKEY ((uint8_t) (0.5f / TIMER1_PERIOD))
-#define LONGKEY ((uint8_t) (1.0f / TIMER1_PERIOD))
-#define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / TIMER1_PERIOD))
-#define TIMER_01SEC_INTERVAL ((uint8_t) (0.1f / TIMER1_PERIOD))
+#define MAIN_INTERVAL ((uint8_t) (1.0f / TIMER_MAIN_PERIOD))
+#define DEBOUNCE ((uint8_t) (0.04f / TIMER_MAIN_PERIOD))
+#define SHORTKEY ((uint8_t) (0.5f / TIMER_MAIN_PERIOD))
+#define LONGKEY ((uint8_t) (1.0f / TIMER_MAIN_PERIOD))
+#define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / TIMER_MAIN_PERIOD))
+#define TIMER_01SEC_INTERVAL ((uint8_t) (0.1f / TIMER_MAIN_PERIOD))
 // time with power supply measurements lower than threshold before shutdown
-#define SHUTDOWN ((uint8_t) (0.25f / TIMER1_PERIOD))
+#define SHUTDOWN ((uint8_t) (0.25f / TIMER_MAIN_PERIOD))
 
 //show average speed (or fuel consumption) after distance AVERAGE_MIN_DIST * 0.1 km
 #define AVERAGE_MIN_DIST 3
@@ -57,19 +57,19 @@
 // min rpm
 #define TAHO_MIN_RPM 100UL
 // min rpm constant (1/(TAHO_MIN_RPM/60sec)/0.01s) 0.01s timer overflow
-#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / TIMER1_PERIOD))
+#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / TIMER_MAIN_PERIOD))
 // taho const 
-#define TAHO_CONST ((uint32_t) (60 / TIMER1_PERIOD * TIMER1_VALUE))
+#define TAHO_CONST ((uint32_t) (60 / TIMER_MAIN_PERIOD * TIMER_MAIN_TICKS_PER_PERIOD))
 
 // timer1 counts between speed pulses when speed is X km/h
-// (1 / ((config.odo_const * X) / 3600)) / (0.01f/TIMER1_VALUE) = ((3600 / X) / (0.01f / TIMER1_VALUE) / config.odo_const
-#define speed_const(x) ((uint32_t) ((3600 / x) / (TIMER1_PERIOD / TIMER1_VALUE)))
+// (1 / ((config.odo_const * X) / 3600)) / (0.01f/TIMER_MAIN_TICKS_PER_PERIOD) = ((3600 / X) / (0.01f / TIMER_MAIN_TICKS_PER_PERIOD) / config.odo_const
+#define speed_const(x) ((uint32_t) ((3600 / x) / (TIMER_MAIN_PERIOD / TIMER_MAIN_TICKS_PER_PERIOD)))
 
 // minimum pulse width for acceleration measurement calculation (10 * 0.01s)
-#if (65536 / TIMER1_VALUE) >= 10
+#if (65536 / TIMER_MAIN_TICKS_PER_PERIOD) >= 10
 #define ACCEL_MEAS_OVERFLOW 10
 #else
-#define ACCEL_MEAS_OVERFLOW (65536 / TIMER1_VALUE)
+#define ACCEL_MEAS_OVERFLOW (65536 / TIMER_MAIN_TICKS_PER_PERIOD)
 #endif
 
 typedef union {
