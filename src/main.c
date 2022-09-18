@@ -392,6 +392,7 @@ int_handler_GLOBAL_begin
 
                 kmh_tmp++;
 
+#ifndef ALT_KMH_INCREMENT
                 // main odometer
                 if (++config.odo_temp >= config.odo_const) {
                     config.odo_temp = 0;
@@ -420,7 +421,7 @@ int_handler_GLOBAL_begin
                     trips.tripC.odo_temp = 0;
                     trips.tripC.odo++;
                 }
-
+#endif
             }
         } else {
             odom_fl = 0;
@@ -575,14 +576,30 @@ int_handler_GLOBAL_begin
             key_repeat_counter = KEY_REPEAT_PAUSE; 
         }
 
+        if (acc_power_off_fl != 0) {
+            if (acc_power_off_counter++ == SHUTDOWN) {
+                screen_refresh = 1;
+                timeout_timer1 = 0;
+                shutdown_fl = 1;
+            }
+        } else {
+            acc_power_off_counter = 0;
+        }
+
         if (--main_interval_counter == 0) {
             main_interval_counter = MAIN_INTERVAL;
 
             // screen refresh_flag
             screen_refresh = 1;
              
-#ifdef CONTINUOUS_DATA_SUPPORT
+            // increment time counters
             if (motor_fl != 0 || drive_fl != 0) {
+                services.mh.time++;
+                trips.tripA.time++;
+                trips.tripB.time++;
+                trips.tripC.time++;
+
+#ifdef CONTINUOUS_DATA_SUPPORT
                 if (cd.filter < CD_FILTER_VALUE_MAX) {
                     if (cd.time < cd.time_threshold) {
                         cd.time++;
@@ -592,22 +609,51 @@ int_handler_GLOBAL_begin
                 }
                 cd_fuel = calc_filtered_value(&cd.f_fuel, fuel_tmp);
                 cd_kmh = calc_filtered_value(&cd.f_kmh, kmh_tmp);
-            }
 #endif
+            }
+
             // copy temp interval variables to main
             fuel = fuel_tmp;
             fuel_tmp = 0;
+
+#ifdef ALT_KMH_INCREMENT
+            // main odometer
+            config.odo_temp += kmh_tmp;
+            if (config.odo_temp >= config.odo_const) {
+                config.odo_temp -= config.odo_const;
+                // increment odometer counters
+                config.odo++;
+                services.srv[0].counter++;
+                services.srv[1].counter++;
+                services.srv[2].counter++;
+                services.srv[3].counter++;
+            }
+
+            // trip A
+            trips.tripA.odo_temp += kmh_tmp;
+            if (trips.tripA.odo_temp >= config.odo_const) {
+                trips.tripA.odo_temp -= config.odo_const;
+                trips.tripA.odo++;
+            }
+
+            // trip B
+            trips.tripB.odo_temp += kmh_tmp;
+            if (trips.tripB.odo_temp >= config.odo_const) {
+                trips.tripB.odo_temp -= config.odo_const;
+                trips.tripB.odo++;
+            }
+
+            // trip C
+            trips.tripC.odo_temp += kmh_tmp;
+            if (trips.tripC.odo_temp >= config.odo_const) {
+                trips.tripC.odo_temp -= config.odo_const;
+                trips.tripC.odo++;
+            }
+#endif   
+
             kmh = kmh_tmp;
             kmh_tmp = 0;
              
-            // increment time counters
-            if (motor_fl != 0 || drive_fl != 0) {
-                services.mh.time++;
-                trips.tripA.time++;
-                trips.tripB.time++;
-                trips.tripC.time++;
-            }
-
 #ifdef TEMPERATURE_SUPPORT
             if (timeout_temperature > 0) {
                 timeout_temperature--;
@@ -629,16 +675,6 @@ int_handler_GLOBAL_begin
 
         if (accel_meas_timer_fl != 0) {
             accel_meas_timer++;
-        }
-
-        if (acc_power_off_fl != 0) {
-            if (acc_power_off_counter++ == SHUTDOWN) {
-                screen_refresh = 1;
-                timeout_timer1 = 0;
-                shutdown_fl = 1;
-            }
-        } else {
-            acc_power_off_counter = 0;
         }
 
 #ifdef SOUND_SUPPORT
@@ -945,7 +981,7 @@ void print_time_dmy(unsigned char day, unsigned char month, unsigned char year) 
         strcpy2(buf, (char*) &no_time_string, 0);
     } else {
         bcd8_to_str(buf, day);
-        strcpy2(&buf[2], (char *) &month_str, bcd8_to_bin(month));
+        strcpy2(&buf[2], (char *) &month_array, bcd8_to_bin(month));
         buf[5] = '\'';
         bcd8_to_str(&buf[6], year);
     }
@@ -953,7 +989,7 @@ void print_time_dmy(unsigned char day, unsigned char month, unsigned char year) 
 }
 
 void print_time_dow(unsigned char day_of_week) {
-    LCD_Write_String16(buf, strcpy2((char *)buf, (char*) day_of_week_str, day_of_week), ALIGN_LEFT);
+    LCD_Write_String16(buf, strcpy2((char *)buf, (char*) day_of_week_array, day_of_week), ALIGN_LEFT);
 }
 
 void print_time(ds_time* time) {
@@ -975,7 +1011,7 @@ void print_time(ds_time* time) {
  * @return 
  */
 unsigned char print_symbols_str(unsigned char len, unsigned char index) {
-    return strcpy2(&buf[len], (char *)symbols_str, index);
+    return strcpy2(&buf[len], (char *)symbols_array, index);
 }
 
 void _print(unsigned char len, unsigned char pos, align_t align) {
@@ -1177,7 +1213,7 @@ uint8_t print_temp(uint8_t index, align_t align) {
     _t = temps[index];
 
     if (_t == DS18B20_TEMP_NONE) {
-        len = strcpy2(buf, (char *) &temp_sensors, 1);
+        len = strcpy2(buf, (char *) &temp_sensors_array, 1);
     } else {
         uint8_t _pos = 0;
         if (_t & 0x8000)         // if the temperature is negative
@@ -1203,7 +1239,7 @@ uint8_t print_temp(uint8_t index, align_t align) {
 
     if ((param & PRINT_TEMP_PARAM_HEADER) != 0) {
         add_leading_symbols(buf, ' ', len, 8);
-        strcpy2(buf, (char *) &temp_sensors, (index + 1) + 1);
+        strcpy2(buf, (char *) &temp_sensors_array, (index + 1) + 1);
         len = 8;
     }
 
@@ -1239,7 +1275,7 @@ void screen_time(void) {
 
     read_ds_time();
 
-    if (request_screen((char *) &time_correction) != 0) {
+    if (request_screen((char *) &time_correction_string) != 0) {
 
         uint8_t c = 0, save_time = 0;
         uint8_t *p, min, max;
@@ -1476,7 +1512,7 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
         len = strcpy2((char*) buf, (char *) str, pos + 1);
         if (len != 0) {
             // print on/off
-            strcpy2((char*) &buf[12], (char *) &onoff_string, _onoff);
+            strcpy2((char*) &buf[12], (char *) &on_off_array, _onoff);
         }
         LCD_CMD(0x80);
         LCD_Write_String16(buf, 16, ALIGN_LEFT);
@@ -1694,7 +1730,7 @@ void select_acceleration_measurement() {
         }
 
         len = strcpy2(buf, (char *) &accel_meas_timing_string, 0);
-        len += strcpy2(&buf[len], (char *) accel_meas_string, v + 1);
+        len += strcpy2(&buf[len], (char *) accel_meas_array, v + 1);
 
         LCD_CMD(0x80);
         LCD_Write_String16(buf, len, ALIGN_CENTER);
@@ -1782,7 +1818,7 @@ void clear_trip(bool force, trip_t* trip) {
 
 void screen_trip(trip_t* trip, unsigned char trips_pos) {
     len = strcpy2(buf, (char *) &trip_string, 0);
-    len += strcpy2(&buf[len], (char *) trips_str, trips_pos);
+    len += strcpy2(&buf[len], (char *) trips_array, trips_pos);
 
     LCD_CMD(0x80);
     LCD_Write_String8(buf, len, ALIGN_LEFT);
@@ -1837,7 +1873,7 @@ void screen_misc() {
                 if (key2_longpress != 0) {
                     key2_longpress = 0;
 
-                    LCD_Write_String16(buf, strcpy2(buf, (char *) service_menu_str, TEMP_SENSOR_INDEX), ALIGN_LEFT);
+                    LCD_Write_String16(buf, strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX), ALIGN_LEFT);
                     config_screen_temp_sensors();
                     clear_keys_state();
                     screen_refresh = 1;
@@ -1929,7 +1965,7 @@ void screen_service_counters() {
     select_param(&service_param, 5);
 
     LCD_CMD(0x80);
-    LCD_Write_String16(buf, strcpy2((char*)buf, (char *) &service_counters, service_param + 1), ALIGN_LEFT);
+    LCD_Write_String16(buf, strcpy2((char*)buf, (char *) &service_counters_array, service_param + 1), ALIGN_LEFT);
 
     if (service_param == 0) {
         srv = &services.srv[0];
@@ -1989,10 +2025,10 @@ void journal_check_eeprom() {
     bool init_fl = true;
     while (1) {
         JOURNAL_read_eeprom_block((unsigned char *) &buf, J_EEPROM_MARK_POS, 8);
-        if (memcmp(&buf, &journal_mark_str, (sizeof(journal_mark_str) - 1) <= 8 ? (sizeof (journal_mark_str) - 1) : 8) != 0) {
+        if (memcmp(&buf, &journal_mark, (sizeof(journal_mark) - 1) <= 8 ? (sizeof (journal_mark) - 1) : 8) != 0) {
             if (init_fl) {
                 // save init values on first attempt
-                memcpy(&buf, &journal_mark_str, (sizeof (journal_mark_str) - 1) <= 8 ? (sizeof (journal_mark_str) - 1) : 8);
+                memcpy(&buf, &journal_mark, (sizeof (journal_mark) - 1) <= 8 ? (sizeof (journal_mark) - 1) : 8);
                 JOURNAL_write_eeprom_block((unsigned char *) &buf, J_EEPROM_MARK_POS, 8);
 
                 fill_trip_time(&journal_header.time_trip_c);
@@ -2122,7 +2158,7 @@ uint8_t journal_print_item_time(char *buf, trip_time_t *trip_time) {
     bcd8_to_str(&buf[len], trip_time->day);
     len += 2;
     {
-        len += strcpy2(&buf[len], (char *) &month_str, bcd8_to_bin(trip_time->month));
+        len += strcpy2(&buf[len], (char *) &month_array, bcd8_to_bin(trip_time->month));
         buf[len++] = '\'';
     }
 //    {
@@ -2154,7 +2190,7 @@ void screen_journal_viewer() {
     } else {
 
         LCD_CMD(0x80);
-        LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_str, 0), ALIGN_LEFT);
+        LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
 
         LCD_CMD(0xC0);
         LCD_Write_String16(buf, 0, ALIGN_NONE);
@@ -2171,12 +2207,12 @@ void screen_journal_viewer() {
                 handle_keys_next_prev(&journal_type, 0, 3);
 
                 LCD_CMD(0x80);
-                LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_str, 0), ALIGN_LEFT);
+                LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
 
                 LCD_CMD(0xC0);
                 buf[0] = '1' + journal_type;
                 buf[1] = '.';
-                LCD_Write_String16(buf, strcpy2(&buf[2], (char *) journal_viewer_items_str, journal_type + 1) + 2, ALIGN_LEFT);
+                LCD_Write_String16(buf, strcpy2(&buf[2], (char *) journal_viewer_items_array, journal_type + 1) + 2, ALIGN_LEFT);
 
                 if (key2_press != 0) {
                     key2_press = 0;
@@ -2300,9 +2336,9 @@ void screen_journal_viewer() {
                         if (item_current == 0xFF) {
                             // no items for current journal
                             LCD_CMD(0x80);
-                            LCD_Write_String16(buf, strcpy2(buf, (char *) journal_viewer_items_str, journal_type + 1), ALIGN_LEFT);
+                            LCD_Write_String16(buf, strcpy2(buf, (char *) journal_viewer_items_array, journal_type + 1), ALIGN_LEFT);
                             LCD_CMD(0xC0);
-                            LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_no_items_str, 0), ALIGN_LEFT);
+                            LCD_Write_String16(buf, strcpy2(buf, (char *) &journal_viewer_no_items_string, 0), ALIGN_LEFT);
 
                             if (key2_press != 0) {
                                 timeout_timer1 = 0;
@@ -2340,7 +2376,7 @@ void config_screen_total_trip() {
 }
 
 void config_screen_settings_bits() {
-    config.settings.word = edit_value_bits(config.settings.word, (char *) &settings_bits);
+    config.settings.word = edit_value_bits(config.settings.word, (char *) &settings_bits_array);
 }
 
 #ifdef MIN_SPEED_CONFIG
@@ -2405,7 +2441,7 @@ void config_screen_temp_sensors() {
             add_leading_symbols(buf, ' ', len, 16);
 
             // print t.sensor + number/total
-            strcpy2(buf, (char *) &temp_sensor, 0);
+            strcpy2(buf, (char *) &temp_sensor_string, 0);
             buf[9]= '1' + current_device;
             buf[10] = '/';
             buf[11] = '0' + num_devices;
@@ -2417,7 +2453,7 @@ void config_screen_temp_sensors() {
             llptrtohex((unsigned char*) &tbuf[current_device * 8], (unsigned char*) buf);
 
             // print sensor string (in/out/eng)
-            len = strcpy2(&buf[12], (char *) &temp_sensors, _t_num[current_device] + 1);
+            len = strcpy2(&buf[12], (char *) &temp_sensors_array, _t_num[current_device] + 1);
             add_leading_symbols(&buf[12], ' ', len, 4);
 
         }
@@ -2496,7 +2532,7 @@ void config_screen_temp_sensors() {
         }
 #endif
         llptrtohex((unsigned char*) tbuf, (unsigned char*) buf);
-        len = strcpy2(&buf[12], (char *) &temp_sensors, t_num + 1);
+        len = strcpy2(&buf[12], (char *) &temp_sensors_array, t_num + 1);
         add_leading_symbols(&buf[12], ' ', len, 4);
         
         LCD_CMD(0xC0);
@@ -2524,13 +2560,13 @@ void config_screen_service_counters() {
     LCD_CMD(0xC0);
     buf[0] = '1' + c_sub_item;
     buf[1] = '.';
-    LCD_Write_String16(buf, 2 + strcpy2(&buf[2], (char *) &service_counters, c_sub_item + 1), ALIGN_LEFT);
+    LCD_Write_String16(buf, 2 + strcpy2(&buf[2], (char *) &service_counters_array, c_sub_item + 1), ALIGN_LEFT);
 
     if (key2_press != 0) {
         clear_keys_state();
 
         LCD_CMD(0x80);
-        LCD_Write_String16(buf, strcpy2(buf, (char *) &service_counters, c_sub_item + 1), ALIGN_LEFT);
+        LCD_Write_String16(buf, strcpy2(buf, (char *) &service_counters_array, c_sub_item + 1), ALIGN_LEFT);
         LCD_CMD(0xC0);
         LCD_Write_String16(buf, 0, ALIGN_NONE);
 
@@ -2558,7 +2594,7 @@ void config_screen_version() {
         timeout_timer1 = 0;
     }
     LCD_CMD(0xC0);
-    LCD_Write_String16(buf, strcpy2(buf, (char*) &version_str, 0), ALIGN_LEFT);
+    LCD_Write_String16(buf, strcpy2(buf, (char*) &version_string, 0), ALIGN_LEFT);
 }
 
 void config_screen(unsigned char c_item) {
@@ -2569,12 +2605,12 @@ void config_screen(unsigned char c_item) {
     
     if (!force_item) {
         LCD_CMD(0x80);
-        LCD_Write_String16(buf, strcpy2(buf, (char *) &service_menu_title, 0), ALIGN_LEFT);
+        LCD_Write_String16(buf, strcpy2(buf, (char *) &config_menu_title_string, 0), ALIGN_LEFT);
 
         LCD_CMD(0xC0);
         buf[0] = '1' + c_item;
         buf[1] = '.';
-        LCD_Write_String16(buf, strcpy2(&buf[2], (char *) service_menu_str, item.str_index) + 2, ALIGN_LEFT);
+        LCD_Write_String16(buf, strcpy2(&buf[2], (char *) config_menu_array, item.str_index) + 2, ALIGN_LEFT);
     }
 
     if (key2_press != 0 || force_item) {
@@ -2585,7 +2621,7 @@ void config_screen(unsigned char c_item) {
             screen_refresh = 0;
 
             LCD_CMD(0x80);
-            LCD_Write_String16(buf, strcpy2(buf, (char *) service_menu_str, item.str_index), ALIGN_LEFT);
+            LCD_Write_String16(buf, strcpy2(buf, (char *) config_menu_array, item.str_index), ALIGN_LEFT);
 
             item.screen();
 
@@ -2624,10 +2660,10 @@ void print_warning_service_counters(unsigned char warn) {
             buzzer_mode_value = BUZZER_WARN;
 #endif
             LCD_CMD(0x80);
-            LCD_Write_String16(buf, strcpy2(buf, (char*) &warning_str, 0), ALIGN_CENTER);
+            LCD_Write_String16(buf, strcpy2(buf, (char*) &warning_string, 0), ALIGN_CENTER);
 
             LCD_CMD(0xC0);
-            LCD_Write_String16(buf, strcpy2(buf, (char*) &service_counters, i + 1), ALIGN_CENTER);
+            LCD_Write_String16(buf, strcpy2(buf, (char*) &service_counters_array, i + 1), ALIGN_CENTER);
 
             timeout_timer1 = 5;
             while (timeout_timer1 != 0 && NO_KEY_PRESSED)

@@ -1,7 +1,7 @@
 #ifndef VERSION_H
 #define VERSION_H
 
-#define VERSION_STRING "19:20 16.09.2022"
+#define VERSION "19:20 16.09.2022"
 
 #define VERSION_MINUTE_BCD 0x20
 #define VERSION_HOUR_BCD 0x19
