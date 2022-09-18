@@ -145,7 +145,7 @@ endif
 
 ${OBJECTDIR}/${IMAGE_TYPE}/%.o : %.c
 	@${MKDIR} "${OBJECTDIR}/${IMAGE_TYPE}/src"
-	${CC} $(CPPFLAGS) -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -MD -Os -ffunction-sections -fdata-sections -flto -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
+	${CC} $(CPPFLAGS) -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -MD -Os -ffunction-sections -fdata-sections -flto -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
 
 ${OBJECTDIR}/${IMAGE_TYPE}/%.p1 : %.c
 	@${MKDIR} "${OBJECTDIR}/${IMAGE_TYPE}/src"
