@@ -1,7 +1,7 @@
 #ifndef CONFIG_H
 #define	CONFIG_H
 
-#if defined(__AVR)
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 
 #ifdef ARDUINO
 // 1602 lcd i2c
@@ -18,9 +18,6 @@
 // use internal eeprom for trip journal
 #define JOURNAL_EEPROM_INTERNAL
 #endif
-
-// support for prev key
-#define KEY3_SUPPORT
 
 #elif defined(_16F876A) || defined(_16F1936) || defined (_16F1938) || defined(_18F252)
 // legacy hardware
@@ -57,6 +54,8 @@
 #define NO_DS3231_TEMP
 // use ds18b20 temp sensors
 //#define NO_DS18B20
+// support for prev key for legacy hw
+#define NO_KEY3_SUPPORT
 // no fuel tank support
 #define NO_FUEL_TANK_SUPPORT
 #endif /* _16F876A */
@@ -85,14 +84,14 @@
 // use ds18b20 temp sensors
 //#define NO_DS18B20
 // support for prev key for legacy hw
-//#define KEY3_SUPPORT
+#define NO_KEY3_SUPPORT
 // no fuel tank support
 #define NO_FUEL_TANK_SUPPORT
 #endif /* _16F1936 */
 
 #if defined(_16F1938) || defined(_18F252)
 // support for prev key for legacy hw
-//#define KEY3_SUPPORT
+#define NO_KEY3_SUPPORT
 #endif /* _16F1938 */
 
 #else
@@ -167,6 +166,10 @@
 // min speed settings
 #ifndef NO_MIN_SPEED_CONFIG
 #define MIN_SPEED_CONFIG
+#endif
+
+#ifndef NO_KEY3_SUPPORT
+#define KEY3_SUPPORT
 #endif
 
 #if defined(SIMPLE_ADC) && defined(FUEL_TANK_SUPPORT)
