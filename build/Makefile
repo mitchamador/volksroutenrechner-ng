@@ -26,8 +26,8 @@ else
 endif
 
 ifneq (,$(filter pic16f% pic18f%,$(MCU)))
-  MP_CC_DIR=${XC8-TOOLCHAIN}/xc8/v2.32/bin
-  MP_CC=${XC8-TOOLCHAIN}/xc8/v2.32/bin/xc8-cc
+  CC_DIR=${XC8-TOOLCHAIN}/xc8/v2.32/bin
+  CC=${XC8-TOOLCHAIN}/xc8/v2.32/bin/xc8-cc
   FIXDEPS=${XC8-TOOLCHAIN}/xc8/v2.32/bin/fixDeps
   AVR_OBJCOPY=${XC8-TOOLCHAIN}/xc8/v2.32/bin/avr-objcopy
 ifneq (,$(findstring pic16f,$(MCU)))
@@ -37,7 +37,7 @@ else
 endif
 
 else
-  MP_CC=${AVR-GCC-TOOLCHAIN}/bin/avr-gcc
+  CC=${AVR-GCC-TOOLCHAIN}/bin/avr-gcc
   AVR_OBJCOPY=${AVR-GCC-TOOLCHAIN}/bin/avr-objcopy
   AVR_SIZE=${AVR-GCC-TOOLCHAIN}/bin/avr-size
   TARGET=${MP_PROCESSOR_OPTION}${TARGET_SUFFIX}
@@ -113,14 +113,14 @@ ifneq ($(OUTDIR),)
 	$(eval OUTDIR_FIRMWARE=${OUTDIR})
 endif
 ifdef XC8-TOOLCHAIN
-	MCU=pic16f876a $(MAKE) -f $(firstword $(MAKEFILE_LIST)) OUTDIR=${OUTDIR_FIRMWARE} build
-	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) OUTDIR=${OUTDIR_FIRMWARE} build
-	MCU=pic16f1938 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) OUTDIR=${OUTDIR_FIRMWARE} build
-	MCU=pic18f252 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) OUTDIR=${OUTDIR_FIRMWARE} build
+	MCU=pic16f876a $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
+	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
+	MCU=pic16f1938 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
+	MCU=pic18f252 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
 endif
 ifdef AVR-GCC-TOOLCHAIN
-	MCU=atmega328p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) OUTDIR=${OUTDIR_FIRMWARE} build
-	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) OUTDIR=${OUTDIR_FIRMWARE} build
+	MCU=atmega328p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
+	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
 endif
 
 clobber:
@@ -135,9 +135,9 @@ clobber:
 $(TARGET): $(OBJS)
 	@${MKDIR} ${DISTDIR}/${IMAGE_TYPE} 
 ifneq (,$(filter pic16f% pic18f%,$(MCU)))
-	${MP_CC} $(MP_EXTRA_LD_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -Wl,-Map=${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.map  -DXPRJ_$(TARGET)=$(CND_CONF)  -Wl,--defsym=__MPLAB_BUILD=1   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) -std=c99 -gcoff $(COMPARISON_BUILD) -Wl,--memorysummary,${DISTDIR}/${IMAGE_TYPE}//memoryfile.xml -o ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}  ${OBJS}      
+	${CC} $(LDFLAGS) -mcpu=$(MP_PROCESSOR_OPTION) -Wl,-Map=${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.map  -DXPRJ_$(TARGET)=$(CND_CONF)  -Wl,--defsym=__MPLAB_BUILD=1   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) -std=c99 -gcoff $(COMPARISON_BUILD) -Wl,--memorysummary,${DISTDIR}/${IMAGE_TYPE}//memoryfile.xml -o ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}  ${OBJS}      
 else
-	${MP_CC} -o ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} -mmcu=$(MCU) -Os -Wl,--gc-sections -flto -fuse-linker-plugin ${OBJS} 
+	${CC} $(LDFLAGS) -o ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} -mmcu=$(MCU) -Os -Wl,--gc-sections -flto -fuse-linker-plugin ${OBJS} 
 	${AVR_OBJCOPY} -O ihex -R .eeprom "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}"
 	${AVR_OBJCOPY} -j .eeprom --set-section-flags=.eeprom=alloc,load --change-section-lma .eeprom=0 --no-change-warnings -O ihex "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.eep" || exit 0 
 	${AVR_SIZE} -C --mcu=$(MCU) "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}"
@@ -145,12 +145,12 @@ endif
 
 ${OBJECTDIR}/${IMAGE_TYPE}/%.o : %.c
 	@${MKDIR} "${OBJECTDIR}/${IMAGE_TYPE}/src"
-	${MP_CC} -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -MD -Os -ffunction-sections -fdata-sections -flto -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
+	${CC} $(CPPFLAGS) -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -mmcu=atmega328p -MD -Os -ffunction-sections -fdata-sections -flto -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
 
 ${OBJECTDIR}/${IMAGE_TYPE}/%.p1 : %.c
 	@${MKDIR} "${OBJECTDIR}/${IMAGE_TYPE}/src"
-	${MP_CC} $(MP_EXTRA_CC_PRE) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) $(COMPARISON_BUILD)  -std=c99 -gcoff -o $@ -c $<
-	@${FIXDEPS} $(patsubst %.p1,%.d,$@) $(SILENT) -rsi ${MP_CC_DIR}../ 
+	${CC} $(CPPFLAGS) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) $(COMPARISON_BUILD)  -std=c99 -gcoff -o $@ -c $<
+	@${FIXDEPS} $(patsubst %.p1,%.d,$@) $(SILENT) -rsi ${CC_DIR}../ 
 
 clean:
 	@rm -rf $(OBJECTDIR)
