@@ -17,6 +17,8 @@
       <itemPath>include/onewire.h</itemPath>
       <itemPath>include/i2c-eeprom.h</itemPath>
       <itemPath>include/config.h</itemPath>
+      <itemPath>include/hw-avr.h</itemPath>
+      <itemPath>include/hw-pic.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
