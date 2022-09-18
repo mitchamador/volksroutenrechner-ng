@@ -421,9 +421,9 @@ typedef unsigned char eeaddr_t;
 #define int_handler_timer0_begin                           \
     /* Timer0 interrupt */                                 \
     if (/*T0IE && */TMR0IF) {                              \
+        TMR0IF = 0;                                        \
 
 #define int_handler_timer0_end                             \
-        TMR0IF = 0;                                        \
     }                                                      \
 
 #else
@@ -431,9 +431,9 @@ typedef unsigned char eeaddr_t;
 #define int_handler_timer0_begin                           \
     /* Timer0 interrupt */                                 \
     if (/*T0IE && */T0IF) {                                \
+        T0IF = 0;                                          \
 
 #define int_handler_timer0_end                             \
-        T0IF = 0;                                          \
     }                                                      \
 
 #endif
@@ -443,10 +443,10 @@ typedef unsigned char eeaddr_t;
 #define int_handler_timer1_begin                           \
     /* Timer1 interrupt */                                 \
     if (/*CCP2IE && */CCP2IF) {                            \
-        
-#define int_handler_timer1_end                             \
         /* Reset the interrupt flag */                     \
         CCP2IF = 0;                                        \
+        
+#define int_handler_timer1_end                             \
     }                                                      \
 
 #elif defined(_16F1936) || defined(_16F1938)
@@ -454,10 +454,10 @@ typedef unsigned char eeaddr_t;
 #define int_handler_timer1_begin                           \
     /* Timer1 interrupt */                                 \
     if (/*CCP5IE && */CCP5IF) {                            \
-        
-#define int_handler_timer1_end                             \
         /* Reset the interrupt flag */                     \
         CCP5IF = 0;                                        \
+        
+#define int_handler_timer1_end                             \
     }                                                      \
 
 #endif
@@ -465,10 +465,10 @@ typedef unsigned char eeaddr_t;
 #define int_handler_adc_begin                              \
     /* ADC interrupt */                                    \
     if (/*ADIE && */ADIF) {                                \
-    
-#define int_handler_adc_end                                \
         /* Reset the interrupt flag */                     \
         ADIF = 0;                                          \
+    
+#define int_handler_adc_end                                \
     }                                                      \
 
 #else

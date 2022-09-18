@@ -84,9 +84,9 @@ typedef uint16_t eeaddr_t;
 #if defined(PROTEUS_DEBUG)
 
 #define int_handler_timer1_begin ISR(TIMER1_COMPA_vect) {   \
+      TIFR1 = (1 << OCF1B);                                 \
 
-#define int_handler_timer1_end     TIFR1 = (1 << OCF1B);    \
-                               }                            \
+#define int_handler_timer1_end }                            \
 
 #else
 
