@@ -31,19 +31,19 @@
 // simple checking time difference (decrease memory usage)
 //#define SIMPLE_TRIPC_TIME_CHECK
 // auto calculate day of week
-#define NO_AUTO_DAY_OF_WEEK
+//#define NO_AUTO_DAY_OF_WEEK
 // min speed settings
 //#define NO_MIN_SPEED_CONFIG
 // speed 0-100 measurement only
-#define SIMPLE_ACCELERATION_MEASUREMENT
+#define NO_EXTENDED_ACCELERATION_MEASUREMENT
 // disable all service counters' support
 //#define NO_SERVICE_COUNTERS
 // disable service counters' configuration and checking
 #define NO_SERVICE_COUNTERS_CHECKS
 // journal trip
-#define NO_JOURNAL_SUPPORT
+#define NO_JOURNAL
 // disable temperature support
-//#define NO_TEMPERATURE_SUPPORT
+//#define NO_TEMPERATURE
 // ds18b20 configuration
 //#define NO_DS18B20_CONFIG
 // extended ds18b20 configuration
@@ -55,24 +55,26 @@
 // use ds18b20 temp sensors
 //#define NO_DS18B20
 // support for prev key for legacy hw
-#define NO_KEY3_SUPPORT
+#define NO_KEY3
+// voltage min/max
+#define NO_MIN_MAX_VOLTAGES
 // no fuel tank support
-#define NO_FUEL_TANK_SUPPORT
+#define NO_FUEL_TANK
 #endif /* _16F876A */
 
 #if defined(_16F1936)
 // simple adc handler
 #define SIMPLE_ADC
 // speed 0-100 measurement only
-//#define SIMPLE_ACCELERATION_MEASUREMENT
+#define NO_EXTENDED_ACCELERATION_MEASUREMENT
 // disable all service counters' support
 //#define NO_SERVICE_COUNTERS
 // disable service counters' configuration and checking
 #define NO_SERVICE_COUNTERS_CHECKS
 // journal trip
-#define NO_JOURNAL_SUPPORT
+#define NO_JOURNAL
 // disable temperature support
-//#define NO_TEMPERATURE_SUPPORT
+//#define NO_TEMPERATURE
 // ds18b20 configuration
 //#define NO_DS18B20_CONFIG
 // extended ds18b20 configuration
@@ -84,14 +86,14 @@
 // use ds18b20 temp sensors
 //#define NO_DS18B20
 // support for prev key for legacy hw
-#define NO_KEY3_SUPPORT
+#define NO_KEY3
 // no fuel tank support
-#define NO_FUEL_TANK_SUPPORT
+#define NO_FUEL_TANK
 #endif /* _16F1936 */
 
 #if defined(_16F1938) || defined(_18F252)
 // support for prev key for legacy hw
-#define NO_KEY3_SUPPORT
+#define NO_KEY3
 #endif /* _16F1938 */
 
 #else
@@ -101,7 +103,7 @@
 // end of configuration
 
 // disable temperature support
-#if !defined(NO_TEMPERATURE_SUPPORT)
+#if !defined(NO_TEMPERATURE)
 
 // use temp sensor from ds3231
 #ifndef NO_DS3231_TEMP
@@ -133,7 +135,7 @@
 
 #endif /* DS18B20_CONFIG */
 
-#endif /* !NO_TEMPERATURE_SUPPORT */
+#endif /* !NO_TEMPERATURE */
 
 // disable all service counters' support
 #ifdef NO_SERVICE_COUNTERS
@@ -154,7 +156,7 @@
 #define SOUND_SUPPORT
 #endif
 
-#ifndef NO_JOURNAL_SUPPORT
+#ifndef NO_JOURNAL
 #define JOURNAL_SUPPORT
 #endif
 
@@ -168,18 +170,30 @@
 #define MIN_SPEED_CONFIG
 #endif
 
-#ifndef NO_KEY3_SUPPORT
+// key3 support
+#ifndef NO_KEY3
 #define KEY3_SUPPORT
 #endif
 
+// extended acceleration measurement
+#ifndef NO_EXTENDED_ACCELERATION_MEASUREMENT
+#define EXTENDED_ACCELERATION_MEASUREMENT
+#endif
+
+// no fuel tank support with simple adc handler
 #if defined(SIMPLE_ADC) && defined(FUEL_TANK_SUPPORT)
 #undef FUEL_TANK_SUPPORT
 #endif
 
 // fuel tank and continuous fuel/speed support
-#ifndef NO_FUEL_TANK_SUPPORT
+#ifndef NO_FUEL_TANK
 //#define FUEL_TANK_SUPPORT
 #define CONTINUOUS_DATA_SUPPORT
+#endif
+
+// voltages min/max 
+#ifndef NO_MIN_MAX_VOLTAGES
+#define MIN_MAX_VOLTAGES_SUPPORT
 #endif
 
 #endif	/* CONFIG_H */

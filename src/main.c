@@ -28,19 +28,14 @@ volatile uint8_t adc_key;
 #define KEY2_PRESSED (adc_key == ADC_KEY_OK)
 #define KEY3_PRESSED (adc_key == ADC_KEY_PREV)
 
-#define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0 && key3_press == 0)
-#define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0; key3_longpress = 0;
+#endif
 
-#else
-
-#ifdef KEY3_SUPPORT
+#if defined(KEY3_SUPPORT) || defined(ADC_BUTTONS)
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0 && key3_press == 0)
 #define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0; key3_longpress = 0
 #else
 #define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0)
 #define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
-#endif
-
 #endif
 
 // key variables and flags
@@ -66,7 +61,7 @@ volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, d
 
 // acceleration measurement flags and variables
 volatile __bit accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl, accel_meas_final_fl, _accel_meas_exit;
-#ifndef SIMPLE_ACCELERATION_MEASUREMENT
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
 volatile uint16_t accel_meas_lower_const;
 #endif
 volatile uint16_t accel_meas_upper_const, accel_meas_timer, accel_meas_speed;
@@ -76,13 +71,11 @@ volatile uint8_t accel_meas_main_timer_ofl;
 volatile uint16_t kmh_tmp, fuel_tmp;
 volatile uint16_t kmh, fuel;
 
-typedef struct {
-    uint16_t current;
-    uint16_t min;
-    uint16_t max;
-} adc_voltage_t;
-
+#ifdef MIN_MAX_VOLTAGES_SUPPORT
 volatile adc_voltage_t adc_voltage = {0, ADC_MAX, ADC_MIN};
+#else
+volatile adc_voltage_t adc_voltage = {0};
+#endif
 
 volatile uint24_t taho, taho_main_timer_ticks;
 volatile uint16_t taho_main_timer_prev, main_timer;
@@ -106,16 +99,20 @@ uint16_t temps[4] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS
 
 #ifdef SOUND_SUPPORT
 
-volatile int8_t buzzer_mode_value = BUZZER_NONE;
 volatile __bit buzzer_fl, buzzer_init_fl;
+static __bit buzzer_snd_fl, buzzer_repeat_fl;
+static uint8_t buzzer_counter_r;
+static uint8_t buzzer_counter, buzzer_counter_01sec;
 
-buzzer_t *buzzer_mode;
+buzzer_mode_t *buzzer_mode;
 
-buzzer_t buzzer[3] = {
+buzzer_mode_t buzzer_mode_array[3] = {
     {1,1,1}, // BUZZER_KEY
     {1,4,1}, // BUZZER_LONG_KEY
     {3,3,2}  // BUZZER_WARN
 };
+
+volatile int8_t buzzer_mode_index = BUZZER_NONE;
 
 #endif
 
@@ -145,20 +142,25 @@ void screen_max(void);
 void screen_tripA(void);
 void screen_tripB(void);
 void screen_time(void);
-#ifdef SERVICE_COUNTERS_SUPPORT
 void screen_service_counters(void);
-#endif
-#ifdef JOURNAL_SUPPORT
 void screen_journal_viewer(void);
-#endif
 
 // max screen in drive mode
-#define DRIVE_MODE_MAX 2
+typedef enum {
+    drive_mode_screen_main,
+    drive_mode_screen_tripC,
+#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
+    drive_mode_screen_misc,
+#endif
+    drive_mode_screen_max
+} drive_mode_screens;
 
 const screen_item_t items_main[] = {
     {screen_main},
     {screen_tripC},
+#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
     {screen_misc},
+#endif
     {screen_tripA},
     {screen_tripB},
     {screen_time},
@@ -174,16 +176,10 @@ void config_screen_fuel_constant(void);
 void config_screen_vss_constant(void);
 void config_screen_total_trip(void);
 void config_screen_settings_bits(void);
-#if defined(DS18B20_CONFIG)
 void config_screen_temp_sensors(void);
-#endif
-#ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
 void config_screen_service_counters(void);
-#endif
 void config_screen_ua_const(void);
-#ifdef MIN_SPEED_CONFIG
 void config_screen_min_speed(void);
-#endif
 void config_screen_version(void);
 
 const config_screen_item_t items_service[] = {
@@ -213,12 +209,15 @@ __bit item_skip;
 #define CONFIG_SCREEN_MASK_ITEM  0x0F
 
 uint8_t request_screen(char *);
+
 void config_screen(uint8_t c_item);
 
-#ifdef JOURNAL_SUPPORT
+void read_rotary(void);
+
+uint16_t get_speed(uint16_t);
+
 void journal_save_trip(trip_t *trip);
 void journal_save_accel(uint8_t index);
-#endif
 
 void save_eeprom(void);
 void save_eeprom_trips(void);
@@ -226,13 +225,13 @@ void save_eeprom_config(void);
 
 uint16_t calc_filtered_value(filtered_value_t *, uint16_t);
 
-#if !defined(SIMPLE_ADC)
-
-uint16_t adc_value;
-
 void adc_handler_voltage(filtered_value_t *f);
 void adc_handler_buttons(filtered_value_t *f);
 void adc_handler_fuel_tank(filtered_value_t *f);
+
+#if !defined(SIMPLE_ADC)
+
+uint16_t adc_value;
 
 #if defined(ADC_BUTTONS) || defined(FUEL_TANK_SUPPORT)
 
@@ -258,8 +257,6 @@ adc_item_t adc_item = {adc_handler_voltage, {0, 1 | FILTERED_VALUE_FIRST_SAMPLE}
 
 #endif
 
-void read_rotary(void);
-
 #ifdef CONTINUOUS_DATA_SUPPORT
 continuous_data_t cd;
 __bit continuous_data_fl, drive_min_cd_speed_fl;
@@ -268,8 +265,6 @@ uint16_t cd_speed;
 void cd_init(void);
 void cd_increment_filter(void);
 #endif
-
-uint16_t get_speed(uint16_t);
 
 // interrupt routines starts
 
@@ -298,6 +293,7 @@ int_handler_GLOBAL_begin
         capture_fuel(main_timer);
 #endif
 #endif
+
         // fuel injector
         if (FUEL_ACTIVE) {
             if (fuel_fl == 0) {
@@ -353,6 +349,7 @@ int_handler_GLOBAL_begin
         capture_speed(main_timer);
 #endif
 #endif    
+
         // speed sensor
         if (TX_ACTIVE) {
             if (odom_fl == 0) {
@@ -369,7 +366,7 @@ int_handler_GLOBAL_begin
                     } else {
                         accel_meas_speed = accel_meas_main_timer_ticks + main_timer - accel_meas_main_timer_prev;
                         accel_meas_drive_fl = 1;
-#ifndef SIMPLE_ACCELERATION_MEASUREMENT
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
                         if (accel_meas_timer_fl == 0 && (accel_meas_speed <= accel_meas_lower_const || accel_meas_lower_const == 0)) {
                             accel_meas_timer_fl = 1;
                         }
@@ -392,36 +389,6 @@ int_handler_GLOBAL_begin
 
                 kmh_tmp++;
 
-#ifndef ALT_KMH_INCREMENT
-                // main odometer
-                if (++config.odo_temp >= config.odo_const) {
-                    config.odo_temp = 0;
-                    // increment odometer counters
-                    config.odo++;
-                    services.srv[0].counter++;
-                    services.srv[1].counter++;
-                    services.srv[2].counter++;
-                    services.srv[3].counter++;
-                }
-
-                // trip A
-                if (++trips.tripA.odo_temp >= config.odo_const) {
-                    trips.tripA.odo_temp = 0;
-                    trips.tripA.odo++;
-                }
-
-                // trip B
-                if (++trips.tripB.odo_temp >= config.odo_const) {
-                    trips.tripB.odo_temp = 0;
-                    trips.tripB.odo++;
-                }
-
-                // trip C
-                if (++trips.tripC.odo_temp >= config.odo_const) {
-                    trips.tripC.odo_temp = 0;
-                    trips.tripC.odo++;
-                }
-#endif
             }
         } else {
             odom_fl = 0;
@@ -567,9 +534,9 @@ int_handler_GLOBAL_begin
         if (key_pressed != 0 || key_longpressed != 0) {
 #ifdef SOUND_SUPPORT
             if (key_pressed != 0) {
-                buzzer_mode_value = BUZZER_KEY;
+                buzzer_mode_index = BUZZER_KEY;
             } else {
-                buzzer_mode_value = BUZZER_LONGKEY;
+                buzzer_mode_index = BUZZER_LONGKEY;
             }
 #endif
             key_pressed = 0; key_longpressed = 0; screen_refresh = 1;
@@ -616,40 +583,40 @@ int_handler_GLOBAL_begin
             fuel = fuel_tmp;
             fuel_tmp = 0;
 
-#ifdef ALT_KMH_INCREMENT
-            // main odometer
-            config.odo_temp += kmh_tmp;
-            if (config.odo_temp >= config.odo_const) {
-                config.odo_temp -= config.odo_const;
-                // increment odometer counters
-                config.odo++;
-                services.srv[0].counter++;
-                services.srv[1].counter++;
-                services.srv[2].counter++;
-                services.srv[3].counter++;
-            }
+            if (kmh_tmp != 0) {
+                // main odometer
+                config.odo_temp += kmh_tmp;
+                if (config.odo_temp >= config.odo_const) {
+                    config.odo_temp -= config.odo_const;
+                    // increment odometer counters
+                    config.odo++;
+                    services.srv[0].counter++;
+                    services.srv[1].counter++;
+                    services.srv[2].counter++;
+                    services.srv[3].counter++;
+                }
 
-            // trip A
-            trips.tripA.odo_temp += kmh_tmp;
-            if (trips.tripA.odo_temp >= config.odo_const) {
-                trips.tripA.odo_temp -= config.odo_const;
-                trips.tripA.odo++;
-            }
+                // trip A
+                trips.tripA.odo_temp += kmh_tmp;
+                if (trips.tripA.odo_temp >= config.odo_const) {
+                    trips.tripA.odo_temp -= config.odo_const;
+                    trips.tripA.odo++;
+                }
 
-            // trip B
-            trips.tripB.odo_temp += kmh_tmp;
-            if (trips.tripB.odo_temp >= config.odo_const) {
-                trips.tripB.odo_temp -= config.odo_const;
-                trips.tripB.odo++;
-            }
+                // trip B
+                trips.tripB.odo_temp += kmh_tmp;
+                if (trips.tripB.odo_temp >= config.odo_const) {
+                    trips.tripB.odo_temp -= config.odo_const;
+                    trips.tripB.odo++;
+                }
 
-            // trip C
-            trips.tripC.odo_temp += kmh_tmp;
-            if (trips.tripC.odo_temp >= config.odo_const) {
-                trips.tripC.odo_temp -= config.odo_const;
-                trips.tripC.odo++;
+                // trip C
+                trips.tripC.odo_temp += kmh_tmp;
+                if (trips.tripC.odo_temp >= config.odo_const) {
+                    trips.tripC.odo_temp -= config.odo_const;
+                    trips.tripC.odo++;
+                }
             }
-#endif   
 
             kmh = kmh_tmp;
             kmh_tmp = 0;
@@ -678,16 +645,13 @@ int_handler_GLOBAL_begin
         }
 
 #ifdef SOUND_SUPPORT
-        static __bit buzzer_snd_fl, buzzer_repeat_fl;
-        static uint8_t buzzer_counter_r;
-        static uint8_t buzzer_counter, buzzer_counter_01sec;
 
-        if (buzzer_mode_value != BUZZER_NONE) {
-            if (config.settings.key_sound != 0 || buzzer_mode_value == BUZZER_WARN) {
-                buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer[buzzer_mode_value];
+        if (buzzer_mode_index != BUZZER_NONE) {
+            if (config.settings.key_sound != 0 || buzzer_mode_index == BUZZER_WARN) {
+                buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer_mode_array[buzzer_mode_index];
                 buzzer_counter_01sec = 1;
             }
-            buzzer_mode_value = BUZZER_NONE;
+            buzzer_mode_index = BUZZER_NONE;
         }
 
         if (buzzer_fl != 0) {
@@ -726,7 +690,8 @@ int_handler_GLOBAL_begin
                 buzzer_counter--;
             }
         }
-#endif                
+#endif
+
     int_handler_main_timer_overflow_end
 
     int_handler_adc_begin
@@ -735,11 +700,13 @@ int_handler_GLOBAL_begin
 
         adc_voltage.current = adc_read_value();
 
-        if (adc_voltage.current < adc_voltage.min) {
+#ifdef MIN_MAX_VOLTAGES_SUPPORT
+    if (adc_voltage.current < adc_voltage.min) {
             adc_voltage.min = adc_voltage.current;
         } else if (adc_voltage.current > adc_voltage.max) {
             adc_voltage.max = adc_voltage.current;
         }
+#endif
 
         // read power supply status
         if (adc_voltage.current > THRESHOLD_VOLTAGE_ADC_VALUE) {
@@ -769,6 +736,7 @@ int_handler_GLOBAL_begin
 #else
         adc_item.handle(&adc_item.f);
 #endif
+
 #endif
 
     int_handler_adc_end
@@ -783,11 +751,13 @@ void adc_handler_voltage(filtered_value_t *f) {
     adc_voltage.current = calc_filtered_value(f, adc_value);
     //adc_voltage.current = adc_value;
 
+#ifdef MIN_MAX_VOLTAGES_SUPPORT
     if (adc_voltage.current < adc_voltage.min) {
         adc_voltage.min = adc_voltage.current;
     } else if (adc_voltage.current > adc_voltage.max) {
         adc_voltage.max = adc_voltage.current;
     }
+#endif
 
     if (adc_voltage.current > THRESHOLD_VOLTAGE_ADC_VALUE) {
         acc_power_off_fl = 0;
@@ -828,7 +798,6 @@ void adc_handler_fuel_tank(filtered_value_t *f) {
 
 #endif
 
-#if 1
 uint16_t calc_filtered_value(filtered_value_t *f, uint16_t v) {
     if (f->filter == 0) {
         f->tmp = v;
@@ -845,31 +814,6 @@ uint16_t calc_filtered_value(filtered_value_t *f, uint16_t v) {
         return (uint16_t) ((f->tmp + (uint16_t) (1 << (f->filter - 1))) >> f->filter);
     }
 }
-#else
-uint16_t calc_filtered_value(filtered_value_t *f, uint16_t v) {
-    uint32_t tmp = f->tmp;
-    uint8_t filter = f->filter;
-    if (filter == 0) {
-        tmp = v;
-    } else {
-        if ((filter & FILTERED_VALUE_FIRST_SAMPLE) != 0) {
-            filter &= ~FILTERED_VALUE_FIRST_SAMPLE;
-            if (filter != 0) {
-                tmp = v << filter;
-            }
-        } else {
-            tmp = tmp - ((tmp + (uint16_t) (1 << (filter - 1))) >> filter) + v;
-        }
-    }
-    f->filter = filter;
-    f->tmp = tmp;
-    if (filter == 0) {
-        return (uint16_t) tmp;
-    } else {
-        return (uint16_t) ((tmp + (uint16_t) (1 << (filter - 1))) >> filter);
-    }
-}
-#endif
 
 #ifdef ENCODER_SUPPORT
 // A valid CW or CCW move returns 1, invalid returns 0.
@@ -897,7 +841,7 @@ void read_rotary() {
             if (key1_press != 0 || key3_press != 0) {
                 key_pressed = 1;
 #ifdef SOUND_SUPPORT
-                buzzer_mode_value = BUZZER_KEY;
+                buzzer_mode_index = BUZZER_KEY;
 #endif
             }
         }
@@ -1562,80 +1506,71 @@ unsigned char select_param(unsigned char* param, unsigned char total) {
     return *param;
 }
 
-#define NUM_PARAMS 9
+typedef enum {
+#if defined(TEMPERATURE_SUPPORT)
+    selected_param_temp,
+#endif
+    selected_param_voltage,
+    selected_param_trip_time,
+    selected_param_trip_odometer,
+    selected_param_trip_average_fuel,
+    selected_param_trip_average_speed,
+    selected_param_trip_total_fuel,
+    selected_param_max_speed,
+    selected_param_fuel_duration,
+    selected_param_total
+} selected_param_t;
 
 void print_selected_param1(align_t align) {
-    switch (select_param(&main_param, NUM_PARAMS)) {
-        case 0:
+    switch (select_param(&main_param, selected_param_total)) {
 #if defined(TEMPERATURE_SUPPORT)
+        case selected_param_temp:
             print_temp((config.settings.show_inner_temp != 0 ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, align);
             break;
-#else
-            main_param++;
 #endif            
-        case 1:
+        case selected_param_voltage:
             print_voltage((uint16_t *) &adc_voltage.current, POS_NONE, align);
             break;
-        case 2:
+        case selected_param_trip_time:
             print_trip_time(&trips.tripC, align);
             break;
-        case 3:
+        case selected_param_trip_odometer:
             print_trip_odometer(&trips.tripC, align);
             break;
-        case 4:
+        case selected_param_trip_average_fuel:
             print_trip_average_fuel(&trips.tripC, align);
             break;
-        case 5:
+        case selected_param_trip_average_speed:
             print_trip_average_speed(&trips.tripC, align);
             break;
-        case 6:
+        case selected_param_trip_total_fuel:
             print_trip_total_fuel(&trips.tripC, align);
             break;
-        case 7:
+        case selected_param_max_speed:
             print_speed(trips.tripC_max_speed, print_symbols_str(0, POS_MAX), align);
             break;
-        case 8:
+        case selected_param_fuel_duration:
             print_fuel_duration(align);
             break;
     }
 }
 
-#ifdef SIMPLE_ACCELERATION_MEASUREMENT
-void acceleration_measurement(void) {
-#else
-// 0 - 100
-#define ACCEL_MEAS_LOWER_0 0
-#define ACCEL_MEAS_UPPER_0 100
-// 0 - 60    
-#define ACCEL_MEAS_LOWER_1 0
-#define ACCEL_MEAS_UPPER_1 60
-// 60 - 100
-#define ACCEL_MEAS_LOWER_2 60
-#define ACCEL_MEAS_UPPER_2 100
-// 80 - 120
-#define ACCEL_MEAS_LOWER_3 80
-#define ACCEL_MEAS_UPPER_3 120
-    
-typedef struct {
-    uint32_t lower;
-    uint32_t upper;
-} accel_meas_limits_t;
-
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
 accel_meas_limits_t accel_meas_limits[4] = {
     {ACCEL_MEAS_LOWER_0,              speed_const(ACCEL_MEAS_UPPER_0)},
     {ACCEL_MEAS_LOWER_1,              speed_const(ACCEL_MEAS_UPPER_1)},
     {speed_const(ACCEL_MEAS_LOWER_2), speed_const(ACCEL_MEAS_UPPER_2)},
     {speed_const(ACCEL_MEAS_LOWER_3), speed_const(ACCEL_MEAS_UPPER_3)},
 };
+#endif
 
 void acceleration_measurement(uint8_t index) {
-#endif
     LCD_CMD(0x80);
     LCD_Write_String16(buf, strcpy2(buf, (char *) &accel_meas_wait_string, 0), ALIGN_CENTER);
 
     accel_meas_fl = 0; accel_meas_ok_fl = 0; accel_meas_timer = 0; accel_meas_final_fl = 0; _accel_meas_exit = 0;
 
-#ifndef SIMPLE_ACCELERATION_MEASUREMENT
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
     accel_meas_lower_const = (unsigned short) (accel_meas_limits[index].lower / config.odo_const);
     accel_meas_upper_const = (unsigned short) (accel_meas_limits[index].upper / config.odo_const);
 #endif
@@ -1690,15 +1625,15 @@ void acceleration_measurement(uint8_t index) {
                     }
 #ifdef JOURNAL_SUPPORT
                     else {
-#ifdef SIMPLE_ACCELERATION_MEASUREMENT
-                        journal_save_accel(0);
-#else
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
                         journal_save_accel(index);
+#else
+                        journal_save_accel(0);
 #endif
                     }
 #endif
 #ifdef SOUND_SUPPORT
-                    buzzer_mode_value = BUZZER_WARN;
+                    buzzer_mode_index = BUZZER_WARN;
 #endif
                     timeout_timer1 = 10; while (timeout_timer1 != 0 && NO_KEY_PRESSED);
                     _accel_meas_exit = 1;
@@ -1710,7 +1645,7 @@ void acceleration_measurement(uint8_t index) {
     clear_keys_state();
 }
 
-#ifndef SIMPLE_ACCELERATION_MEASUREMENT
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
 void select_acceleration_measurement() {
     clear_keys_state();
 
@@ -1794,13 +1729,13 @@ void screen_main(void) {
 #endif        
     }
 
-#ifdef SIMPLE_ACCELERATION_MEASUREMENT
-    if (drive_fl == 0 && motor_fl != 0 && request_screen((char *) &accel_meas_string) != 0) {
-        acceleration_measurement();
-    }
-#else
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
     if (drive_fl == 0 && motor_fl != 0 && key2_longpress != 0) {
         select_acceleration_measurement();
+    }
+#else
+    if (drive_fl == 0 && motor_fl != 0 && request_screen((char *) &accel_meas_string) != 0) {
+        acceleration_measurement(0);
     }
 #endif        
 }
@@ -1854,20 +1789,29 @@ void screen_tripB() {
     screen_trip(&trips.tripB, TRIPS_POS_B);
 }
 
-#if !defined(CONTINUOUS_DATA_SUPPORT)
-#define SCREEN_MISC_MAX 2
-#else
-#define SCREEN_MISC_MAX 3
+#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
+
+typedef enum {
+#if defined(TEMPERATURE_SUPPORT)
+    screen_misc_temperature,
 #endif
+#if defined(MIN_MAX_VOLTAGES_SUPPORT)
+    screen_misc_voltages,
+#endif
+#if defined(CONTINUOUS_DATA_SUPPORT)
+    screen_misc_cd,
+#endif
+    screen_misc_max
+} screen_misc_items;
 
 void screen_misc() {
     if (config.settings.show_misc_screen == 0) {
         item_skip = 1;
     } else {
         LCD_CMD(0x80);
-        switch(select_param(&misc_param, SCREEN_MISC_MAX)) {
-            case 0:
+        switch(select_param(&misc_param, screen_misc_max)) {
 #if defined(TEMPERATURE_SUPPORT)
+            case screen_misc_temperature:
                 // show temp sensors config on ok key longpress
 #if defined(DS18B20_CONFIG)
                 if (key2_longpress != 0) {
@@ -1893,10 +1837,9 @@ void screen_misc() {
                     }
                 }
                 break;
-#else
-                misc_param++;
 #endif
-            case 1:
+#if defined(MIN_MAX_VOLTAGES_SUPPORT)
+            case screen_misc_voltages:
                 if (request_screen((char *) &reset_string) != 0) {
                     adc_voltage.min = adc_voltage.max = adc_voltage.current;
                 }
@@ -1907,8 +1850,9 @@ void screen_misc() {
                 print_voltage((uint16_t*) &adc_voltage.min, POS_MIN, ALIGN_LEFT);
                 print_voltage((uint16_t*) &adc_voltage.max, POS_MAX, ALIGN_RIGHT);
                 break;
+#endif
 #if defined(CONTINUOUS_DATA_SUPPORT)
-            case 2:
+            case screen_misc_cd:
                 if (request_screen((char *) &reset_string) != 0) {
                     cd.filter = 0;
                     cd_init();
@@ -1935,11 +1879,13 @@ void screen_misc() {
                     _print(len, POS_KMH, ALIGN_LEFT);
                     _print(len, POS_LKM, ALIGN_RIGHT);
                 }
+                break;
 #endif
         }
 
     }
 }
+#endif
 
 #ifdef SERVICE_COUNTERS_SUPPORT
 /**
@@ -2119,10 +2065,7 @@ void journal_save_accel(uint8_t index) {
     accel_item.status = JOURNAL_ITEM_OK;
     accel_item.time = accel_meas_timer;
 
-#ifdef SIMPLE_ACCELERATION_MEASUREMENT
-    accel_item.lower = 0;
-    accel_item.upper = 100;
-#else
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
     switch (index) {
         case 0:
             accel_item.lower = ACCEL_MEAS_LOWER_0;
@@ -2141,6 +2084,9 @@ void journal_save_accel(uint8_t index) {
             accel_item.upper = ACCEL_MEAS_UPPER_3;
             break;
     }
+#else
+    accel_item.lower = 0;
+    accel_item.upper = 100;
 #endif
 
     fill_trip_time(&accel_item.start_time);
@@ -2657,7 +2603,7 @@ void print_warning_service_counters(unsigned char warn) {
     for (i = 0; i < 5; i++) {
         if ((warn & 0x01) != 0) {
 #ifdef SOUND_SUPPORT
-            buzzer_mode_value = BUZZER_WARN;
+            buzzer_mode_index = BUZZER_WARN;
 #endif
             LCD_CMD(0x80);
             LCD_Write_String16(buf, strcpy2(buf, (char*) &warning_string, 0), ALIGN_CENTER);
@@ -2806,7 +2752,11 @@ void set_consts() {
     service_param = config.selected_param.service_param;
 #endif
 
-#ifdef SIMPLE_ACCELERATION_MEASUREMENT
+#ifndef MIN_SPEED_CONFIG
+    config.selected_param.min_speed = MIN_SPEED_DEFAULT;
+#endif
+
+#ifndef EXTENDED_ACCELERATION_MEASUREMENT
     accel_meas_upper_const = (unsigned short) (speed_const(100) / config.odo_const);
 #endif
 
@@ -3064,7 +3014,7 @@ void main() {
         
         if (config_mode == 0) {
             if (drive_min_speed_fl != 0) {
-                max_item = DRIVE_MODE_MAX;
+                max_item = drive_mode_screen_max - 1;
             } else {
                 max_item = sizeof (items_main) / sizeof (screen_item_t) - 1;
             }
@@ -3090,7 +3040,7 @@ void main() {
             config_screen(c_item);
         } else {
             do {
-                if (drive_min_speed_fl != 0 && c_item > DRIVE_MODE_MAX) {
+                if (drive_min_speed_fl != 0 && c_item > (drive_mode_screen_max - 1)) {
                     c_item = 0;
                     //LCD_Clear();
                 }

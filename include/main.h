@@ -37,6 +37,9 @@
 // time with power supply measurements lower than threshold before shutdown
 #define SHUTDOWN ((uint8_t) (0.25f / TIMER_MAIN_PERIOD))
 
+// default min speed for drive mode (km/h)
+#define MIN_SPEED_DEFAULT 5
+
 //show average speed (or fuel consumption) after distance AVERAGE_MIN_DIST * 0.1 km
 #define AVERAGE_MIN_DIST 3
 
@@ -171,6 +174,32 @@ typedef struct {
     srv_t srv[4];                   // 4 * 8 bytes
 } services_t;                       // 42 bytes total (48 bytes eeprom block)
 
+typedef struct {
+    uint16_t current;
+#ifdef MIN_MAX_VOLTAGES_SUPPORT
+    uint16_t min;
+    uint16_t max;
+#endif
+} adc_voltage_t;
+
+// 0 - 100
+#define ACCEL_MEAS_LOWER_0 0
+#define ACCEL_MEAS_UPPER_0 100
+// 0 - 60    
+#define ACCEL_MEAS_LOWER_1 0
+#define ACCEL_MEAS_UPPER_1 60
+// 60 - 100
+#define ACCEL_MEAS_LOWER_2 60
+#define ACCEL_MEAS_UPPER_2 100
+// 80 - 120
+#define ACCEL_MEAS_LOWER_3 80
+#define ACCEL_MEAS_UPPER_3 120
+
+typedef struct {
+    uint32_t lower;
+    uint32_t upper;
+} accel_meas_limits_t;
+
 #define EEPROM_CONFIG_ADDRESS           0
 #define EEPROM_TRIPS_ADDRESS            (((sizeof(config_t) - 1) / 8 + 1) * 8)
 #define EEPROM_SERVICES_ADDRESS         (((sizeof(config_t) - 1) / 8 + 1) * 8) + (((sizeof(trips_t) - 1) / 8 + 1) * 8)
@@ -209,7 +238,7 @@ typedef struct {
     uint8_t counter;    // number of repeats
     uint8_t sound;      // sound on duration  (*0.1ms)
     uint8_t pause;      // sound off duration (*0.1ms)
-} buzzer_t;
+} buzzer_mode_t;
 
 #define FILTERED_VALUE_FIRST_SAMPLE 0x80
 

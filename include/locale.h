@@ -116,7 +116,9 @@ typedef enum {
 
 #define SETTING_PAIRPAR_INJ             "\0pair/par inj"
 
+#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
 #define SETTING_SHOW_MISC_SCREEN        "\0misc screen"
+#endif
 
 #define SETTING_MH_RPM                  "\0mh rpm"
 
@@ -256,8 +258,10 @@ typedef enum {
 // "пар. впрыск"
 #define SETTING_PAIRPAR_INJ             "\0\xBE\x61\x70. \xB3\xBE\x70\xC3\x63\xBA"
 
+#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
 // "доп. экран"
 #define SETTING_SHOW_MISC_SCREEN        "\0\xE3\x6F\xBE. \xC5\xBA\x70\x61\xBD"
+#endif
 
 // "м/ч об/мин"
 #define SETTING_MH_RPM                  "\0\xBC/\xC0 \x6F\xB2/\xBC\xB8\xBD"
@@ -395,6 +399,10 @@ typedef enum {
 #define SETTING_INOUT_TEMP              "\0"
 #endif
 
+#ifndef SETTING_SHOW_MISC_SCREEN
+#define SETTING_SHOW_MISC_SCREEN        "\0"
+#endif
+
 #define SETTINGS_BITS_ARRAY             \
             SETTING_PAIRPAR_INJ         \
             SETTING_SHOW_MISC_SCREEN    \
@@ -430,11 +438,11 @@ PROGMEM const char voltage_string[] = VOLTAGE;
 PROGMEM const char continuous_data_string[] = CONTINUOUS_DATA;
 #endif
 
-#ifdef SIMPLE_ACCELERATION_MEASUREMENT
-PROGMEM const char accel_meas_string[] = ACCEL_MEAS_SIMPLE;
-#else
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
 PROGMEM const char accel_meas_array[] = ACCEL_MEAS_ARRAY;
 PROGMEM const char accel_meas_timing_string[] = ACCEL_MEAS_TIMING;
+#else
+PROGMEM const char accel_meas_string[] = ACCEL_MEAS_SIMPLE;
 #endif
 
 PROGMEM const char accel_meas_wait_string[] = ACCEL_MEAS_WAIT;
