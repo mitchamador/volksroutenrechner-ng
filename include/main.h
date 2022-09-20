@@ -33,7 +33,8 @@
 #define SHORTKEY ((uint8_t) (0.5f / TIMER_MAIN_PERIOD))
 #define LONGKEY ((uint8_t) (1.0f / TIMER_MAIN_PERIOD))
 #define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / TIMER_MAIN_PERIOD))
-#define TIMER_01SEC_INTERVAL ((uint8_t) (0.1f / TIMER_MAIN_PERIOD))
+// timeout constant in 0.01 ms resolution
+#define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / TIMER_MAIN_PERIOD))
 // time with power supply measurements lower than threshold before shutdown
 #define SHUTDOWN ((uint8_t) (0.25f / TIMER_MAIN_PERIOD))
 

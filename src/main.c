@@ -659,7 +659,7 @@ int_handler_GLOBAL_begin
 
         if (buzzer_fl != 0) {
             if (--buzzer_counter_01sec == 0) {
-                buzzer_counter_01sec = TIMER_01SEC_INTERVAL;
+                buzzer_counter_01sec = INIT_TIMEOUT(0.1f);
                 if (buzzer_init_fl == 0) {
                     buzzer_init_fl = 1;
                     buzzer_repeat_fl = 1;
@@ -1587,16 +1587,16 @@ void acceleration_measurement(uint8_t index) {
     
     _memset(buf, '=', 16);
 
-    // 15 sec waiting for start
-    timeout_timer1 = 15;
+    // 16 sec waiting for start
+    timeout_timer1 = 16;
 
     timeout_timer2 = 0;
     while (_accel_meas_exit == 0 && NO_KEY_PRESSED) {
         if (timeout_timer1 != 0 && drive_fl == 0) {
             if (timeout_timer2 == 0) {
-                timeout_timer2 = (uint8_t) (TIMER_01SEC_INTERVAL * 2.5f);
+                timeout_timer2 = INIT_TIMEOUT(0.25f);
                 LCD_CMD(0xC0);
-                LCD_Write_String16(buf, (unsigned char) (timeout_timer1 / 91), ALIGN_LEFT);
+                LCD_Write_String16(buf, timeout_timer1, ALIGN_LEFT);
             }
         } else {
             if (timeout_timer1 != 0) {
@@ -1620,7 +1620,7 @@ void acceleration_measurement(uint8_t index) {
             }
 
             if (timeout_timer1 != 0 && accel_meas_ok_fl == 0) {
-                timeout_timer2 = (uint8_t) (TIMER_01SEC_INTERVAL * 2.5f); while (timeout_timer2 != 0);
+                timeout_timer2 = INIT_TIMEOUT(0.1f); while (timeout_timer2 != 0);
             } else {
                 if (accel_meas_ok_fl != 0 && accel_meas_final_fl == 0) {
                     // print final result
