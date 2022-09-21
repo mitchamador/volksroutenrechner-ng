@@ -5,10 +5,6 @@ void LCD_Write_4Bit(unsigned char data);
 #else
 void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode);
 #endif
-void LCD_Set_Cursor(unsigned char ROW, unsigned char COL);
-void LCD_Write_Char(char);
-void LCD_Write_String0_8(char*, align_t);
-void LCD_Write_String0_16(char*, align_t);
 
 #ifndef LCD_LEGACY
     unsigned char lcd_i2c_skip = 0;
@@ -71,16 +67,13 @@ void LCD_Init(void) {
 
     // LCD set custom characters
     char tbuf[8];
-    char *ptr;
 
-    for (i = 0; i < 64; i++) {
-        if ((i & 0x07) == 0) { 
-            LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
-            HW_read_eeprom_block((unsigned char*) tbuf, EEPROM_CUSTOM_CHARS_ADDRESS + i, 8);
-            ptr = (char*) tbuf;
-        }
-        LCD_Write_Char(*ptr++);
+    for (i = 0; i < 64; i = i + 8) {
+        LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
+        HW_read_eeprom_block((unsigned char*) tbuf, EEPROM_CUSTOM_CHARS_ADDRESS + i, 8);
+        LCD_Write_String(tbuf, 8, 8, ALIGN_NONE);
     }
+
 }
 
 #ifdef LCD_LEGACY
@@ -99,13 +92,6 @@ void LCD_CMD(char data) {
     LCD_Check_Busy();
 }
 
-void LCD_Write_Char(char data) {
-    RS_HIGH;
-    LCD_Write_4Bit(data);
-    LCD_delay_4bits();
-    LCD_Write_4Bit((unsigned char) (data << 4));
-    LCD_Check_Busy();
-}
 #else
 
 void LCD_Write_4Bit(unsigned char Nibble, unsigned char mode) {
@@ -126,18 +112,13 @@ void LCD_CMD(char CMD) {
     LCD_Check_Busy();
 }
 
-void LCD_Write_Char(char Data) {
-    LCD_Write_4Bit(Data & 0xF0, RS);
-    LCD_Write_4Bit((Data << 4) & 0xF0, RS);
-    LCD_Check_Busy();
-}
 #endif
 
-void __LCD_Write_String(char* Str, unsigned char len, unsigned char max, align_t align) {
+void LCD_Write_String(char* str, unsigned char len, unsigned char max, align_t align) {
     //if (align == ALIGN_NONE) return;
     
     unsigned char i;
-    unsigned char p = 0;
+    unsigned char ch;
 
     unsigned char p_lower = max - len, p_upper = max;
     if (align == ALIGN_LEFT) {
@@ -148,10 +129,21 @@ void __LCD_Write_String(char* Str, unsigned char len, unsigned char max, align_t
     p_upper = p_lower + len;
     for (i = 0; i < max; i++) {
         if (i < p_lower || i >= p_upper) {
-            LCD_Write_Char(' ');
+            ch = ' ';
         } else {
-            LCD_Write_Char(Str[p++]);
+            ch = *str++;
         }
+#ifdef LCD_LEGACY
+        RS_HIGH;
+        LCD_Write_4Bit(ch);
+        LCD_delay_4bits();
+        LCD_Write_4Bit((unsigned char) (ch << 4));
+        LCD_Check_Busy();
+#else
+        LCD_Write_4Bit(ch & 0xF0, RS);
+        LCD_Write_4Bit((ch << 4) & 0xF0, RS);
+        LCD_Check_Busy();
+#endif
     }
 }
 

@@ -42,7 +42,7 @@
 
 //---[ LCD Routines ]---
 
-// max delays for 190kHz
+// max delays for ~190kHz
 #define LCD_DELAY_CMD 53
 #define LCD_DELAY_CLEAR 2160
 
@@ -57,9 +57,6 @@ void LCD_Init(void);
 void LCD_CMD(char CMD);
 void LCD_Clear(void);
 
-#define LCD_Write_String8(Str, len, align) __LCD_Write_String(Str, len, 8, align)
-#define LCD_Write_String16(Str, len, align) __LCD_Write_String(Str, len, 16, align)
-#define LCD_Write_String(Str, len) __LCD_Write_String(Str, len, len, ALIGN_LEFT)
-void __LCD_Write_String(char*, unsigned char, unsigned char, align_t);
+void LCD_Write_String(char*, unsigned char, unsigned char, align_t);
 
 #endif

@@ -44,20 +44,20 @@
 #define NO_JOURNAL
 // disable temperature support
 //#define NO_TEMPERATURE
-// ds18b20 configuration
-//#define NO_DS18B20_CONFIG
-// extended ds18b20 configuration
-#define NO_DS18B20_CONFIG_EXT
-// show temp for sensors' configuration
-//#define DS18B20_CONFIG_SHOW_TEMP
-// use temp sensor from ds3231
-#define NO_DS3231_TEMP
 // use ds18b20 temp sensors
 //#define NO_DS18B20
+// use temp sensor from ds3231
+#define NO_DS3231_TEMP
+// ds18b20 configuration
+//#define NO_DS18B20_CONFIG
+// show temp for sensors' configuration
+//#define DS18B20_CONFIG_SHOW_TEMP
+// extended ds18b20 configuration
+#define NO_DS18B20_CONFIG_EXT
 // support for prev key for legacy hw
 #define NO_KEY3
 // voltage min/max
-#define NO_MIN_MAX_VOLTAGES
+//#define NO_MIN_MAX_VOLTAGES
 // no fuel tank support
 #define NO_FUEL_TANK
 #endif /* _16F876A */
@@ -70,23 +70,25 @@
 // disable all service counters' support
 //#define NO_SERVICE_COUNTERS
 // disable service counters' configuration and checking
-#define NO_SERVICE_COUNTERS_CHECKS
+//#define NO_SERVICE_COUNTERS_CHECKS
 // journal trip
 #define NO_JOURNAL
 // disable temperature support
 //#define NO_TEMPERATURE
 // ds18b20 configuration
+//#define NO_DS18B20
+// support for prev key for legacy hw
+//#define NO_DS3231_TEMP
+// use ds18b20 temp sensors
 //#define NO_DS18B20_CONFIG
 // extended ds18b20 configuration
 //#define NO_DS18B20_CONFIG_EXT
 // show temp for sensors' configuration
 //#define DS18B20_CONFIG_SHOW_TEMP
 // use temp sensor from ds3231
-//#define NO_DS3231_TEMP
-// use ds18b20 temp sensors
-//#define NO_DS18B20
-// support for prev key for legacy hw
 #define NO_KEY3
+// voltage min/max
+//#define NO_MIN_MAX_VOLTAGES
 // no fuel tank support
 #define NO_FUEL_TANK
 #endif /* _16F1936 */

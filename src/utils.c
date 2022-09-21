@@ -45,27 +45,6 @@ signed char bcd_subtract(unsigned char a, unsigned char b) {
     return (signed char) bcd8_to_bin(a) - (signed char) bcd8_to_bin(b);
 }
 
-char * _ultoa(char * buf, unsigned long val, unsigned int b) {
-	unsigned	long	v;
-	char		c;
-
-	v = val;
-	do {
-		v /= b;
-		buf++;
-	} while(v != 0);
-	*buf-- = 0;
-	do {
-		c = (unsigned char) (val % b);
-		val /= b;
-		if(c >= 10)
-			c += 'A'-'0'-10;
-		c += '0';
-		*buf-- = c;
-	} while(val != 0);
-	return buf;
-}
-
 unsigned long strtoul2(char * buf) {
     //return strtoul(buf, NULL, 10);
     unsigned long val = 0;
@@ -76,9 +55,27 @@ unsigned long strtoul2(char * buf) {
 }
 
 unsigned char ultoa2(char * buf, unsigned long val, unsigned char b) {
-    _ultoa(buf, val, b);
     unsigned char _len = 0;
-    while(buf[++_len] != 0);
+
+    unsigned long v;
+    char c;
+
+    v = val;
+    do {
+        v /= b;
+        buf++;
+        _len++;
+    } while (v != 0);
+    *buf-- = 0;
+    do {
+        c = (unsigned char) (val % b);
+        val /= b;
+        if (c >= 10)
+            c += 'A' - '0' - 10;
+        c += '0';
+        *buf-- = c;
+    } while (val != 0);
+    
     return _len;
 }
 
