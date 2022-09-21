@@ -57,7 +57,7 @@
 // support for prev key for legacy hw
 #define NO_KEY3
 // voltage min/max
-//#define NO_MIN_MAX_VOLTAGES
+#define NO_MIN_MAX_VOLTAGES
 // no fuel tank support
 #define NO_FUEL_TANK
 #endif /* _16F876A */

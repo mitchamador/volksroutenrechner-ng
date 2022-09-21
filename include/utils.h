@@ -25,7 +25,6 @@ unsigned long strtoul2(char *);
 unsigned char ultoa2(char *, unsigned long, unsigned char);
 void add_leading_symbols(char*, char, unsigned char, unsigned char);
 void llptrtohex(unsigned char*, unsigned char*);
-void set_day_of_week(ds_time* time);
 #if defined(__AVR)
 #define _memset(ptr, ch, len) memset(ptr, ch, len)
 #else

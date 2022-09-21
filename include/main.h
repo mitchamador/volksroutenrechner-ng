@@ -230,16 +230,27 @@ typedef struct {
 #define PRINT_TEMP_PARAM_DEG_SIGN     0x10
 #define PRINT_TEMP_PARAM_MASK         0x0F
 
-#define BUZZER_KEY 0
-#define BUZZER_LONGKEY 1
-#define BUZZER_WARN 2
-#define BUZZER_NONE -1
+#define BUZZER_KEY              0
+#define BUZZER_LONGKEY          1
+#define BUZZER_WARN             2
+#define BUZZER_NONE             -1
+
+#define BUZZER_KEY_COUNTER      1
+#define BUZZER_KEY_SOUND        1
+#define BUZZER_KEY_PAUSE        1
+#define BUZZER_LONGKEY_COUNTER  1
+#define BUZZER_LONGKEY_SOUND    4
+#define BUZZER_LONGKEY_PAUSE    1
+#define BUZZER_WARN_COUNTER     3
+#define BUZZER_WARN_SOUND       3
+#define BUZZER_WARN_PAUSE       2
 
 typedef struct {
-    uint8_t counter;    // number of repeats
-    uint8_t sound;      // sound on duration  (*0.1ms)
-    uint8_t pause;      // sound off duration (*0.1ms)
-} buzzer_mode_t;
+    uint8_t *p;         // value pointer
+    uint8_t min;        // min value
+    uint8_t max;        // max value
+    uint8_t pos;        // cursor position
+} time_editor_item_t;
 
 #define FILTERED_VALUE_FIRST_SAMPLE 0x80
 
@@ -252,7 +263,7 @@ typedef void (*handle)(filtered_value_t *);
 
 typedef struct {
     void (*handle)(filtered_value_t *f);    // handler                  (2 bytes)
-    filtered_value_t f;                     // filtered value struct    (5 bytes)
+    filtered_value_t *f;                    // filtered value struct    (5 bytes)
     uint8_t channel;                        // adc channel              (1 byte)
 } adc_item_t;
 

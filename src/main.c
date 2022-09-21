@@ -99,22 +99,7 @@ uint16_t temps[4] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS
 #endif
 
 #ifdef SOUND_SUPPORT
-
-volatile __bit buzzer_fl, buzzer_init_fl;
-static __bit buzzer_snd_fl, buzzer_repeat_fl;
-static uint8_t buzzer_counter_r;
-static uint8_t buzzer_counter, buzzer_counter_01sec;
-
-buzzer_mode_t *buzzer_mode;
-
-buzzer_mode_t buzzer_mode_array[3] = {
-    {1,1,1}, // BUZZER_KEY
-    {1,4,1}, // BUZZER_LONG_KEY
-    {3,3,2}  // BUZZER_WARN
-};
-
 volatile int8_t buzzer_mode_index = BUZZER_NONE;
-
 #endif
 
 uint8_t tmp_param = 0, main_param = 0, misc_param = 0;
@@ -124,7 +109,6 @@ uint8_t service_param = 0;
         
 // buffer for strings
 char buf[16];
-//char buf2[16];
 uint8_t len;
 
 #if defined(_16F876A)
@@ -237,26 +221,34 @@ void adc_handler_fuel_tank(filtered_value_t *f);
 
 uint16_t adc_value;
 
+filtered_value_t f_voltage = {0, 1 | FILTERED_VALUE_FIRST_SAMPLE};
+
 #if defined(ADC_BUTTONS) || defined(FUEL_TANK_SUPPORT)
 
 uint8_t _adc_ch;
 
+#ifdef ADC_BUTTONS
+filtered_value_t f_buttons = {0, 0};
+#endif
+
 #if defined(FUEL_TANK_SUPPORT)
 uint8_t adc_fuel_tank_counter;
 uint16_t adc_fuel_tank;
+filtered_value_t f_fuel_tank = {0, 3 | FILTERED_VALUE_FIRST_SAMPLE};
 #endif
 
-adc_item_t adc_items[] = {
-    {adc_handler_voltage, {0, 1 | FILTERED_VALUE_FIRST_SAMPLE}, ADC_CHANNEL_POWER_SUPPLY},
+
+const adc_item_t adc_items[] = {
+    {adc_handler_voltage, &f_voltage, ADC_CHANNEL_POWER_SUPPLY},
 #ifdef ADC_BUTTONS
-    {adc_handler_buttons, {0, 0}, ADC_CHANNEL_BUTTONS},
+    {adc_handler_buttons, &f_buttons, ADC_CHANNEL_BUTTONS},
 #endif
 #ifdef FUEL_TANK_SUPPORT
-    {adc_handler_fuel_tank, {0, 3 | FILTERED_VALUE_FIRST_SAMPLE}, ADC_CHANNEL_FUEL_TANK},
+    {adc_handler_fuel_tank, &f_fuel_tank, ADC_CHANNEL_FUEL_TANK},
 #endif
 };
 #else
-adc_item_t adc_item = {adc_handler_voltage, {0, 1 | FILTERED_VALUE_FIRST_SAMPLE}, ADC_CHANNEL_POWER_SUPPLY};
+const adc_item_t adc_item = {adc_handler_voltage, &f_voltage, ADC_CHANNEL_POWER_SUPPLY};
 #endif
 
 #endif
@@ -650,9 +642,27 @@ int_handler_GLOBAL_begin
 
 #ifdef SOUND_SUPPORT
 
+        static __bit buzzer_fl, buzzer_init_fl;
+        static __bit buzzer_snd_fl, buzzer_repeat_fl;
+        static uint8_t buzzer_counter_r;
+        static uint8_t buzzer_counter, buzzer_counter_01sec;
+
+        static uint8_t buzzer_mode_counter, buzzer_mode_sound, buzzer_mode_pause;
+
         if (buzzer_mode_index != BUZZER_NONE) {
             if (config.settings.key_sound != 0 || buzzer_mode_index == BUZZER_WARN) {
-                buzzer_fl = 1; buzzer_init_fl = 0; buzzer_mode = &buzzer_mode_array[buzzer_mode_index];
+                buzzer_fl = 1; buzzer_init_fl = 0;
+                switch (buzzer_mode_index) {
+                    case BUZZER_KEY:
+                        buzzer_mode_counter = BUZZER_KEY_COUNTER; buzzer_mode_sound = BUZZER_KEY_SOUND; buzzer_mode_pause = BUZZER_KEY_PAUSE;
+                        break;
+                    case BUZZER_LONGKEY:
+                        buzzer_mode_counter = BUZZER_LONGKEY_COUNTER; buzzer_mode_sound = BUZZER_LONGKEY_SOUND; buzzer_mode_pause = BUZZER_LONGKEY_PAUSE;
+                        break;
+                    case BUZZER_WARN:
+                        buzzer_mode_counter = BUZZER_WARN_COUNTER; buzzer_mode_sound = BUZZER_WARN_SOUND; buzzer_mode_pause = BUZZER_WARN_PAUSE;
+                        break;
+                }
                 buzzer_counter_01sec = 1;
             }
             buzzer_mode_index = BUZZER_NONE;
@@ -664,14 +674,14 @@ int_handler_GLOBAL_begin
                 if (buzzer_init_fl == 0) {
                     buzzer_init_fl = 1;
                     buzzer_repeat_fl = 1;
-                    buzzer_counter_r = buzzer_mode->counter + 1;
+                    buzzer_counter_r = buzzer_mode_counter + 1;
                 }
                 
                 if (buzzer_repeat_fl != 0) {
                     buzzer_repeat_fl = 0;
                     if (--buzzer_counter_r > 0) {
                         buzzer_snd_fl = 1;
-                        buzzer_counter = buzzer_mode->sound;
+                        buzzer_counter = buzzer_mode_sound;
                     } else {
                         buzzer_fl = 0;
                         buzzer_init_fl = 0;
@@ -681,7 +691,7 @@ int_handler_GLOBAL_begin
                 if (buzzer_snd_fl != 0) {
                     if (buzzer_counter == 0) {
                         buzzer_snd_fl = 0;
-                        buzzer_counter = buzzer_mode->pause - 1;
+                        buzzer_counter = buzzer_mode_pause - 1;
                     } 
                     SND_ON;
                 }  
@@ -705,7 +715,7 @@ int_handler_GLOBAL_begin
         adc_voltage.current = adc_read_value();
 
 #ifdef MIN_MAX_VOLTAGES_SUPPORT
-    if (adc_voltage.current < adc_voltage.min) {
+        if (adc_voltage.current < adc_voltage.min) {
             adc_voltage.min = adc_voltage.current;
         } else if (adc_voltage.current > adc_voltage.max) {
             adc_voltage.max = adc_voltage.current;
@@ -738,7 +748,7 @@ int_handler_GLOBAL_begin
             start_adc();
         }
 #else
-        adc_item.handle(&adc_item.f);
+        adc_item.handle(adc_item.f);
 #endif
 
 #endif
@@ -914,7 +924,7 @@ void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
  * @param len
  * @param align
  */
-void _print16(unsigned char len, align_t align) {
+void _print16(uint8_t len, align_t align) {
     LCD_Write_String(buf, len, 16, align);
 }
 
@@ -923,7 +933,7 @@ void _print16(unsigned char len, align_t align) {
  * @param len
  * @param align
  */
-void _print8(unsigned char len, align_t align) {
+void _print8(uint8_t len, align_t align) {
     LCD_Write_String(buf, len, 8, align);
 }
 
@@ -934,7 +944,7 @@ void _print8(unsigned char len, align_t align) {
  * @param align
  * @return 
  */
-uint8_t _print8_suffix(unsigned char len, unsigned char pos, align_t align) {
+uint8_t _print8_suffix(uint8_t len, unsigned char pos, align_t align) {
     len += print_symbols_str(len, pos);
     LCD_Write_String(buf, len, 8, align);
     return len;
@@ -948,7 +958,7 @@ uint8_t _print8_suffix(unsigned char len, unsigned char pos, align_t align) {
  * @return 
  */
 uint8_t print_fract(char * buf, uint16_t num, uint8_t frac) {
-    uint8_t len = ultoa2(buf, num, 10);
+    len = ultoa2(buf, num, 10);
 
     // add leading zeroes
     if (len < frac + 1) {
@@ -1245,6 +1255,15 @@ void wait_refresh_timeout() {
     while (screen_refresh == 0 && timeout_timer1 != 0);
 }
 
+const time_editor_item_t time_editor_items_array[] = {
+    {&time.hour, 0, 23, 0x81},
+    {&time.minute, 0, 59, 0x84},
+    {&time.day, 1, 31, 0x89},
+    {&time.month, 1, 12, 0x8c},
+    {&time.year, VERSION_YEAR, VERSION_YEAR + 10, 0x8f},
+    {&time.day_of_week, 0, 23, 0xc0},
+};
+
 void screen_time(void) {
 
     read_ds_time();
@@ -1252,9 +1271,6 @@ void screen_time(void) {
     if (request_screen((char *) &time_correction_string) != 0) {
 
         uint8_t c = 0, save_time = 0;
-        uint8_t *p, min, max;
-
-        const char cursor_position[] = {0x81, 0x84, 0x89, 0x8c, 0x8f, 0xc0};
 
 #if defined(ENCODER_SUPPORT)
         uint8_t edit_mode = 0;
@@ -1271,44 +1287,43 @@ void screen_time(void) {
                 handle_keys_next_prev(&c, 0, 6 - 1);
             } else if (key1_press != 0 || key3_press != 0) {           
 #else
-            handle_keys_next_prev(&c, 0, 6 - 1);            
+            handle_keys_next_prev(&c, 0, 6 - 1);
+
+            time_editor_item_t *time_editor_item = (time_editor_item_t *) &time_editor_items_array[c];
+
             if (key2_press) {
 #endif
 
                 save_time = 1;
-                switch (c) {
-                    case 0:
-                        p = &time.hour; min = 0; max = 23;
-                        break;
-                    case 1:
-                        p = &time.minute; min = 0; max = 59;
-                        break;
-                    case 2:
-                        p = &time.day; min = 1; max = 31;
-                        break;
-                    case 3:
-                        p = &time.month; min = 1; max = 12;
-                        break;
-                    case 4:
-                        p = &time.year; min = VERSION_YEAR; max = VERSION_YEAR + 10;
-                        break;
-                    case 5:
-                        p = &time.day_of_week; min = 1; max = 7;
-                        break;
-                }
 #if !defined(ENCODER_SUPPORT)
-                *p = bcd8_inc(*p, min, max);
+                *time_editor_item->p = bcd8_inc(*time_editor_item->p, time_editor_item->min, time_editor_item->max);
 #else
                 if (key3_press != 0) {
-                    *p = bcd8_dec(*p, min, max);
+                    *time_editor_item->p = bcd8_dec(*time_editor_item->p, time_editor_item->min, time_editor_item->max);
                 } else if (key1_press != 0) {
-                    *p = bcd8_inc(*p, min, max);
+                    *time_editor_item->p = bcd8_inc(*time_editor_item->p, time_editor_item->min, time_editor_item->max);
                 }
 #endif
 
 #ifdef AUTO_DAY_OF_WEEK
-                if (c == 2 || c == 3 || c == 4) {
-                    set_day_of_week(&time);
+                if (c >= 2 && c <= 4) {
+                    //set day of week
+                    const uint8_t mArr[12] = {6, 2, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4};
+
+                    uint8_t tYear = bcd8_to_bin(time.year);
+                    uint8_t tMonth = bcd8_to_bin(time.month);
+
+                    uint8_t dow;
+                    dow = tYear;
+                    dow += tYear / 4;
+                    dow += bcd8_to_bin(time.day);
+                    dow += mArr[tMonth - 1];
+                    if (((tYear % 4) == 0) && (tMonth < 3))
+                        dow -= 1;
+                    while (dow >= 7)
+                        dow -= 7;
+                    time.day_of_week = dow + 1;
+
                 }
 #endif                
                 timeout_timer1 = 5;
@@ -1317,7 +1332,7 @@ void screen_time(void) {
 
             LCD_CMD(LCD_CURSOR_OFF);
             print_time(&time);
-            LCD_CMD(cursor_position[c]);
+            LCD_CMD(time_editor_item->pos);
 #if defined(ENCODER_SUPPORT)
             LCD_CMD(edit_mode == 0 ? LCD_UNDERLINE_ON : LCD_BLINK_CURSOR_ON);
 #else
@@ -2724,15 +2739,9 @@ void fill_trip_time(trip_time_t *trip_time) {
     trip_time->year = time.year;
 }
 
-const uint8_t ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273 - 256, 304 - 256, 334 - 256, 365 - 256};
-
 uint16_t get_yday(uint8_t month, uint8_t day) {
-    uint8_t m = bcd8_to_bin(month) - 1;
-    uint16_t yday = ydayArray[m];
-    if (m >= 9) {
-        yday += 256;
-    }
-    return yday + bcd8_to_bin(day);
+    const uint16_t ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
+    return ydayArray[bcd8_to_bin(month) - 1] + bcd8_to_bin(day);
 }
 
 uint8_t check_tripC_time() {
