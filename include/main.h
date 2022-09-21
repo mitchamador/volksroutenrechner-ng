@@ -210,12 +210,13 @@ typedef struct {
 
 typedef struct {
     void (*screen)(void);
+    uint8_t index;
 } screen_item_t;
 
 typedef struct {
-    uint8_t str_index;
     void (*screen)(void);
-} config_screen_item_t;
+    uint8_t title_string_index;
+} screen_config_item_t;
 
 // ds18b20 temperatures
 #define TEMP_NONE -1

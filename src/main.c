@@ -132,6 +132,7 @@ void screen_tripB(void);
 void screen_time(void);
 void screen_service_counters(void);
 void screen_journal_viewer(void);
+void screen_trip(void);
 
 // max screen in drive mode
 typedef enum {
@@ -143,20 +144,37 @@ typedef enum {
     drive_mode_screen_max
 } drive_mode_screens;
 
-const screen_item_t items_main[] = {
-    {screen_main},
-    {screen_tripC},
+typedef enum {
+    SCREEN_INDEX_MAIN = 0,
+    SCREEN_INDEX_TRIP_C,
 #if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
-    {screen_misc},
+    SCREEN_INDEX_MISC,
 #endif
-    {screen_tripA},
-    {screen_tripB},
-    {screen_time},
+    SCREEN_INDEX_TRIP_A,
+    SCREEN_INDEX_TRIP_B,
+    SCREEN_INDEX_TIME,
 #ifdef SERVICE_COUNTERS_SUPPORT   
-    {screen_service_counters},
+    SCREEN_INDEX_SERVICE_COUNTERS,
 #endif
 #ifdef JOURNAL_SUPPORT
-    {screen_journal_viewer},
+    SCREEN_INDEX_JOURNAL
+#endif
+} screen_item_index;
+
+const screen_item_t items_main[] = {
+    {screen_main, SCREEN_INDEX_MAIN},
+    {screen_trip, SCREEN_INDEX_TRIP_C},
+#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
+    {screen_misc, SCREEN_INDEX_MISC},
+#endif
+    {screen_trip, SCREEN_INDEX_TRIP_A},
+    {screen_trip, SCREEN_INDEX_TRIP_B},
+    {screen_time, SCREEN_INDEX_TIME},
+#ifdef SERVICE_COUNTERS_SUPPORT   
+    {screen_service_counters, SCREEN_INDEX_SERVICE_COUNTERS},
+#endif
+#ifdef JOURNAL_SUPPORT
+    {screen_journal_viewer, SCREEN_INDEX_JOURNAL},
 #endif
 };
 
@@ -170,35 +188,31 @@ void config_screen_ua_const(void);
 void config_screen_min_speed(void);
 void config_screen_version(void);
 
-const config_screen_item_t items_service[] = {
-    {FUEL_CONSTANT_INDEX, config_screen_fuel_constant},
-    {VSS_CONSTANT_INDEX, config_screen_vss_constant},
-    {TOTAL_TRIP_INDEX, config_screen_total_trip},
-    {VOLTAGE_ADJUST_INDEX, config_screen_ua_const},
-    {SETTINGS_BITS_INDEX, config_screen_settings_bits},
+const screen_config_item_t items_service[] = {
+    {config_screen_fuel_constant, FUEL_CONSTANT_INDEX},
+    {config_screen_vss_constant, VSS_CONSTANT_INDEX},
+    {config_screen_total_trip, TOTAL_TRIP_INDEX},
+    {config_screen_ua_const, VOLTAGE_ADJUST_INDEX},
+    {config_screen_settings_bits, SETTINGS_BITS_INDEX},
 #ifdef MIN_SPEED_CONFIG
-    {MIN_SPEED_INDEX, config_screen_min_speed},
+    {config_screen_min_speed, MIN_SPEED_INDEX},
 #endif
 #if defined(DS18B20_TEMP) && defined(DS18B20_CONFIG)
-    {TEMP_SENSOR_INDEX, config_screen_temp_sensors},
+    {config_screen_temp_sensors, TEMP_SENSOR_INDEX},
 #endif
 #ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
-    {SERVICE_COUNTERS_INDEX, config_screen_service_counters},
+    {config_screen_service_counters, SERVICE_COUNTERS_INDEX},
 #endif
-    {VERSION_INFO_INDEX, config_screen_version},
+    {config_screen_version, VERSION_INFO_INDEX},
 };
 
 uint8_t c_item = 0;
 uint8_t c_item_prev = 0;
-
 __bit item_skip;
-
-#define CONFIG_SCREEN_FORCE_ITEM 0x80
-#define CONFIG_SCREEN_MASK_ITEM  0x0F
 
 uint8_t request_screen(char *);
 
-void config_screen(uint8_t c_item);
+void config_screen();
 
 void read_rotary(void);
 
@@ -958,7 +972,7 @@ uint8_t _print8_suffix(uint8_t len, unsigned char pos, align_t align) {
  * @return 
  */
 uint8_t print_fract(char * buf, uint16_t num, uint8_t frac) {
-    len = ultoa2(buf, num, 10);
+    uint8_t len = ultoa2(buf, num, 10);
 
     // add leading zeroes
     if (len < frac + 1) {
@@ -967,13 +981,12 @@ uint8_t print_fract(char * buf, uint16_t num, uint8_t frac) {
     }
 
     // shift right and add '.'
-    uint8_t tmp = len;
+    char *dst = &buf[len];
+    char *src = dst - 1;
     while (frac--) {
-        buf[tmp] = buf[tmp - 1];
-        tmp--;
+        *dst-- = *src--;
     }
-    buf[tmp] = '.';
-
+    *dst = '.';
     return len + 1;
 }
 
@@ -1786,7 +1799,21 @@ void clear_trip(bool force, trip_t* trip) {
     }
 }
 
-void screen_trip(trip_t* trip, unsigned char trips_pos) {
+void screen_trip() {
+    trip_t *trip;
+    uint8_t trips_pos;
+
+    if (c_item == SCREEN_INDEX_TRIP_C) {
+            trip = &trips.tripC;
+            trips_pos = config.settings.daily_tripc ? TRIPS_POS_DAY : TRIPS_POS_CURR;
+    } else if (c_item == SCREEN_INDEX_TRIP_A) {
+            trip = &trips.tripA;
+            trips_pos = TRIPS_POS_A;
+    } else /*if (c_item == SCREEN_INDEX_TRIP_B) */{
+            trip = &trips.tripB;
+            trips_pos = TRIPS_POS_B;
+    };
+
     len = strcpy2(buf, (char *) &trip_string, 0);
     len += strcpy2(&buf[len], (char *) trips_array, trips_pos);
 
@@ -1808,21 +1835,6 @@ void screen_trip(trip_t* trip, unsigned char trips_pos) {
     }
 
     clear_trip(false, trip);
-}
-
-void screen_tripC() {
-    // второй экран - экран счетчика C
-    screen_trip(&trips.tripC, config.settings.daily_tripc ? TRIPS_POS_DAY : TRIPS_POS_CURR);
-}
-
-void screen_tripA() {
-    // экран счетчика A
-    screen_trip(&trips.tripA, TRIPS_POS_A);
-}
-
-void screen_tripB() {
-    // экран счетчика B
-    screen_trip(&trips.tripB, TRIPS_POS_B);
 }
 
 #if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
@@ -2585,23 +2597,19 @@ void config_screen_version() {
     _print16(strcpy2(buf, (char*) &version_string, 0), ALIGN_LEFT);
 }
 
-void config_screen(unsigned char c_item) {
-    uint8_t force_item = (c_item & CONFIG_SCREEN_FORCE_ITEM) != 0;
+void config_screen() {
 
-    c_item &= CONFIG_SCREEN_MASK_ITEM; 
-    config_screen_item_t item = items_service[c_item];
+    screen_config_item_t *item = (screen_config_item_t *) &items_service[c_item];
     
-    if (!force_item) {
-        LCD_CMD(0x80);
-        _print16(strcpy2(buf, (char *) &config_menu_title_string, 0), ALIGN_LEFT);
+    LCD_CMD(0x80);
+    _print16(strcpy2(buf, (char *) &config_menu_title_string, 0), ALIGN_LEFT);
 
-        LCD_CMD(0xC0);
-        buf[0] = '1' + c_item;
-        buf[1] = '.';
-        _print16(strcpy2(&buf[2], (char *) config_menu_array, item.str_index) + 2, ALIGN_LEFT);
-    }
+    LCD_CMD(0xC0);
+    buf[0] = '1' + c_item;
+    buf[1] = '.';
+    _print16(strcpy2(&buf[2], (char *) config_menu_array, item->title_string_index) + 2, ALIGN_LEFT);
 
-    if (key2_press != 0 || force_item) {
+    if (key2_press != 0) {
         key2_press = 0;
         LCD_Clear();
         timeout_timer1 = 5;
@@ -2609,9 +2617,9 @@ void config_screen(unsigned char c_item) {
             screen_refresh = 0;
 
             LCD_CMD(0x80);
-            _print16(strcpy2(buf, (char *) config_menu_array, item.str_index), ALIGN_LEFT);
+            _print16(strcpy2(buf, (char *) config_menu_array, item->title_string_index), ALIGN_LEFT);
 
-            item.screen();
+            item->screen();
 
             wait_refresh_timeout();
         }
@@ -3073,19 +3081,21 @@ void main() {
 #endif            
             handle_misc_values();
         } else {
-            max_item = sizeof (items_service) / sizeof (config_screen_item_t) - 1;
+            max_item = sizeof (items_service) / sizeof (screen_item_t) - 1;
         }
         
         // show next/prev screen
         c_item_prev = c_item;
+
         handle_keys_next_prev(&c_item, 0, max_item);
+
         if (c_item_prev != c_item) {
             tmp_param = 0;
             clear_keys_state();
         }
         
         if (config_mode != 0) {
-            config_screen(c_item);
+            config_screen();
         } else {
             do {
                 if (drive_min_speed_fl != 0 && c_item > (drive_mode_screen_max - 1)) {
