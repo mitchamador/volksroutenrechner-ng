@@ -31,6 +31,13 @@ typedef uint16_t eeaddr_t;
 #define ADC_MIN     0
 #define ADC_MAX     1023
 
+// start adc
+#define start_adc() ADCSRA = ADCSRA | (1 << ADSC);
+// set adc channel
+#define set_adc_channel(ch) ADMUX = ADC_VREF_TYPE | ch
+// read adc
+#define adc_read_value() (ADCW)
+
 #define start_fuel_timer() TCCR0B = (0 << WGM02) | (0 << CS02) | (1 << CS01) | (0 << CS00);
 #define stop_fuel_timer()  TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
 
@@ -41,22 +48,6 @@ typedef uint16_t eeaddr_t;
 // start timer with prescaler 1:64
 #define start_main_timer() TCCR1B = (TCCR1B & ~((1 << CS12) | (1 << CS11) | (1 << CS10))) | ((0 << CS12) | (1 << CS11) | (1 << CS10));
 
-#if defined(PROTEUS_DEBUG)
-#define main_timer_overflow() ((TIFR1 & (1 << OCF1A)) != 0)
-#else
-#define main_timer_overflow() ((TIFR1 & (1 << ICF1)) != 0)
-#endif
-
-#define capture_main_timer(_main_timer)             \
-    _main_timer = TCNT1;                            \
-    if (main_timer_overflow()) {                    \
-        _main_timer += TIMER_MAIN_TICKS_PER_PERIOD; \
-    }                                               \
-
-
-// start adc
-#define start_adc() ADCSRA = ADCSRA | (1 << ADSC);
-
 #define enable_interrupts() sei();
 #define disable_interrupts() cli();
 
@@ -66,10 +57,6 @@ typedef uint16_t eeaddr_t;
 #define TX_ACTIVE   ((PINB & _BV(PINB0)) != 0)
 // PB1/PCINT1
 #define FUEL_ACTIVE ((PINB & _BV(PINB1)) == 0)
-
-#define set_adc_channel(ch) ADMUX = ADC_VREF_TYPE | ch
-
-#define adc_read_value() (ADCW)
 
 // Voltage Reference: AVCC pin, right aligned
 #define ADC_VREF_TYPE ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR))

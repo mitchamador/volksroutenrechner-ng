@@ -9,7 +9,18 @@
 
 /* pin change interrupt vector (speed, fuel)*/
 ISR(PCINT0_vect) {
-    capture_main_timer(main_timer);
+
+    /* Capture main timer value */
+    main_timer = TCNT1;
+
+    // if overflow occurs during reading (between start of interrupt and TMR1 reading) - set to max value
+#if defined(PROTEUS_DEBUG)
+    if ((TIFR1 & (1 << OCF1A)) != 0) {
+#else
+    if ((TIFR1 & (1 << ICF1)) != 0) {
+#endif
+        main_timer += TIMER_MAIN_TICKS_PER_PERIOD;
+    }
 
     int_change_fuel_level();
     int_change_speed_level();

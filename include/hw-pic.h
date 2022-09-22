@@ -173,13 +173,16 @@ typedef unsigned char eeaddr_t;
 
 #endif
 
+// start adc
 #if defined(_16F876A) || defined(_18F252)
 #define start_adc()                 ADCON0bits.GO_DONE = 1;
 #else
 #define start_adc()                 ADCON0bits.GO = 1;
 #endif
-
+// set adc channel
 #define set_adc_channel(ch)         ADCON0 = (ADCON0 & ~ADC_CHANNEL_MASK) | ch
+// read adc value
+#define adc_read_value()    ((uint16_t) (ADRESH << 8) | ADRESL)
 
 // PORTB definitions
 // RB0, RB1 - SCL/SDA for software i2c
@@ -294,8 +297,6 @@ typedef unsigned char eeaddr_t;
 
 /* ======================================= */
 
-#define adc_read_value()    ((uint16_t) (ADRESH << 8) | ADRESL)
-
 #if defined(_18F252)
 #define start_fuel_timer()  (TMR0ON = 1)
 #define stop_fuel_timer()   (TMR0ON = 0)
@@ -305,40 +306,6 @@ typedef unsigned char eeaddr_t;
 #endif
 
 #define start_main_timer()  (TMR1ON = 1)
-
-#if defined(_16F876A) || defined(_18F252)
-#define main_timer_overflow() CCP2IF
-#elif defined(_16F1936) || defined(_16F1938)
-#define main_timer_overflow() CCP5IF
-#endif
-
-// read 16bit TMR1 value (read TMR1H, TMR1L; if TMR1L == 0x00, re-read TMR1H)
-// if overflow occurs during reading (between start of interrupt and TMR1 reading) - set to max value
-#if defined(_18F252)
-// read 16bit TMR1 value with RD16 = 1
-
-#define capture_main_timer(_main_timer)                     \
-    *((uint8_t*) (&_main_timer) + 0) = TMR1L;               \
-    *((uint8_t*) (&_main_timer) + 1) = TMR1H;               \
-    if (main_timer_overflow()) {                            \
-        _main_timer += TIMER_MAIN_TICKS_PER_PERIOD;         \
-    }                                                       \
-
-#else
-
-#define capture_main_timer(_main_timer)                     \
-    *((uint8_t*)(&_main_timer) + 1) = TMR1H;                \
-    *((uint8_t*)(&_main_timer) + 0) = TMR1L;                \
-    if (*((uint8_t*)(&_main_timer) + 1) != TMR1H) {         \
-      *((uint8_t*)(&_main_timer) + 1) = TMR1H;              \
-      *((uint8_t*)(&_main_timer) + 0) = TMR1L;              \
-    }                                                       \
-    if (main_timer_overflow()) {                            \
-        _main_timer += TIMER_MAIN_TICKS_PER_PERIOD;         \
-    }                                                       \
-
-#endif
-
 
 #define enable_interrupts() ei();
 #define disable_interrupts() di();

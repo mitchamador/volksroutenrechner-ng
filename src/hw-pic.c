@@ -15,7 +15,27 @@ __interrupt() void HW_isr(void) {
         /* Reset the interrupt flag */
         PORT_CHANGE_CLEAR_IF = 0;
 
-        capture_main_timer(main_timer);
+        /* Capture main timer value */
+#if defined(_18F252)
+        // read 16bit TMR1 value with RD16 = 1
+        *((uint8_t*) (&main_timer) + 0) = TMR1L;
+        *((uint8_t*) (&main_timer) + 1) = TMR1H;
+        if (TIMER_MAIN_IF) {
+            main_timer += TIMER_MAIN_TICKS_PER_PERIOD;
+        }
+#else
+        // read 16bit TMR1 value (read TMR1H, TMR1L; if TMR1L == 0x00, re-read TMR1H)
+        *((uint8_t*)(&main_timer) + 1) = TMR1H;
+        *((uint8_t*)(&main_timer) + 0) = TMR1L;
+        if (*((uint8_t*)(&main_timer) + 1) != TMR1H) {
+          *((uint8_t*)(&main_timer) + 1) = TMR1H;
+          *((uint8_t*)(&main_timer) + 0) = TMR1L;
+        }
+#endif
+        // if overflow occurs during reading (between start of interrupt and TMR1 reading) - set to max value
+        if (TIMER_MAIN_IF) {
+            main_timer += TIMER_MAIN_TICKS_PER_PERIOD;
+        }
 
         int_change_fuel_level();
         int_change_speed_level();
