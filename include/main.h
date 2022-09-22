@@ -362,5 +362,13 @@ typedef struct {
 
 #define JOURNAL_ITEM_OK 0xA5
 
-#endif	/* MAIN_H */
+void int_change_fuel_level(void);
+void int_change_speed_level(void);
+void int_fuel_timer_overflow(void);
+void int_main_timer_overflow(void);
+void int_adc_finish(void);
+void int_change_encoder_level(void);
 
+extern volatile uint16_t main_timer;
+
+#endif	/* MAIN_H */

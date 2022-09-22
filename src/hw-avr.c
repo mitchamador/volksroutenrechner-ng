@@ -1,9 +1,46 @@
 #include "hw.h"
 #include "i2c.h"
+#include "main.h"
 
 #if defined(__AVR)
+
 #include <avr/eeprom.h>
 #include <util/twi.h>
+
+/* pin change interrupt vector (speed, fuel)*/
+ISR(PCINT0_vect) {
+    capture_main_timer(main_timer);
+
+    int_change_fuel_level();
+    int_change_speed_level();
+}
+
+#if defined(ENCODER_SUPPORT)
+/* pin change interrupt vector (encoder)*/
+ISR(PCINT1_vect) {
+    int_change_encoder_level();
+}
+#endif
+
+/* fuel timer overflow interrupt */
+ISR(TIMER0_COMPA_vect) {
+    int_fuel_timer_overflow();
+}
+
+/* main timer overflow interrupt */
+#if defined(PROTEUS_DEBUG)
+ISR(TIMER1_COMPA_vect) {
+    TIFR1 = (1 << OCF1B);
+#else
+ISR(TIMER1_CAPT_vect) {
+#endif
+    int_main_timer_overflow();
+}
+
+/* adc finish interrupt */
+ISR(ADC_vect) {
+    int_adc_finish();
+}
 
 void HW_Init(void) {
 
@@ -80,7 +117,7 @@ void HW_Init(void) {
     //OCR2B = 0x00;
 
     // Timer/Counter 0 Interrupt(s) initialization
-    TIMSK0 = (1 << OCIE0B) | (0 << OCIE0A) | (0 << TOIE0);
+    TIMSK0 = (0 << OCIE0B) | (1 << OCIE0A) | (0 << TOIE0);
 
     // Timer/Counter 1 Interrupt(s) initialization
 #if defined(PROTEUS_DEBUG)

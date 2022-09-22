@@ -1,5 +1,4 @@
 #include "main.h"
-#include "main.h"
 #include "locale.h"
 #include "eeprom.h"
 #include "i2c.h"
@@ -147,18 +146,12 @@ typedef enum {
 typedef enum {
     SCREEN_INDEX_MAIN = 0,
     SCREEN_INDEX_TRIP_C,
-#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
     SCREEN_INDEX_MISC,
-#endif
     SCREEN_INDEX_TRIP_A,
     SCREEN_INDEX_TRIP_B,
     SCREEN_INDEX_TIME,
-#ifdef SERVICE_COUNTERS_SUPPORT   
     SCREEN_INDEX_SERVICE_COUNTERS,
-#endif
-#ifdef JOURNAL_SUPPORT
     SCREEN_INDEX_JOURNAL
-#endif
 } screen_item_index;
 
 const screen_item_t items_main[] = {
@@ -213,8 +206,6 @@ __bit item_skip;
 uint8_t request_screen(char *);
 
 void config_screen();
-
-void read_rotary(void);
 
 uint16_t get_speed(uint16_t);
 
@@ -278,499 +269,459 @@ void cd_increment_filter(void);
 
 // interrupt routines starts
 
-int_handler_GLOBAL_begin
-
-#if defined(ENCODER_SUPPORT) && defined(int_handler_encoder_begin) && defined(int_handler_encoder_end)
-    int_handler_encoder_begin
-        // handle encoder
-        read_rotary();
-    int_handler_encoder_end
-#endif
-
-#if defined(int_handler_fuel_speed_begin) && defined(int_handler_fuel_speed_end)
-    int_handler_fuel_speed_begin
-
-#if defined(capture_main_timer)
-        // capture 0.01s timer value
-        capture_main_timer(main_timer);
-#endif
-#endif
-#if defined(int_handler_fuel_begin) && defined(int_handler_fuel_end)
-    int_handler_fuel_begin
-
-#if defined(capture_fuel)
-        // capture fuel level change timer value
-        capture_fuel(main_timer);
-#endif
-#endif
-
-        // fuel injector
-        if (FUEL_ACTIVE) {
-            if (fuel_fl == 0) {
-                // start fuel timer
-                start_fuel_timer();
-                fuel_fl = 1;
-                motor_fl = 1;
-                save_tripc_time_fl = 1;
+void int_change_fuel_level() {
+    // fuel injector
+    if (FUEL_ACTIVE) {
+        if (fuel_fl == 0) {
+            // start fuel timer
+            start_fuel_timer();
+            fuel_fl = 1;
+            motor_fl = 1;
+            save_tripc_time_fl = 1;
 
 #ifdef SERVICE_COUNTERS_SUPPORT
+            services.mh.rpm++;
+            if (config.settings.par_injection == 0) {
                 services.mh.rpm++;
-                if (config.settings.par_injection == 0) {
-                    services.mh.rpm++;
-                }
+            }
 #endif
 
-                // new taho calculation based on captured value of 0.01s timer
-                if (taho_measure_fl == 0) {
-                    taho_measure_fl = 1;
+            // new taho calculation based on captured value of 0.01s timer
+            if (taho_measure_fl == 0) {
+                taho_measure_fl = 1;
 
-                    taho_main_timer_ticks = 0;
-                    taho_main_timer_prev = main_timer;
-                    taho_main_timer_ofl = 0;
-                } else {
-                    taho = taho_main_timer_ticks + main_timer - taho_main_timer_prev;
-                    taho_fl = 1;
+                taho_main_timer_ticks = 0;
+                taho_main_timer_prev = main_timer;
+                taho_main_timer_ofl = 0;
+            } else {
+                taho = taho_main_timer_ticks + main_timer - taho_main_timer_prev;
+                taho_fl = 1;
 
-                    taho_main_timer_ticks = 0;
-                    taho_main_timer_prev = main_timer;
-                    taho_main_timer_ofl = 0;
-                }
-            }
-        } else {
-            if (fuel_fl != 0) {
-                // stop fuel timer
-                stop_fuel_timer();
-                fuel_fl = 0;
-                // measure fuel duration                
-                if (taho_measure_fl != 0) {
-                    fuel_duration = (uint16_t) (taho_main_timer_ticks + main_timer - taho_main_timer_prev);
-                }
+                taho_main_timer_ticks = 0;
+                taho_main_timer_prev = main_timer;
+                taho_main_timer_ofl = 0;
             }
         }
+    } else {
+        if (fuel_fl != 0) {
+            // stop fuel timer
+            stop_fuel_timer();
+            fuel_fl = 0;
+            // measure fuel duration                
+            if (taho_measure_fl != 0) {
+                fuel_duration = (uint16_t) (taho_main_timer_ticks + main_timer - taho_main_timer_prev);
+            }
+        }
+    }
+}
 
-#if defined(int_handler_fuel_begin) && defined(int_handler_fuel_end)
-    int_handler_fuel_end
-#endif    
-#if defined(int_handler_speed_begin) && defined(int_handler_speed_end)
-    int_handler_speed_begin
+void int_change_speed_level() {
+    // speed sensor
+    if (TX_ACTIVE) {
+        if (odom_fl == 0) {
+            odom_fl = 1;
+            drive_fl = 1;
 
-#if defined(capture_speed)
-        // capture speed level change timer value
-        capture_speed(main_timer);
+            // new speed 100 calculation based on captured value of 0.01s timer
+            if (accel_meas_process_fl != 0) {
+                if (accel_meas_fl == 0) {
+                    accel_meas_fl = 1;
+                    accel_meas_main_timer_prev = main_timer;
+                    accel_meas_main_timer_ticks = 0;
+                    accel_meas_main_timer_ofl = 0;
+                } else {
+                    accel_meas_speed = accel_meas_main_timer_ticks + main_timer - accel_meas_main_timer_prev;
+                    accel_meas_drive_fl = 1;
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
+                    if (accel_meas_timer_fl == 0 && (accel_meas_speed <= accel_meas_lower_const || accel_meas_lower_const == 0)) {
+                        accel_meas_timer_fl = 1;
+                    }
+#else
+                    accel_meas_timer_fl = 1;
 #endif
-#endif    
-
-        // speed sensor
-        if (TX_ACTIVE) {
-            if (odom_fl == 0) {
-                odom_fl = 1;
-                drive_fl = 1;
-                
-                // new speed 100 calculation based on captured value of 0.01s timer
-                if (accel_meas_process_fl != 0) {
-                    if (accel_meas_fl == 0) {
-                        accel_meas_fl = 1;
+                    if (accel_meas_speed <= accel_meas_upper_const) {
+                        accel_meas_ok_fl = 1;
+                        accel_meas_timer_fl = 0;
+                        accel_meas_process_fl = 0;
+                    } else {
                         accel_meas_main_timer_prev = main_timer;
                         accel_meas_main_timer_ticks = 0;
                         accel_meas_main_timer_ofl = 0;
-                    } else {
-                        accel_meas_speed = accel_meas_main_timer_ticks + main_timer - accel_meas_main_timer_prev;
-                        accel_meas_drive_fl = 1;
-#ifdef EXTENDED_ACCELERATION_MEASUREMENT
-                        if (accel_meas_timer_fl == 0 && (accel_meas_speed <= accel_meas_lower_const || accel_meas_lower_const == 0)) {
-                            accel_meas_timer_fl = 1;
-                        }
-#else
-                        accel_meas_timer_fl = 1;
-#endif
-                        if (accel_meas_speed <= accel_meas_upper_const) {
-                            accel_meas_ok_fl = 1;
-                            accel_meas_timer_fl = 0;
-                            accel_meas_process_fl = 0;
-                        } else {
-                            accel_meas_main_timer_prev = main_timer;
-                            accel_meas_main_timer_ticks = 0;
-                            accel_meas_main_timer_ofl = 0;
-                        }
                     }
-                } else {
-                    accel_meas_fl = 0;
                 }
-
-                kmh_tmp++;
-
-            }
-        } else {
-            odom_fl = 0;
-        }
-
-#if defined(int_handler_speed_begin) && defined(int_handler_speed_end)
-    int_handler_speed_end
-#endif
-#if defined(int_handler_fuel_speed_begin) && defined(int_handler_fuel_speed_end)
-    int_handler_fuel_speed_end
-#endif
-
-    int_handler_fuel_timer_overflow_begin
-            
-        fuel_tmp++;
-
-        // trip A
-        if (--trips.tripA.fuel_tmp1 == 0) {
-            trips.tripA.fuel_tmp1 = fuel1_const;
-            if (++trips.tripA.fuel_tmp2 >= config.fuel_const) {
-                trips.tripA.fuel_tmp2 = 0;
-                trips.tripA.fuel++;
-            }
-        }
-        
-        // trip B
-        if (--trips.tripB.fuel_tmp1 == 0) {
-            trips.tripB.fuel_tmp1 = fuel1_const;
-            if (++trips.tripB.fuel_tmp2 >= config.fuel_const) {
-                trips.tripB.fuel_tmp2 = 0;
-                trips.tripB.fuel++;
-            }
-        }
-
-        // trip C
-        if (--trips.tripC.fuel_tmp1 == 0) {
-            trips.tripC.fuel_tmp1 = fuel1_const;
-            if (++trips.tripC.fuel_tmp2 >= config.fuel_const) {
-                trips.tripC.fuel_tmp2 = 0;
-                trips.tripC.fuel++;
-            }
-        }
-        
-    int_handler_fuel_timer_overflow_end
-
-    int_handler_main_timer_overflow_begin
-
-        static uint8_t key1_counter = 0, key2_counter = 0;
-#ifdef KEY3_SUPPORT
-        static uint8_t key3_counter = 0;
-#endif
-        static uint8_t main_interval_counter = MAIN_INTERVAL;
-
-        if (taho_measure_fl != 0) {
-            if (++taho_main_timer_ofl == TAHO_OVERFLOW) {
-                taho_measure_fl = 0;
-                stop_fuel_timer();
-                taho_fl = 0;
-                fuel_duration = 0;
-                motor_fl = 0;
             } else {
-                taho_main_timer_ticks += TIMER_MAIN_TICKS_PER_PERIOD;
-            }
-        }
-
-        if (accel_meas_fl != 0) {
-            if (++accel_meas_main_timer_ofl == ACCEL_MEAS_OVERFLOW) {
                 accel_meas_fl = 0;
-                accel_meas_drive_fl = 0;
-            } else {
-                accel_meas_main_timer_ticks += TIMER_MAIN_TICKS_PER_PERIOD;
             }
-        }
 
-        if (key_repeat_counter == 0) {
+            kmh_tmp++;
+
+        }
+    } else {
+        odom_fl = 0;
+    }
+}
+
+void int_fuel_timer_overflow() {
+    fuel_tmp++;
+
+    // trip A
+    if (--trips.tripA.fuel_tmp1 == 0) {
+        trips.tripA.fuel_tmp1 = fuel1_const;
+        if (++trips.tripA.fuel_tmp2 >= config.fuel_const) {
+            trips.tripA.fuel_tmp2 = 0;
+            trips.tripA.fuel++;
+        }
+    }
+
+    // trip B
+    if (--trips.tripB.fuel_tmp1 == 0) {
+        trips.tripB.fuel_tmp1 = fuel1_const;
+        if (++trips.tripB.fuel_tmp2 >= config.fuel_const) {
+            trips.tripB.fuel_tmp2 = 0;
+            trips.tripB.fuel++;
+        }
+    }
+
+    // trip C
+    if (--trips.tripC.fuel_tmp1 == 0) {
+        trips.tripC.fuel_tmp1 = fuel1_const;
+        if (++trips.tripC.fuel_tmp2 >= config.fuel_const) {
+            trips.tripC.fuel_tmp2 = 0;
+            trips.tripC.fuel++;
+        }
+    }
+}
+
+void int_main_timer_overflow() {
+    static uint8_t key1_counter = 0, key2_counter = 0;
+#ifdef KEY3_SUPPORT
+    static uint8_t key3_counter = 0;
+#endif
+    static uint8_t main_interval_counter = MAIN_INTERVAL;
+
+    if (taho_measure_fl != 0) {
+        if (++taho_main_timer_ofl == TAHO_OVERFLOW) {
+            taho_measure_fl = 0;
+            stop_fuel_timer();
+            taho_fl = 0;
+            fuel_duration = 0;
+            motor_fl = 0;
+        } else {
+            taho_main_timer_ticks += TIMER_MAIN_TICKS_PER_PERIOD;
+        }
+    }
+
+    if (accel_meas_fl != 0) {
+        if (++accel_meas_main_timer_ofl == ACCEL_MEAS_OVERFLOW) {
+            accel_meas_fl = 0;
+            accel_meas_drive_fl = 0;
+        } else {
+            accel_meas_main_timer_ticks += TIMER_MAIN_TICKS_PER_PERIOD;
+        }
+    }
+
+    if (key_repeat_counter == 0) {
 #ifndef ENCODER_SUPPORT
-            if (KEY1_PRESSED) // key pressed
-            {
-                if (key1_counter <= LONGKEY) {
-                    key1_counter++;
-                }
-                if (key1_counter == LONGKEY) {
-                    // long keypress
-                    key1_longpress = 1;
-                    key_longpressed = 1;
-                }
-            } else // key released
-            {
-                if (key1_counter > DEBOUNCE && key1_counter <= SHORTKEY) {
-                    // key press
-                    key1_press = 1;
-                    key_pressed = 1;
-                }
-                key1_counter = 0;
+        if (KEY1_PRESSED) // key pressed
+        {
+            if (key1_counter <= LONGKEY) {
+                key1_counter++;
             }
+            if (key1_counter == LONGKEY) {
+                // long keypress
+                key1_longpress = 1;
+                key_longpressed = 1;
+            }
+        } else // key released
+        {
+            if (key1_counter > DEBOUNCE && key1_counter <= SHORTKEY) {
+                // key press
+                key1_press = 1;
+                key_pressed = 1;
+            }
+            key1_counter = 0;
+        }
 #endif
 
-            if (KEY2_PRESSED) // key pressed
-            {
-                if (key2_counter <= LONGKEY) {
-                    key2_counter++;
-                }
-                if (key2_counter == LONGKEY) {
-                    // long keypress
-                    key2_longpress = 1;
-                    key_longpressed = 1;
-                }
-            } else // key released
-            {
-                if (key2_counter > DEBOUNCE && key2_counter <= SHORTKEY) {
-                    // key press
-                    key2_press = 1;
-                    key_pressed = 1;
-                }
-                key2_counter = 0;
+        if (KEY2_PRESSED) // key pressed
+        {
+            if (key2_counter <= LONGKEY) {
+                key2_counter++;
             }
-    
+            if (key2_counter == LONGKEY) {
+                // long keypress
+                key2_longpress = 1;
+                key_longpressed = 1;
+            }
+        } else // key released
+        {
+            if (key2_counter > DEBOUNCE && key2_counter <= SHORTKEY) {
+                // key press
+                key2_press = 1;
+                key_pressed = 1;
+            }
+            key2_counter = 0;
+        }
+
 #if defined(KEY3_SUPPORT) && !defined(ENCODER_SUPPORT)
-            if (KEY3_PRESSED) // key pressed
-            {
-                if (key3_counter <= LONGKEY) {
-                    key3_counter++;
-                }
-                if (key3_counter == LONGKEY) {
-                    // long keypress
-                    key3_longpress = 1;
-                    key_longpressed = 1;
-                }
-            } else // key released
-            {
-                if (key3_counter > DEBOUNCE && key3_counter <= SHORTKEY) {
-                    // key press
-                    key3_press = 1;
-                    key_pressed = 1;
-                }
-                key3_counter = 0;
+        if (KEY3_PRESSED) // key pressed
+        {
+            if (key3_counter <= LONGKEY) {
+                key3_counter++;
             }
-#endif
-        } else {
-            key_repeat_counter--;
+            if (key3_counter == LONGKEY) {
+                // long keypress
+                key3_longpress = 1;
+                key_longpressed = 1;
+            }
+        } else // key released
+        {
+            if (key3_counter > DEBOUNCE && key3_counter <= SHORTKEY) {
+                // key press
+                key3_press = 1;
+                key_pressed = 1;
+            }
+            key3_counter = 0;
         }
+#endif
+    } else {
+        key_repeat_counter--;
+    }
 
-        if (key_pressed != 0 || key_longpressed != 0) {
+    if (key_pressed != 0 || key_longpressed != 0) {
 #ifdef SOUND_SUPPORT
-            if (key_pressed != 0) {
-                buzzer_mode_index = BUZZER_KEY;
-            } else {
-                buzzer_mode_index = BUZZER_LONGKEY;
-            }
-#endif
-            key_pressed = 0; key_longpressed = 0; screen_refresh = 1;
-            key_repeat_counter = KEY_REPEAT_PAUSE; 
-        }
-
-        if (acc_power_off_fl != 0) {
-            if (acc_power_off_counter++ == SHUTDOWN) {
-                screen_refresh = 1;
-                timeout_timer1 = 0;
-                shutdown_fl = 1;
-            }
+        if (key_pressed != 0) {
+            buzzer_mode_index = BUZZER_KEY;
         } else {
-            acc_power_off_counter = 0;
+            buzzer_mode_index = BUZZER_LONGKEY;
         }
+#endif
+        key_pressed = 0;
+        key_longpressed = 0;
+        screen_refresh = 1;
+        key_repeat_counter = KEY_REPEAT_PAUSE;
+    }
 
-        if (--main_interval_counter == 0) {
-            main_interval_counter = MAIN_INTERVAL;
-
-            // screen refresh_flag
+    if (acc_power_off_fl != 0) {
+        if (acc_power_off_counter++ == SHUTDOWN) {
             screen_refresh = 1;
-             
-            // increment time counters
-            if (motor_fl != 0 || drive_fl != 0) {
-                services.mh.time++;
-                trips.tripA.time++;
-                trips.tripB.time++;
-                trips.tripC.time++;
+            timeout_timer1 = 0;
+            shutdown_fl = 1;
+        }
+    } else {
+        acc_power_off_counter = 0;
+    }
+
+    if (--main_interval_counter == 0) {
+        main_interval_counter = MAIN_INTERVAL;
+
+        // screen refresh_flag
+        screen_refresh = 1;
+
+        // increment time counters
+        if (motor_fl != 0 || drive_fl != 0) {
+            services.mh.time++;
+            trips.tripA.time++;
+            trips.tripB.time++;
+            trips.tripC.time++;
 
 #ifdef CONTINUOUS_DATA_SUPPORT
-                if (cd.filter < CD_FILTER_VALUE_MAX) {
-                    if (cd.time < cd.time_threshold) {
-                        cd.time++;
-                    } else {
-                        cd_increment_filter();
-                    }
+            if (cd.filter < CD_FILTER_VALUE_MAX) {
+                if (cd.time < cd.time_threshold) {
+                    cd.time++;
+                } else {
+                    cd_increment_filter();
                 }
-                cd_fuel = calc_filtered_value(&cd.f_fuel, fuel_tmp);
-                cd_kmh = calc_filtered_value(&cd.f_kmh, kmh_tmp);
+            }
+            cd_fuel = calc_filtered_value(&cd.f_fuel, fuel_tmp);
+            cd_kmh = calc_filtered_value(&cd.f_kmh, kmh_tmp);
 #endif
+        }
+
+        // copy temp interval variables to main
+        fuel = fuel_tmp;
+        fuel_tmp = 0;
+
+        if (kmh_tmp != 0) {
+            // main odometer
+            config.odo_temp += kmh_tmp;
+            if (config.odo_temp >= config.odo_const) {
+                config.odo_temp -= config.odo_const;
+                // increment odometer counters
+                config.odo++;
+                services.srv[0].counter++;
+                services.srv[1].counter++;
+                services.srv[2].counter++;
+                services.srv[3].counter++;
             }
 
-            // copy temp interval variables to main
-            fuel = fuel_tmp;
-            fuel_tmp = 0;
-
-            if (kmh_tmp != 0) {
-                // main odometer
-                config.odo_temp += kmh_tmp;
-                if (config.odo_temp >= config.odo_const) {
-                    config.odo_temp -= config.odo_const;
-                    // increment odometer counters
-                    config.odo++;
-                    services.srv[0].counter++;
-                    services.srv[1].counter++;
-                    services.srv[2].counter++;
-                    services.srv[3].counter++;
-                }
-
-                // trip A
-                trips.tripA.odo_temp += kmh_tmp;
-                if (trips.tripA.odo_temp >= config.odo_const) {
-                    trips.tripA.odo_temp -= config.odo_const;
-                    trips.tripA.odo++;
-                }
-
-                // trip B
-                trips.tripB.odo_temp += kmh_tmp;
-                if (trips.tripB.odo_temp >= config.odo_const) {
-                    trips.tripB.odo_temp -= config.odo_const;
-                    trips.tripB.odo++;
-                }
-
-                // trip C
-                trips.tripC.odo_temp += kmh_tmp;
-                if (trips.tripC.odo_temp >= config.odo_const) {
-                    trips.tripC.odo_temp -= config.odo_const;
-                    trips.tripC.odo++;
-                }
+            // trip A
+            trips.tripA.odo_temp += kmh_tmp;
+            if (trips.tripA.odo_temp >= config.odo_const) {
+                trips.tripA.odo_temp -= config.odo_const;
+                trips.tripA.odo++;
             }
 
-            kmh = kmh_tmp;
-            kmh_tmp = 0;
-             
+            // trip B
+            trips.tripB.odo_temp += kmh_tmp;
+            if (trips.tripB.odo_temp >= config.odo_const) {
+                trips.tripB.odo_temp -= config.odo_const;
+                trips.tripB.odo++;
+            }
+
+            // trip C
+            trips.tripC.odo_temp += kmh_tmp;
+            if (trips.tripC.odo_temp >= config.odo_const) {
+                trips.tripC.odo_temp -= config.odo_const;
+                trips.tripC.odo++;
+            }
+        }
+
+        kmh = kmh_tmp;
+        kmh_tmp = 0;
+
 #ifdef TEMPERATURE_SUPPORT
-            if (timeout_temperature > 0) {
-                timeout_temperature--;
-            }
+        if (timeout_temperature > 0) {
+            timeout_temperature--;
+        }
 #endif                
-            if (timeout_ds_read > 0) {
-                timeout_ds_read--;
-            }
-
-            if (timeout_timer1 > 0) {
-                timeout_timer1--;
-            }
-             
+        if (timeout_ds_read > 0) {
+            timeout_ds_read--;
         }
 
-        if (timeout_timer2 > 0) {
-            timeout_timer2--;
+        if (timeout_timer1 > 0) {
+            timeout_timer1--;
         }
 
-        if (accel_meas_timer_fl != 0) {
-            accel_meas_timer++;
-        }
+    }
+
+    if (timeout_timer2 > 0) {
+        timeout_timer2--;
+    }
+
+    if (accel_meas_timer_fl != 0) {
+        accel_meas_timer++;
+    }
 
 #ifdef SOUND_SUPPORT
 
-        static __bit buzzer_fl, buzzer_init_fl;
-        static __bit buzzer_snd_fl, buzzer_repeat_fl;
-        static uint8_t buzzer_counter_r;
-        static uint8_t buzzer_counter, buzzer_counter_01sec;
+    static __bit buzzer_fl, buzzer_init_fl;
+    static __bit buzzer_snd_fl, buzzer_repeat_fl;
+    static uint8_t buzzer_counter_r;
+    static uint8_t buzzer_counter, buzzer_counter_01sec;
 
-        static uint8_t buzzer_mode_counter, buzzer_mode_sound, buzzer_mode_pause;
+    static uint8_t buzzer_mode_counter, buzzer_mode_sound, buzzer_mode_pause;
 
-        if (buzzer_mode_index != BUZZER_NONE) {
-            if (config.settings.key_sound != 0 || buzzer_mode_index == BUZZER_WARN) {
-                buzzer_fl = 1; buzzer_init_fl = 0;
-                switch (buzzer_mode_index) {
-                    case BUZZER_KEY:
-                        buzzer_mode_counter = BUZZER_KEY_COUNTER; buzzer_mode_sound = BUZZER_KEY_SOUND; buzzer_mode_pause = BUZZER_KEY_PAUSE;
-                        break;
-                    case BUZZER_LONGKEY:
-                        buzzer_mode_counter = BUZZER_LONGKEY_COUNTER; buzzer_mode_sound = BUZZER_LONGKEY_SOUND; buzzer_mode_pause = BUZZER_LONGKEY_PAUSE;
-                        break;
-                    case BUZZER_WARN:
-                        buzzer_mode_counter = BUZZER_WARN_COUNTER; buzzer_mode_sound = BUZZER_WARN_SOUND; buzzer_mode_pause = BUZZER_WARN_PAUSE;
-                        break;
-                }
-                buzzer_counter_01sec = 1;
+    if (buzzer_mode_index != BUZZER_NONE) {
+        if (config.settings.key_sound != 0 || buzzer_mode_index == BUZZER_WARN) {
+            buzzer_fl = 1;
+            buzzer_init_fl = 0;
+            switch (buzzer_mode_index) {
+                case BUZZER_KEY:
+                    buzzer_mode_counter = BUZZER_KEY_COUNTER;
+                    buzzer_mode_sound = BUZZER_KEY_SOUND;
+                    buzzer_mode_pause = BUZZER_KEY_PAUSE;
+                    break;
+                case BUZZER_LONGKEY:
+                    buzzer_mode_counter = BUZZER_LONGKEY_COUNTER;
+                    buzzer_mode_sound = BUZZER_LONGKEY_SOUND;
+                    buzzer_mode_pause = BUZZER_LONGKEY_PAUSE;
+                    break;
+                case BUZZER_WARN:
+                    buzzer_mode_counter = BUZZER_WARN_COUNTER;
+                    buzzer_mode_sound = BUZZER_WARN_SOUND;
+                    buzzer_mode_pause = BUZZER_WARN_PAUSE;
+                    break;
             }
-            buzzer_mode_index = BUZZER_NONE;
+            buzzer_counter_01sec = 1;
         }
+        buzzer_mode_index = BUZZER_NONE;
+    }
 
-        if (buzzer_fl != 0) {
-            if (--buzzer_counter_01sec == 0) {
-                buzzer_counter_01sec = INIT_TIMEOUT(0.1f);
-                if (buzzer_init_fl == 0) {
-                    buzzer_init_fl = 1;
+    if (buzzer_fl != 0) {
+        if (--buzzer_counter_01sec == 0) {
+            buzzer_counter_01sec = INIT_TIMEOUT(0.1f);
+            if (buzzer_init_fl == 0) {
+                buzzer_init_fl = 1;
+                buzzer_repeat_fl = 1;
+                buzzer_counter_r = buzzer_mode_counter + 1;
+            }
+
+            if (buzzer_repeat_fl != 0) {
+                buzzer_repeat_fl = 0;
+                if (--buzzer_counter_r > 0) {
+                    buzzer_snd_fl = 1;
+                    buzzer_counter = buzzer_mode_sound;
+                } else {
+                    buzzer_fl = 0;
+                    buzzer_init_fl = 0;
+                }
+            }
+
+            if (buzzer_snd_fl != 0) {
+                if (buzzer_counter == 0) {
+                    buzzer_snd_fl = 0;
+                    buzzer_counter = buzzer_mode_pause - 1;
+                }
+                SND_ON;
+            }
+            if (buzzer_snd_fl == 0) {
+                if (buzzer_counter == 0) {
                     buzzer_repeat_fl = 1;
-                    buzzer_counter_r = buzzer_mode_counter + 1;
                 }
-                
-                if (buzzer_repeat_fl != 0) {
-                    buzzer_repeat_fl = 0;
-                    if (--buzzer_counter_r > 0) {
-                        buzzer_snd_fl = 1;
-                        buzzer_counter = buzzer_mode_sound;
-                    } else {
-                        buzzer_fl = 0;
-                        buzzer_init_fl = 0;
-                    }
-                }
-        
-                if (buzzer_snd_fl != 0) {
-                    if (buzzer_counter == 0) {
-                        buzzer_snd_fl = 0;
-                        buzzer_counter = buzzer_mode_pause - 1;
-                    } 
-                    SND_ON;
-                }  
-                if (buzzer_snd_fl == 0) {
-                    if (buzzer_counter == 0) {
-                        buzzer_repeat_fl = 1;
-                    }
-                    SND_OFF;
-                }
-                buzzer_counter--;
+                SND_OFF;
             }
+            buzzer_counter--;
         }
+    }
 #endif
+}
 
-    int_handler_main_timer_overflow_end
-
-    int_handler_adc_begin
-
+void int_adc_finish() {
 #if defined(SIMPLE_ADC)
 
-        adc_voltage.current = adc_read_value();
+    adc_voltage.current = adc_read_value();
 
 #ifdef MIN_MAX_VOLTAGES_SUPPORT
-        if (adc_voltage.current < adc_voltage.min) {
-            adc_voltage.min = adc_voltage.current;
-        } else if (adc_voltage.current > adc_voltage.max) {
-            adc_voltage.max = adc_voltage.current;
-        }
+    if (adc_voltage.current < adc_voltage.min) {
+        adc_voltage.min = adc_voltage.current;
+    } else if (adc_voltage.current > adc_voltage.max) {
+        adc_voltage.max = adc_voltage.current;
+    }
 #endif
 
-        // read power supply status
-        if (adc_voltage.current > THRESHOLD_VOLTAGE_ADC_VALUE) {
-            acc_power_off_fl = 0;
-        } else {
-            acc_power_off_fl = 1;
-        }
+    // read power supply status
+    if (adc_voltage.current > THRESHOLD_VOLTAGE_ADC_VALUE) {
+        acc_power_off_fl = 0;
+    } else {
+        acc_power_off_fl = 1;
+    }
 
 #else
-        adc_value = adc_read_value();
+    adc_value = adc_read_value();
 #if defined(ADC_BUTTONS) || defined(FUEL_TANK_SUPPORT)        
-        adc_item_t* h = &adc_items[_adc_ch];
+    adc_item_t* h = &adc_items[_adc_ch];
 
-        if (++_adc_ch >= sizeof (adc_items) / sizeof (adc_item_t)) {
-            _adc_ch = 0;
-        }
-        
-        // set next channel
-        set_adc_channel(adc_items[_adc_ch].channel);
+    if (++_adc_ch >= sizeof (adc_items) / sizeof (adc_item_t)) {
+        _adc_ch = 0;
+    }
 
-        h->handle(&h->f);
+    // set next channel
+    set_adc_channel(adc_items[_adc_ch].channel);
 
-        if (_adc_ch != 0) {
-            // start next adc channel (first channel is started from auto trigger)
-            start_adc();
-        }
+    h->handle(&h->f);
+
+    if (_adc_ch != 0) {
+        // start next adc channel (first channel is started from auto trigger)
+        start_adc();
+    }
 #else
-        adc_item.handle(adc_item.f);
+    adc_item.handle(adc_item.f);
 #endif
 
 #endif
+}
 
-    int_handler_adc_end
-    
-int_handler_GLOBAL_end
-    
 // interrupt routines ends
 
 #if !defined(SIMPLE_ADC)
@@ -845,7 +796,7 @@ uint16_t calc_filtered_value(filtered_value_t *f, uint16_t v) {
 
 #ifdef ENCODER_SUPPORT
 // A valid CW or CCW move returns 1, invalid returns 0.
-void read_rotary() {
+void int_change_encoder_level() {
     static int8_t rot_enc_table[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
     static uint8_t prevNextCode = 0;
     static uint8_t store = 0;
@@ -1765,7 +1716,7 @@ void screen_main(void) {
     }
 
     LCD_CMD(0xC0);
-    if (drive_min_speed_fl == 0) {
+    if (drive_min_speed_fl == 0 && motor_fl == 0) {
 #if defined(TEMPERATURE_SUPPORT)
         print_temp((config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, ALIGN_LEFT);
 #else
@@ -1802,14 +1753,16 @@ void clear_trip(bool force, trip_t* trip) {
 void screen_trip() {
     trip_t *trip;
     uint8_t trips_pos;
+    
+    uint8_t item_index = items_main[c_item].index;
 
-    if (c_item == SCREEN_INDEX_TRIP_C) {
+    if (item_index == SCREEN_INDEX_TRIP_C) {
             trip = &trips.tripC;
             trips_pos = config.settings.daily_tripc ? TRIPS_POS_DAY : TRIPS_POS_CURR;
-    } else if (c_item == SCREEN_INDEX_TRIP_A) {
+    } else if (item_index == SCREEN_INDEX_TRIP_A) {
             trip = &trips.tripA;
             trips_pos = TRIPS_POS_A;
-    } else /*if (c_item == SCREEN_INDEX_TRIP_B) */{
+    } else /*if (item_index == SCREEN_INDEX_TRIP_B) */{
             trip = &trips.tripB;
             trips_pos = TRIPS_POS_B;
     };

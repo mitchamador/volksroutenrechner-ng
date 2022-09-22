@@ -32,7 +32,6 @@ typedef uint16_t eeaddr_t;
 #define ADC_MAX     1023
 
 #define start_fuel_timer() TCCR0B = (0 << WGM02) | (0 << CS02) | (1 << CS01) | (0 << CS00);
-
 #define stop_fuel_timer()  TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
 
 // timer1 compare 10ms, 2500 with prescaler 1:64 running at 16Mhz
@@ -60,41 +59,6 @@ typedef uint16_t eeaddr_t;
 
 #define enable_interrupts() sei();
 #define disable_interrupts() cli();
-
-#define int_handler_GLOBAL_begin
-
-#define int_handler_GLOBAL_end
-
-#define int_handler_fuel_speed_begin ISR(PCINT0_vect) {     \
-
-#define int_handler_fuel_speed_end }                        \
-
-#define int_handler_encoder_begin ISR(PCINT1_vect) {        \
-
-#define int_handler_encoder_end }                           \
-
-#define int_handler_fuel_timer_overflow_begin ISR(TIMER0_COMPA_vect) {   \
-    
-#define int_handler_fuel_timer_overflow_end }                            \
-
-#if defined(PROTEUS_DEBUG)
-
-#define int_handler_main_timer_overflow_begin ISR(TIMER1_COMPA_vect) {   \
-      TIFR1 = (1 << OCF1B);                                              \
-
-#define int_handler_main_timer_overflow_end }                            \
-
-#else
-
-#define int_handler_main_timer_overflow_begin ISR(TIMER1_CAPT_vect) {    \
-
-#define int_handler_main_timer_overflow_end }                            \
-
-#endif
-    
-#define int_handler_adc_begin ISR(ADC_vect) {               \
-    
-#define int_handler_adc_end }                               \
 
 // DDRx: 0 - input, 1 - output
 
@@ -180,9 +144,7 @@ typedef uint16_t eeaddr_t;
 // en - PB4
 // data - PD0..PD3
 
-#define LCD_DATA_PORT       PORTD
-#define LCD_DATA_PORT_SHIFT 4
-#define LCD_DATA_PORT_MASK  (0xF0 >> LCD_DATA_PORT_SHIFT)
+#define LCD_DATA(data) PORTD = (PORTD & ~0x0F) | ((data >> 4) & 0x0F);
 
 #define RS_LOW  (PORTB &= ~_BV(PORTB2))
 #define RS_HIGH (PORTB |=  _BV(PORTB2))

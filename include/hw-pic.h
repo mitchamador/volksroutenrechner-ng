@@ -239,9 +239,7 @@ typedef unsigned char eeaddr_t;
 // en - RC3
 // data - RC4..RC7
 
-#define LCD_DATA_PORT       PORTC
-#define LCD_DATA_PORT_SHIFT 0
-#define LCD_DATA_PORT_MASK  (0xF0 >> LCD_DATA_PORT_SHIFT)
+#define LCD_DATA(data) PORTC = (PORTC & ~0xF0) | (data & 0xF0);
 
 #define RS_LOW              (PORTCbits.RC1 = 0)
 #define RS_HIGH             (PORTCbits.RC1 = 1)
@@ -345,116 +343,21 @@ typedef unsigned char eeaddr_t;
 #define enable_interrupts() ei();
 #define disable_interrupts() di();
 
-#define int_handler_GLOBAL_begin __interrupt() void HW_isr(void) {
-
-#define int_handler_GLOBAL_end }
-
 #if defined(_16F876A) || defined(_18F252)
-
-#define int_handler_fuel_speed_begin                       \
-    /* Was it the port B interrupt on change?*/            \
-    if (/*RBIE && */RBIF) {                                \
-        /* Dummy read of the port, as per datasheet */     \
-        asm("movf PORTB,f");                               \
-        /* Reset the interrupt flag */                     \
-        RBIF = 0;                                          \
-
-#define int_handler_fuel_speed_end                         \
-    }                                                      \
-
+#define PORT_CHANGE_IF          RBIF
+#define PORT_CHANGE_CLEAR_IF    RBIF
+#define TIMER_MAIN_IF           CCP2IF
 #elif defined(_16F1936) || defined(_16F1938)
-
-#if 1
-
-#define int_handler_fuel_speed_begin                       \
-    /* Was it interrupt on change?*/                       \
-    if (/*IOCIE && */IOCIF) {                              \
-        IOCBF = 0;                                         \
-
-#define int_handler_fuel_speed_end                         \
-    }                                                      \
-
-#else
-
-#define int_handler_fuel_speed_begin                       \
-    /* Was it interrupt on change?*/                       \
-    if (/*IOCIE && */IOCIF) {                              \
-
-#define int_handler_fuel_speed_end                         \
-    }                                                      \
-
-#define int_handler_fuel_begin                             \
-    if (IOCBF7) {                                          \
-        IOCBF7 = 0;                                        \
-
-#define int_handler_fuel_end                               \
-    }                                                      \
-
-#define int_handler_speed_begin                            \
-    if (IOCBF6) {                                          \
-        IOCBF6 = 0;                                        \
-
-#define int_handler_speed_end                              \
-    }                                                      \
-
-#endif
-
+#define PORT_CHANGE_IF          IOCIF
+#define PORT_CHANGE_CLEAR_IF    IOCBF
+#define TIMER_MAIN_IF           CCP5IF
 #endif
 
 #if defined(_18F252)
-
-#define int_handler_fuel_timer_overflow_begin              \
-    /* Timer0 interrupt */                                 \
-    if (/*T0IE && */TMR0IF) {                              \
-        TMR0IF = 0;                                        \
-
-#define int_handler_fuel_timer_overflow_end                \
-    }                                                      \
-
+#define TIMER_FUEL_IF           TMR0IF
 #else
-
-#define int_handler_fuel_timer_overflow_begin              \
-    /* Timer0 interrupt */                                 \
-    if (/*T0IE && */T0IF) {                                \
-        T0IF = 0;                                          \
-
-#define int_handler_fuel_timer_overflow_end                \
-    }                                                      \
-
+#define TIMER_FUEL_IF           T0IF
 #endif
-
-#if defined(_16F876A) || defined(_18F252)
-
-#define int_handler_main_timer_overflow_begin              \
-    /* Timer1 interrupt */                                 \
-    if (/*CCP2IE && */CCP2IF) {                            \
-        /* Reset the interrupt flag */                     \
-        CCP2IF = 0;                                        \
-        
-#define int_handler_main_timer_overflow_end                \
-    }                                                      \
-
-#elif defined(_16F1936) || defined(_16F1938)
-
-#define int_handler_main_timer_overflow_begin              \
-    /* Timer1 interrupt */                                 \
-    if (/*CCP5IE && */CCP5IF) {                            \
-        /* Reset the interrupt flag */                     \
-        CCP5IF = 0;                                        \
-        
-#define int_handler_main_timer_overflow_end                \
-    }                                                      \
-
-#endif
-
-#define int_handler_adc_begin                              \
-    /* ADC interrupt */                                    \
-    if (/*ADIE && */ADIF) {                                \
-        /* Reset the interrupt flag */                     \
-        ADIF = 0;                                          \
-    
-#define int_handler_adc_end                                \
-    }                                                      \
 
 #else
 #error "device not supported"

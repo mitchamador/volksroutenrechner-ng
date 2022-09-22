@@ -78,7 +78,7 @@ void LCD_Init(void) {
 
 #ifdef LCD_LEGACY
 void LCD_Write_4Bit(unsigned char data) {
-    LCD_DATA_PORT = (LCD_DATA_PORT & ~LCD_DATA_PORT_MASK) | ((data >> LCD_DATA_PORT_SHIFT) & LCD_DATA_PORT_MASK);
+    LCD_DATA(data);
     EN_HIGH;
     LCD_delay_en_strobe();
     EN_LOW;

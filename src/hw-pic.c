@@ -1,7 +1,48 @@
 #include "hw.h"
 #include "i2c.h"
+#include "main.h"
 
 #if defined(_PIC14) || defined(_PIC14E) || defined(_PIC18)
+
+__interrupt() void HW_isr(void) {
+
+    /* port change interrupt */
+    if (PORT_CHANGE_IF) {
+#if defined(_16F876A) || defined(_18F252)
+        /* Dummy read of the port, as per datasheet */
+        asm("movf PORTB,f");
+#endif
+        /* Reset the interrupt flag */
+        PORT_CHANGE_CLEAR_IF = 0;
+
+        capture_main_timer(main_timer);
+
+        int_change_fuel_level();
+        int_change_speed_level();
+    }
+
+    /* fuel timer interrupt */
+    if (TIMER_FUEL_IF) {
+        TIMER_FUEL_IF = 0;
+        
+        int_fuel_timer_overflow();
+    }
+
+    /* main timer interrupt */
+    if (TIMER_MAIN_IF) {
+        TIMER_MAIN_IF = 0;
+        
+        int_main_timer_overflow();
+    }
+
+    /* adc finish interrupt*/
+    if (ADIF) {
+        ADIF = 0;
+        
+        int_adc_finish();
+    }       
+
+}
 
 void HW_Init(void) {
 
