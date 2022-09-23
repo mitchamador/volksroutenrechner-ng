@@ -26,10 +26,10 @@ else
 endif
 
 ifneq (,$(filter pic16f% pic18f%,$(MCU)))
-  CC_DIR=${XC8-TOOLCHAIN}/xc8/v2.32/bin
-  CC=${XC8-TOOLCHAIN}/xc8/v2.32/bin/xc8-cc
-  FIXDEPS=${XC8-TOOLCHAIN}/xc8/v2.32/bin/fixDeps
-  AVR_OBJCOPY=${XC8-TOOLCHAIN}/xc8/v2.32/bin/avr-objcopy
+  CC_DIR=${XC8-TOOLCHAIN}/xc8/bin
+  CC=${XC8-TOOLCHAIN}/xc8/bin/xc8-cc
+  FIXDEPS=${XC8-TOOLCHAIN}/xc8/bin/fixDeps
+  AVR_OBJCOPY=${XC8-TOOLCHAIN}/xc8/bin/avr-objcopy
 ifneq (,$(findstring pic16f,$(MCU)))
   XC8_OPTIONS=-mno-osccal -mno-resetbits -mno-save-resetbits -mno-stackcall -mstack=compiled:auto:auto
 else
