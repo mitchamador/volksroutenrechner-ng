@@ -243,7 +243,7 @@ filtered_value_t f_fuel_tank = {0, 3 | FILTERED_VALUE_FIRST_SAMPLE};
 #endif
 
 
-const adc_item_t adc_items[] = {
+adc_item_t adc_items[] = {
     {adc_handler_voltage, &f_voltage, ADC_CHANNEL_POWER_SUPPLY},
 #ifdef ADC_BUTTONS
     {adc_handler_buttons, &f_buttons, ADC_CHANNEL_BUTTONS},
@@ -253,7 +253,7 @@ const adc_item_t adc_items[] = {
 #endif
 };
 #else
-const adc_item_t adc_item = {adc_handler_voltage, &f_voltage, ADC_CHANNEL_POWER_SUPPLY};
+adc_item_t adc_item = {adc_handler_voltage, &f_voltage, ADC_CHANNEL_POWER_SUPPLY};
 #endif
 
 #endif
@@ -709,7 +709,7 @@ void int_adc_finish() {
     // set next channel
     set_adc_channel(adc_items[_adc_ch].channel);
 
-    h->handle(&h->f);
+    h->handle(h->f);
 
     if (_adc_ch != 0) {
         // start next adc channel (first channel is started from auto trigger)
