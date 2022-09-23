@@ -1232,6 +1232,8 @@ void screen_time(void) {
 
     read_ds_time();
 
+    time_editor_item_t *time_editor_item;
+
     if (request_screen((char *) &time_correction_string) != 0) {
 
         uint8_t c = 0, save_time = 0;
@@ -1249,11 +1251,11 @@ void screen_time(void) {
             }
             if (edit_mode == 0) {
                 handle_keys_next_prev(&c, 0, 6 - 1);
+                time_editor_item = (time_editor_item_t *) &time_editor_items_array[c];
             } else if (key1_press != 0 || key3_press != 0) {           
 #else
             handle_keys_next_prev(&c, 0, 6 - 1);
-
-            time_editor_item_t *time_editor_item = (time_editor_item_t *) &time_editor_items_array[c];
+            time_editor_item = (time_editor_item_t *) &time_editor_items_array[c];
 
             if (key2_press) {
 #endif
