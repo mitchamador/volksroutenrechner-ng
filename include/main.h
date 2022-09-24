@@ -28,15 +28,15 @@
 #endif
 
 // misc constants (in seconds)
-#define MAIN_INTERVAL ((uint8_t) (1.0f / TIMER_MAIN_PERIOD))
-#define DEBOUNCE ((uint8_t) (0.04f / TIMER_MAIN_PERIOD))
-#define SHORTKEY ((uint8_t) (0.5f / TIMER_MAIN_PERIOD))
-#define LONGKEY ((uint8_t) (1.0f / TIMER_MAIN_PERIOD))
-#define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / TIMER_MAIN_PERIOD))
+#define MAIN_INTERVAL ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
+#define DEBOUNCE ((uint8_t) (0.04f / MAIN_TIMER_PERIOD))
+#define SHORTKEY ((uint8_t) (0.5f / MAIN_TIMER_PERIOD))
+#define LONGKEY ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
+#define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / MAIN_TIMER_PERIOD))
 // timeout constant in 0.01 ms resolution
-#define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / TIMER_MAIN_PERIOD))
+#define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / MAIN_TIMER_PERIOD))
 // time with power supply measurements lower than threshold before shutdown
-#define SHUTDOWN ((uint8_t) (0.25f / TIMER_MAIN_PERIOD))
+#define SHUTDOWN ((uint8_t) (0.25f / MAIN_TIMER_PERIOD))
 
 // default min speed for drive mode (km/h)
 #define MIN_SPEED_DEFAULT 5
@@ -61,19 +61,20 @@
 // min rpm
 #define TAHO_MIN_RPM 100UL
 // min rpm constant (1/(TAHO_MIN_RPM/60sec)/0.01s) 0.01s timer overflow
-#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / TIMER_MAIN_PERIOD))
+#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / TAHO_TIMER_PERIOD))
 // taho const 
-#define TAHO_CONST ((uint32_t) (60 / TIMER_MAIN_PERIOD * TIMER_MAIN_TICKS_PER_PERIOD))
+#define TAHO_CONST ((uint32_t) (60 / TAHO_TIMER_PERIOD * TAHO_TIMER_TICKS_PER_PERIOD))
 
-// timer1 counts between speed pulses when speed is X km/h
-// (1 / ((config.odo_const * X) / 3600)) / (0.01f/TIMER_MAIN_TICKS_PER_PERIOD) = ((3600 / X) / (0.01f / TIMER_MAIN_TICKS_PER_PERIOD) / config.odo_const
-#define speed_const(x) ((uint32_t) ((3600 / x) / (TIMER_MAIN_PERIOD / TIMER_MAIN_TICKS_PER_PERIOD)))
+// speed timer counts between speed pulses when speed is X km/h
+// (1 / ((config.odo_const * X) / 3600)) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD) = ((3600 / X) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD) / config.odo_const
+#define speed_const(x) ((uint32_t) ((3600 / x) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD)))
 
-// minimum pulse width for acceleration measurement calculation (10 * 0.01s)
-#if (65536 / TIMER_MAIN_TICKS_PER_PERIOD) >= 10
-#define ACCEL_MEAS_OVERFLOW 10
+// minimum pulse width for acceleration measurement calculation (0.1s)
+#define ACCEL_MEAS_OVERFLOW_CONST 10            /* (0.1f / SPEED_TIMER_PERIOD) */
+#if (65536 / SPEED_TIMER_TICKS_PER_PERIOD) >= ACCEL_MEAS_OVERFLOW_CONST
+#define ACCEL_MEAS_OVERFLOW ACCEL_MEAS_OVERFLOW_CONST
 #else
-#define ACCEL_MEAS_OVERFLOW (65536 / TIMER_MAIN_TICKS_PER_PERIOD)
+#define ACCEL_MEAS_OVERFLOW (65536 / SPEED_TIMER_TICKS_PER_PERIOD)
 #endif
 
 typedef union {
@@ -362,13 +363,20 @@ typedef struct {
 
 #define JOURNAL_ITEM_OK 0xA5
 
-void int_change_fuel_level(void);
-void int_change_speed_level(void);
+void int_capture_injector_level_change(void);
+void int_taho_timer_overflow(void);
+void int_capture_speed_level_change(void);
+void int_speed_timer_overflow(void);
 void int_fuel_timer_overflow(void);
 void int_main_timer_overflow(void);
 void int_adc_finish(void);
 void int_change_encoder_level(void);
 
 extern volatile uint16_t main_timer;
-
+#ifndef taho_timer
+extern volatile uint16_t taho_timer;
+#endif
+#ifndef speed_timer
+extern volatile uint16_t speed_timer;
+#endif
 #endif	/* MAIN_H */

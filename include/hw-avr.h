@@ -42,8 +42,17 @@ typedef uint16_t eeaddr_t;
 #define stop_fuel_timer()  TCCR0B = (0 << WGM02) | (0 << CS02) | (0 << CS01) | (0 << CS00);
 
 // timer1 compare 10ms, 2500 with prescaler 1:64 running at 16Mhz
-#define TIMER_MAIN_PERIOD 0.01f
-#define TIMER_MAIN_TICKS_PER_PERIOD 2500
+#define MAIN_TIMER_PERIOD               0.01f
+#define MAIN_TIMER_TICKS_PER_PERIOD     2500
+
+#define TAHO_TIMER_PERIOD               MAIN_TIMER_PERIOD
+#define TAHO_TIMER_TICKS_PER_PERIOD     MAIN_TIMER_TICKS_PER_PERIOD
+#define taho_timer                      main_timer
+
+#define SPEED_TIMER_PERIOD              MAIN_TIMER_PERIOD
+#define SPEED_TIMER_TICKS_PER_PERIOD    MAIN_TIMER_TICKS_PER_PERIOD
+#define speed_timer                     main_timer
+
 
 // start timer with prescaler 1:64
 #define start_main_timer() TCCR1B = (TCCR1B & ~((1 << CS12) | (1 << CS11) | (1 << CS10))) | ((0 << CS12) | (1 << CS11) | (1 << CS10));

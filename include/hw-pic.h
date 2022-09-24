@@ -292,8 +292,16 @@ typedef unsigned char eeaddr_t;
 #define PORTC_INIT 0
 
 // timer1 compare 10ms, 6250 with prescaler 1:8 at 20MHz
-#define TIMER_MAIN_PERIOD 0.01f
-#define TIMER_MAIN_TICKS_PER_PERIOD 6250
+#define MAIN_TIMER_PERIOD               0.01f
+#define MAIN_TIMER_TICKS_PER_PERIOD     6250
+
+#define TAHO_TIMER_PERIOD               MAIN_TIMER_PERIOD
+#define TAHO_TIMER_TICKS_PER_PERIOD     MAIN_TIMER_TICKS_PER_PERIOD
+#define taho_timer                      main_timer
+
+#define SPEED_TIMER_PERIOD              MAIN_TIMER_PERIOD
+#define SPEED_TIMER_TICKS_PER_PERIOD    MAIN_TIMER_TICKS_PER_PERIOD
+#define speed_timer                     main_timer
 
 /* ======================================= */
 
@@ -311,12 +319,12 @@ typedef unsigned char eeaddr_t;
 #define disable_interrupts() di();
 
 #if defined(_16F876A) || defined(_18F252)
-#define PORT_CHANGE_IF          RBIF
-#define PORT_CHANGE_CLEAR_IF    RBIF
+#define PIN_CHANGE_IF           RBIF
+#define PIN_CHANGE_CLEAR_IF     RBIF
 #define TIMER_MAIN_IF           CCP2IF
 #elif defined(_16F1936) || defined(_16F1938)
-#define PORT_CHANGE_IF          IOCIF
-#define PORT_CHANGE_CLEAR_IF    IOCBF
+#define PIN_CHANGE_IF           IOCIF
+#define PIN_CHANGE_CLEAR_IF     IOCBF
 #define TIMER_MAIN_IF           CCP5IF
 #endif
 

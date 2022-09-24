@@ -432,7 +432,10 @@ PROGMEM const char trip_string[] = TRIP;
 PROGMEM const char on_off_array[] = ON_OFF_ARRAY;
 PROGMEM const char time_correction_string[] = TIME_CORRECTION;
 PROGMEM const char reset_string[] = RESET_DATA;
+
+#ifdef MIN_MAX_VOLTAGES_SUPPORT
 PROGMEM const char voltage_string[] = VOLTAGE;
+#endif
 
 #ifdef CONTINUOUS_DATA_SUPPORT
 PROGMEM const char continuous_data_string[] = CONTINUOUS_DATA;

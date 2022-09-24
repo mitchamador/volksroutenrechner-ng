@@ -6,23 +6,20 @@
 
 __interrupt() void HW_isr(void) {
 
-    /* port change interrupt */
-    if (PORT_CHANGE_IF) {
+    /* pin change interrupt */
+    if (PIN_CHANGE_IF) {
 #if defined(_16F876A) || defined(_18F252)
         /* Dummy read of the port, as per datasheet */
         asm("movf PORTB,f");
 #endif
         /* Reset the interrupt flag */
-        PORT_CHANGE_CLEAR_IF = 0;
+        PIN_CHANGE_CLEAR_IF = 0;
 
         /* Capture main timer value */
 #if defined(_18F252)
         // read 16bit TMR1 value with RD16 = 1
         *((uint8_t*) (&main_timer) + 0) = TMR1L;
         *((uint8_t*) (&main_timer) + 1) = TMR1H;
-        if (TIMER_MAIN_IF) {
-            main_timer += TIMER_MAIN_TICKS_PER_PERIOD;
-        }
 #else
         // read 16bit TMR1 value (read TMR1H, TMR1L; if TMR1L == 0x00, re-read TMR1H)
         *((uint8_t*)(&main_timer) + 1) = TMR1H;
@@ -34,11 +31,11 @@ __interrupt() void HW_isr(void) {
 #endif
         // if overflow occurs during reading (between start of interrupt and TMR1 reading) - set to max value
         if (TIMER_MAIN_IF) {
-            main_timer += TIMER_MAIN_TICKS_PER_PERIOD;
+            main_timer += MAIN_TIMER_TICKS_PER_PERIOD;
         }
 
-        int_change_fuel_level();
-        int_change_speed_level();
+        int_capture_injector_level_change();
+        int_capture_speed_level_change();
     }
 
     /* fuel timer interrupt */
@@ -51,6 +48,9 @@ __interrupt() void HW_isr(void) {
     /* main timer interrupt */
     if (TIMER_MAIN_IF) {
         TIMER_MAIN_IF = 0;
+        
+        int_taho_timer_overflow();
+        int_speed_timer_overflow();
         
         int_main_timer_overflow();
     }
@@ -100,11 +100,11 @@ void HW_Init(void) {
 #if defined(_16F876A) || defined(_18F252)
     // ccp2 init (compare special event trigger 10ms + start adc)
     CCP2CON = (1 << _CCP2CON_CCP2M3_POSITION) | (0 << _CCP2CON_CCP2M2_POSITION) | (1 << _CCP2CON_CCP2M1_POSITION) | (1 << _CCP2CON_CCP2M0_POSITION);
-    CCPR2 = TIMER_MAIN_TICKS_PER_PERIOD;
+    CCPR2 = MAIN_TIMER_TICKS_PER_PERIOD;
 #elif defined(_16F1936) || defined(_16F1938)
     // ccp5 init (compare special event trigger 10ms + start adc)
     CCP5CON = (1 << _CCP5CON_CCP5M3_POSITION) | (0 << _CCP5CON_CCP5M2_POSITION) | (1 << _CCP5CON_CCP5M1_POSITION) | (1 << _CCP5CON_CCP5M0_POSITION);
-    CCPR5 = TIMER_MAIN_TICKS_PER_PERIOD;
+    CCPR5 = MAIN_TIMER_TICKS_PER_PERIOD;
 #endif    
 
     // adc interrupt

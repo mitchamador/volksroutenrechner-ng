@@ -65,8 +65,8 @@ volatile __bit accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_mea
 volatile uint16_t accel_meas_lower_const;
 #endif
 volatile uint16_t accel_meas_upper_const, accel_meas_timer, accel_meas_speed;
-volatile uint16_t accel_meas_main_timer_prev, accel_meas_main_timer_ticks;
-volatile uint8_t accel_meas_main_timer_ofl;
+volatile uint16_t speed_timer_prev, speed_timer_ticks;
+volatile uint8_t speed_timer_ofl;
 
 volatile uint16_t kmh_tmp, fuel_tmp;
 volatile uint16_t kmh, fuel;
@@ -77,9 +77,17 @@ volatile adc_voltage_t adc_voltage = {0, ADC_MAX, ADC_MIN};
 volatile adc_voltage_t adc_voltage = {0};
 #endif
 
-volatile uint24_t taho, taho_main_timer_ticks;
-volatile uint16_t taho_main_timer_prev, main_timer;
-volatile uint8_t taho_main_timer_ofl;
+volatile uint16_t main_timer;
+#ifndef taho_timer
+volatile uint16_t taho_timer;
+#endif
+#ifndef speed_timer
+volatile uint16_t speed_timer;
+#endif
+
+volatile uint24_t taho, taho_timer_ticks;
+volatile uint16_t taho_timer_prev;
+volatile uint8_t taho_timer_ofl;
 
 // uint16_t - max ~104 ms for pic16f targets (* 2.5 for atmega)
 volatile uint16_t fuel_duration;
@@ -269,7 +277,7 @@ void cd_increment_filter(void);
 
 // interrupt routines starts
 
-void int_change_fuel_level() {
+void int_capture_injector_level_change() {
     // fuel injector
     if (FUEL_ACTIVE) {
         if (fuel_fl == 0) {
@@ -290,16 +298,16 @@ void int_change_fuel_level() {
             if (taho_measure_fl == 0) {
                 taho_measure_fl = 1;
 
-                taho_main_timer_ticks = 0;
-                taho_main_timer_prev = main_timer;
-                taho_main_timer_ofl = 0;
+                taho_timer_ticks = 0;
+                taho_timer_prev = taho_timer;
+                taho_timer_ofl = 0;
             } else {
-                taho = taho_main_timer_ticks + main_timer - taho_main_timer_prev;
+                taho = taho_timer_ticks + taho_timer - taho_timer_prev;
                 taho_fl = 1;
 
-                taho_main_timer_ticks = 0;
-                taho_main_timer_prev = main_timer;
-                taho_main_timer_ofl = 0;
+                taho_timer_ticks = 0;
+                taho_timer_prev = taho_timer;
+                taho_timer_ofl = 0;
             }
         }
     } else {
@@ -309,13 +317,27 @@ void int_change_fuel_level() {
             fuel_fl = 0;
             // measure fuel duration                
             if (taho_measure_fl != 0) {
-                fuel_duration = (uint16_t) (taho_main_timer_ticks + main_timer - taho_main_timer_prev);
+                fuel_duration = (uint16_t) (taho_timer_ticks + taho_timer - taho_timer_prev);
             }
         }
     }
 }
 
-void int_change_speed_level() {
+__section("text999") void int_taho_timer_overflow() {
+    if (taho_measure_fl != 0) {
+        if (++taho_timer_ofl == TAHO_OVERFLOW) {
+            taho_measure_fl = 0;
+            stop_fuel_timer();
+            taho_fl = 0;
+            fuel_duration = 0;
+            motor_fl = 0;
+        } else {
+            taho_timer_ticks += TAHO_TIMER_TICKS_PER_PERIOD;
+        }
+    }
+}
+
+void int_capture_speed_level_change() {
     // speed sensor
     if (TX_ACTIVE) {
         if (odom_fl == 0) {
@@ -326,11 +348,11 @@ void int_change_speed_level() {
             if (accel_meas_process_fl != 0) {
                 if (accel_meas_fl == 0) {
                     accel_meas_fl = 1;
-                    accel_meas_main_timer_prev = main_timer;
-                    accel_meas_main_timer_ticks = 0;
-                    accel_meas_main_timer_ofl = 0;
+                    speed_timer_prev = speed_timer;
+                    speed_timer_ticks = 0;
+                    speed_timer_ofl = 0;
                 } else {
-                    accel_meas_speed = accel_meas_main_timer_ticks + main_timer - accel_meas_main_timer_prev;
+                    accel_meas_speed = speed_timer_ticks + speed_timer - speed_timer_prev;
                     accel_meas_drive_fl = 1;
 #ifdef EXTENDED_ACCELERATION_MEASUREMENT
                     if (accel_meas_timer_fl == 0 && (accel_meas_speed <= accel_meas_lower_const || accel_meas_lower_const == 0)) {
@@ -344,9 +366,9 @@ void int_change_speed_level() {
                         accel_meas_timer_fl = 0;
                         accel_meas_process_fl = 0;
                     } else {
-                        accel_meas_main_timer_prev = main_timer;
-                        accel_meas_main_timer_ticks = 0;
-                        accel_meas_main_timer_ofl = 0;
+                        speed_timer_prev = speed_timer;
+                        speed_timer_ticks = 0;
+                        speed_timer_ofl = 0;
                     }
                 }
             } else {
@@ -358,6 +380,17 @@ void int_change_speed_level() {
         }
     } else {
         odom_fl = 0;
+    }
+}
+
+__section("text999") void int_speed_timer_overflow() {
+    if (accel_meas_fl != 0) {
+        if (++speed_timer_ofl == ACCEL_MEAS_OVERFLOW) {
+            accel_meas_fl = 0;
+            accel_meas_drive_fl = 0;
+        } else {
+            speed_timer_ticks += SPEED_TIMER_TICKS_PER_PERIOD;
+        }
     }
 }
 
@@ -398,27 +431,6 @@ void int_main_timer_overflow() {
     static uint8_t key3_counter = 0;
 #endif
     static uint8_t main_interval_counter = MAIN_INTERVAL;
-
-    if (taho_measure_fl != 0) {
-        if (++taho_main_timer_ofl == TAHO_OVERFLOW) {
-            taho_measure_fl = 0;
-            stop_fuel_timer();
-            taho_fl = 0;
-            fuel_duration = 0;
-            motor_fl = 0;
-        } else {
-            taho_main_timer_ticks += TIMER_MAIN_TICKS_PER_PERIOD;
-        }
-    }
-
-    if (accel_meas_fl != 0) {
-        if (++accel_meas_main_timer_ofl == ACCEL_MEAS_OVERFLOW) {
-            accel_meas_fl = 0;
-            accel_meas_drive_fl = 0;
-        } else {
-            accel_meas_main_timer_ticks += TIMER_MAIN_TICKS_PER_PERIOD;
-        }
-    }
 
     if (key_repeat_counter == 0) {
 #ifndef ENCODER_SUPPORT
@@ -1111,7 +1123,7 @@ uint8_t print_fuel_duration(align_t align) {
 //        len = strcpy2(buf, (char *) &empty_string, 0);
 //    } else
     {
-        uint16_t res = (uint16_t) (fuel_duration * (1000 / 250) / (TIMER_MAIN_TICKS_PER_PERIOD / 250));
+        uint16_t res = (uint16_t) (fuel_duration * (1000 / 250) / (TAHO_TIMER_TICKS_PER_PERIOD / 250));
         len = print_fract(buf, res, 2);
     }
     return _print8_suffix(len, POS_MS, align);
@@ -1612,7 +1624,7 @@ void acceleration_measurement(uint8_t index) {
                 len += print_symbols_str(len, POS_SEC);
                 add_leading_symbols(buf, ' ', len, 16);
 
-                len = ultoa2((char*) buf, accel_meas_drive_fl != 0 ? (uint16_t) ((360000UL * TIMER_MAIN_TICKS_PER_PERIOD / config.odo_const) / accel_meas_speed) : 0, 10); // integer
+                len = ultoa2((char*) buf, accel_meas_drive_fl != 0 ? (uint16_t) ((360000UL * SPEED_TIMER_TICKS_PER_PERIOD / config.odo_const) / accel_meas_speed) : 0, 10); // integer
                 /*len += */print_symbols_str(len, POS_KMH);
 
                 LCD_CMD(0xC0);

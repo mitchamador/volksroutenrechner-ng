@@ -19,11 +19,11 @@ ISR(PCINT0_vect) {
 #else
     if ((TIFR1 & (1 << ICF1)) != 0) {
 #endif
-        main_timer += TIMER_MAIN_TICKS_PER_PERIOD;
+        main_timer += MAIN_TIMER_TICKS_PER_PERIOD;
     }
 
-    int_change_fuel_level();
-    int_change_speed_level();
+    int_capture_injector_level_change();
+    int_capture_speed_level_change();
 }
 
 #if defined(ENCODER_SUPPORT)
@@ -45,6 +45,9 @@ ISR(TIMER1_COMPA_vect) {
 #else
 ISR(TIMER1_CAPT_vect) {
 #endif
+    int_taho_timer_overflow();
+    int_speed_timer_overflow();
+
     int_main_timer_overflow();
 }
 
@@ -104,13 +107,13 @@ void HW_Init(void) {
 #if defined(PROTEUS_DEBUG)
     ICR1H = 0;
     ICR1L = 0;
-    OCR1AH = (TIMER_MAIN_TICKS_PER_PERIOD - 1) >> 8;
-    OCR1AL = (TIMER_MAIN_TICKS_PER_PERIOD - 1) & 0xFF;
-    OCR1BH = (TIMER_MAIN_TICKS_PER_PERIOD - 1) >> 8;
-    OCR1BL = (TIMER_MAIN_TICKS_PER_PERIOD - 1) & 0xFF;
+    OCR1AH = (MAIN_TIMER_TICKS_PER_PERIOD - 1) >> 8;
+    OCR1AL = (MAIN_TIMER_TICKS_PER_PERIOD - 1) & 0xFF;
+    OCR1BH = (MAIN_TIMER_TICKS_PER_PERIOD - 1) >> 8;
+    OCR1BL = (MAIN_TIMER_TICKS_PER_PERIOD - 1) & 0xFF;
 #else
-    ICR1H = (TIMER_MAIN_TICKS_PER_PERIOD - 1) >> 8;
-    ICR1L = (TIMER_MAIN_TICKS_PER_PERIOD - 1) & 0xFF;
+    ICR1H = (MAIN_TIMER_TICKS_PER_PERIOD - 1) >> 8;
+    ICR1L = (MAIN_TIMER_TICKS_PER_PERIOD - 1) & 0xFF;
     OCR1AH = 0x00;
     OCR1AL = 0x00;
     OCR1BH = 0x00;
