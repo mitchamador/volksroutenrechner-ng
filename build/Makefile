@@ -39,6 +39,7 @@ endif
 else
   CC=${AVR-GCC-TOOLCHAIN}/bin/avr-gcc
   AVR_OBJCOPY=${AVR-GCC-TOOLCHAIN}/bin/avr-objcopy
+  AVR_OBJDUMP=${AVR-GCC-TOOLCHAIN}/bin/avr-objdump
   AVR_SIZE=${AVR-GCC-TOOLCHAIN}/bin/avr-size
   TARGET=${MP_PROCESSOR_OPTION}${TARGET_SUFFIX}
 endif
@@ -140,6 +141,7 @@ else
 	${CC} $(LDFLAGS) -o ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} -mmcu=$(MCU) -Os -Wl,--gc-sections -flto -fuse-linker-plugin ${OBJS} 
 	${AVR_OBJCOPY} -O ihex -R .eeprom "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}"
 	${AVR_OBJCOPY} -j .eeprom --set-section-flags=.eeprom=alloc,load --change-section-lma .eeprom=0 --no-change-warnings -O ihex "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.eep" || exit 0 
+	${AVR_OBJDUMP} -h -S "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" >"${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.lst"
 	${AVR_SIZE} -C --mcu=$(MCU) "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}"
 endif
 
