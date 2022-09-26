@@ -138,16 +138,20 @@ $(TARGET): $(OBJS)
 ifneq (,$(filter pic16f% pic18f%,$(MCU)))
 	${CC} $(LDFLAGS) -mcpu=$(MP_PROCESSOR_OPTION) -Wl,-Map=${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.map  -DXPRJ_$(TARGET)=$(CND_CONF)  -Wl,--defsym=__MPLAB_BUILD=1   -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) -std=c99 -gcoff $(COMPARISON_BUILD) -Wl,--memorysummary,${DISTDIR}/${IMAGE_TYPE}//memoryfile.xml -o ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}  ${OBJS}      
 else
-	${CC} $(LDFLAGS) -o ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} -mmcu=$(MCU) -Os -Wl,--gc-sections -flto -fuse-linker-plugin ${OBJS} 
+	${CC} $(LDFLAGS) -gdwarf-2 -Wl,-Map="${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.map" -o ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} -mmcu=$(MCU) -Os -Wl,--gc-sections -flto -fuse-linker-plugin ${OBJS} 
 	${AVR_OBJCOPY} -O ihex -R .eeprom "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${OUTPUT_SUFFIX}"
 	${AVR_OBJCOPY} -j .eeprom --set-section-flags=.eeprom=alloc,load --change-section-lma .eeprom=0 --no-change-warnings -O ihex "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.eep" || exit 0 
-	${AVR_OBJDUMP} -h -S "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" >"${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.lst"
+	${AVR_OBJDUMP} -h -S "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}" >"${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.lss"
 	${AVR_SIZE} -C --mcu=$(MCU) "${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX}"
 endif
 
 ${OBJECTDIR}/${IMAGE_TYPE}/%.o : %.c
 	@${MKDIR} "${OBJECTDIR}/${IMAGE_TYPE}/src"
+ifeq ($(DEBUG),1)
+	${CC} $(CPPFLAGS) -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -MD -Og -DPROTEUS_DEBUG -ffunction-sections -fdata-sections -flto -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
+else
 	${CC} $(CPPFLAGS) -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -MD -Os -ffunction-sections -fdata-sections -flto -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -mcall-prologues $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
+endif
 
 ${OBJECTDIR}/${IMAGE_TYPE}/%.p1 : %.c
 	@${MKDIR} "${OBJECTDIR}/${IMAGE_TYPE}/src"

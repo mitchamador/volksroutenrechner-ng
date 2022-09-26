@@ -2471,7 +2471,7 @@
       </AVR-CPP>
       <AVR-GCC>
         <property key="additional-warnings" value="false"/>
-        <property key="call-prologues" value="false"/>
+        <property key="call-prologues" value="true"/>
         <property key="default-bitfield-type" value="true"/>
         <property key="default-char-type" value="true"/>
         <property key="extra-include-directories" value="include"/>
@@ -2502,7 +2502,7 @@
         <property key="eep" value="true"/>
         <property key="external-ram-check" value="false"/>
         <property key="hex" value="true"/>
-        <property key="lss" value="false"/>
+        <property key="lss" value="true"/>
         <property key="omit-pack-options" value="false"/>
         <property key="relax-branches" value="false"/>
         <property key="srec" value="false"/>
@@ -2527,6 +2527,7 @@
         <property key="rodata-writable" value="false"/>
         <property key="sram-segment" value=""/>
         <property key="v-printf" value="false"/>
+        <appendMe value="-gdwarf-2"/>
       </AVR-LD>
       <Simulator>
         <property key="codecoverage.enabled" value="Disable"/>
@@ -3061,7 +3062,7 @@
       </AVR-CPP>
       <AVR-GCC>
         <property key="additional-warnings" value="false"/>
-        <property key="call-prologues" value="false"/>
+        <property key="call-prologues" value="true"/>
         <property key="default-bitfield-type" value="true"/>
         <property key="default-char-type" value="true"/>
         <property key="extra-include-directories" value="include"/>
@@ -3092,7 +3093,7 @@
         <property key="eep" value="true"/>
         <property key="external-ram-check" value="false"/>
         <property key="hex" value="true"/>
-        <property key="lss" value="false"/>
+        <property key="lss" value="true"/>
         <property key="omit-pack-options" value="false"/>
         <property key="relax-branches" value="false"/>
         <property key="srec" value="false"/>
@@ -3117,6 +3118,7 @@
         <property key="rodata-writable" value="false"/>
         <property key="sram-segment" value=""/>
         <property key="v-printf" value="false"/>
+        <appendMe value="-gdwarf-2"/>
       </AVR-LD>
       <Simulator>
         <property key="codecoverage.enabled" value="Disable"/>
