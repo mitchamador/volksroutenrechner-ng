@@ -82,7 +82,12 @@ typedef union {
     uint16_t word;
 
     struct {
+#ifdef ENCODER_SUPPORT
+        unsigned encoder : 1;               // encoder control
+        unsigned dummy : 5;
+#else
         unsigned dummy : 6;
+#endif
         unsigned adc_fuel_normalize : 1;    // normalize adc_fuel to adc_voltage
         unsigned ds3231_temp : 1;           // use ds3231 temperature as inner
         unsigned show_inner_temp : 1;       // show inner (outer by default) temperature on first screen

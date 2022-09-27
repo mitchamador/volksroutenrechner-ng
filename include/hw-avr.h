@@ -110,11 +110,9 @@ typedef uint16_t eeaddr_t;
 #ifndef ADC_BUTTONS
 // digital button read
 // PC0 - OK, PC1 - NEXT, PC2 - prev
-#define KEY2_PRESSED ((PINC & _BV(PINC0)) == 0)
-#ifndef ENCODER_SUPPORT
 #define KEY1_PRESSED ((PINC & _BV(PINC1)) == 0)
+#define KEY2_PRESSED ((PINC & _BV(PINC0)) == 0)
 #define KEY3_PRESSED ((PINC & _BV(PINC2)) == 0)
-#endif
 #endif
 
 // analog/digital button OK

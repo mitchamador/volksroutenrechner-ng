@@ -146,6 +146,10 @@ typedef enum {
 #define SETTING_ADC_FUEL_NORMALIZE      "\0adc fuel nor"
 #endif
 
+#ifdef ENCODER_SUPPORT
+#define SETTING_ENCODER                 "\0encoder"
+#endif
+
 #define TEMP_SENSORS_ARRAY              "\0---\0out\0in\0 eng\0"
 
 #define TEMP_NO_SENSORS                 "no sensors found"
@@ -379,6 +383,10 @@ typedef enum {
             CONFIG_MENU_MIN_SPEED        \
             CONFIG_MENU_VERSION_INFO     \
 
+#ifndef SETTING_ENCODER
+#define SETTING_ENCODER                 "\0"
+#endif
+
 #ifndef SETTING_ADC_FUEL_NORMALIZE
 #define SETTING_ADC_FUEL_NORMALIZE      "\0"
 #endif
@@ -419,7 +427,7 @@ typedef enum {
             "\0"                        \
             "\0"                        \
             "\0"                        \
-            "\0"                        \
+            SETTING_ENCODER             \
 
 PROGMEM const char symbols_array[] = SYMBOLS_ARRAY;
 PROGMEM const char trips_array[] = TRIPS_ARRAY;

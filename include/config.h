@@ -22,6 +22,8 @@
 #elif defined(_16F876A) || defined(_16F1936) || defined (_16F1938) || defined(_18F252)
 // legacy hardware
 #define HW_LEGACY
+// no encoder on pic mcu
+#define NO_ENCODER
 
 #if defined(_16F876A)
 // simple adc handler
@@ -177,6 +179,11 @@
 #define KEY3_SUPPORT
 #endif
 
+// encoder support
+#ifndef NO_ENCODER
+#define ENCODER_SUPPORT
+#endif
+
 // extended acceleration measurement
 #ifndef NO_EXTENDED_ACCELERATION_MEASUREMENT
 #define EXTENDED_ACCELERATION_MEASUREMENT
@@ -196,6 +203,10 @@
 // voltages min/max 
 #ifndef NO_MIN_MAX_VOLTAGES
 #define MIN_MAX_VOLTAGES_SUPPORT
+#endif
+
+#if defined(ENCODER_SUPPORT) && !defined(KEY3_SUPPORT)
+#define KEY3_SUPPORT
 #endif
 
 #endif	/* CONFIG_H */
