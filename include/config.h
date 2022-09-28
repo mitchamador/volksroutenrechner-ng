@@ -3,7 +3,16 @@
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 
-#ifdef ARDUINO
+#if defined(__AVR_ATmega168P__)
+// 1602 lcd 4bit
+#define LCD_LEGACY
+// no encoder support
+#define NO_ENCODER
+// disable service counters' configuration and checking
+#define NO_SERVICE_COUNTERS_CHECKS
+// no fuel tank support
+#define NO_FUEL_TANK
+#elif defined(ARDUINO)
 // 1602 lcd i2c
 #define LCD_1602_I2C
 // adc buttons connected to PC0/ADC0
@@ -19,7 +28,7 @@
 #define JOURNAL_EEPROM_INTERNAL
 #endif
 
-#elif defined(_16F876A) || defined(_16F1936) || defined (_16F1938) || defined(_18F252)
+#elif defined(_16F876A) || defined(_16F1936) || defined (_16F1938) || defined(_18F252)  || defined(_18F242)
 // legacy hardware
 #define HW_LEGACY
 // no encoder on pic mcu
@@ -94,6 +103,17 @@
 // no fuel tank support
 #define NO_FUEL_TANK
 #endif /* _16F1936 */
+
+#if defined(_18F242)
+// simple adc handler
+#define SIMPLE_ADC
+// disable service counters' configuration and checking
+#define NO_SERVICE_COUNTERS_CHECKS
+// support for prev key for legacy hw
+#define NO_KEY3
+// no fuel tank support
+#define NO_FUEL_TANK
+#endif /* _18F242 */
 
 #if defined(_16F1938) || defined(_18F252)
 // support for prev key for legacy hw
@@ -189,15 +209,15 @@
 #define EXTENDED_ACCELERATION_MEASUREMENT
 #endif
 
-// no fuel tank support with simple adc handler
-#if defined(SIMPLE_ADC) && defined(FUEL_TANK_SUPPORT)
-#undef FUEL_TANK_SUPPORT
-#endif
-
 // fuel tank and continuous fuel/speed support
 #ifndef NO_FUEL_TANK
 //#define FUEL_TANK_SUPPORT
 #define CONTINUOUS_DATA_SUPPORT
+#endif
+
+// no fuel tank support with simple adc handler
+#if defined(SIMPLE_ADC) && defined(FUEL_TANK_SUPPORT)
+#undef FUEL_TANK_SUPPORT
 #endif
 
 // voltages min/max 

@@ -2652,17 +2652,6 @@ void print_warning_service_counters(unsigned char warn) {
 #if defined(PROGMEM_EEPROM) || defined(ENCODER_SUPPORT)
 
 typedef enum {
-#if defined(ENCODER_SUPPORT)
-    FORCE_SETTING_ENCODER_OFF=1,    
-    FORCE_SETTING_ENCODER_ON,  
-#endif
-#if defined(PROGMEM_EEPROM)  
-    FORCE_SETTING_EEPROM_REWRITE,
-#endif
-    FORCE_SETTING_MAX    
-} pre_settings_t;
-
-typedef enum {
     BEEP_OK=1,
     BEEP_UP,
     BEEP_DOWN
@@ -2723,12 +2712,21 @@ void check_eeprom(uint8_t c) {
 
 uint8_t stage_setting = 0;
 
+typedef enum {
+#if defined(ENCODER_SUPPORT)
+    FORCE_SETTING_ENCODER_OFF=1,        // force encoder off
+    FORCE_SETTING_ENCODER_ON,           // force encoder on
+#endif
+#if defined(PROGMEM_EEPROM)  
+    FORCE_SETTING_EEPROM_REWRITE,       // eeprom rewrite for arduino target
+#endif
+    FORCE_SETTING_MAX    
+} pre_settings_t;
+
+
 // force settings overwrite
 // press ok button before start
-// release after:
-// 1 beep - force encoder off
-// 2 beep - force encoder on
-// 3 beep - eeprom rewrite for arduino target
+// release after pre_setting_t beeps for change setting
 void preinit_settings() {
     while (KEY_OK_PRESSED) {
         uint8_t keytime = SETTINGS_DELAY;

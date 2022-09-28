@@ -13,6 +13,9 @@ else ifeq ($(MCU),pic16f1938)
 else ifeq ($(MCU),pic18f252)
  DFP_DIR := ${XC8-TOOLCHAIN}/packs/PIC18Fxxxx_DFP/1.2.26
  MP_PROCESSOR_OPTION := 18F252
+else ifeq ($(MCU),pic18f242)
+ DFP_DIR := ${XC8-TOOLCHAIN}/packs/PIC18Fxxxx_DFP/1.2.26
+ MP_PROCESSOR_OPTION := 18F242
 else ifeq ($(MCU),atmega328p)
  MP_PROCESSOR_OPTION := ATMega328P
  ifeq ($(ARDUINO),1)
@@ -80,7 +83,7 @@ VPATH = ..
 usage:
 	$(info usage:)
 	$(info make XC8-TOOLCHAIN=/path/to/xc8-toolchain or AVR-GCC-TOOLCHAIN=/path/to/avr-gcc-toolchain MCU=TARGET_CPU)
-	$(info TARGET_CPU is one of pic16F876a, pic16f1936, pic16f1938 (default), pic18f252, atmega168p, atmega328p)
+	$(info TARGET_CPU is one of pic16F876a, pic16f1936, pic16f1938 (default), pic18f242, pic18f252, atmega168p, atmega328p)
 	$(info creating release:)
 	$(info make XC8-TOOLCHAIN=/path/to/xc8-toolchain AVR-GCC-TOOLCHAIN=/path/to/avr-gcc-toolchain release)
 
@@ -92,15 +95,13 @@ ifeq (,$(filter pic16f% pic18f%,$(MCU)))
 endif
 endif
 ifeq ($(EEPROM),1)
-ifneq (,$(findstring pic16f,$(MCU)))
+ifneq (,$(filter pic16f876a pic16f1938,$(MCU)))
 	${AVR_OBJCOPY} -b 0 -i 2 -O binary -I elf32-little -j eeprom_data ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} ../proteus/eeprom_$(MP_PROCESSOR_OPTION).bin
 else
-ifneq (,$(findstring pic18f,$(MCU)))
+ifneq (,$(filter pic18f252,$(MCU)))
 	${AVR_OBJCOPY} -b 0 -i 1 -O binary -I elf32-little -j eeprom_data ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} ../proteus/eeprom_$(MP_PROCESSOR_OPTION).bin
 else
-ifneq (,$(findstring pic18f,$(MCU)))
-	${AVR_OBJCOPY} -b 0 -i 1 -O binary -I elf32-little -j eeprom_data ${OBJECTDIR}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} ../proteus/eeprom_$(MP_PROCESSOR_OPTION).bin
-else
+ifneq (,$(filter atmega%,$(MCU)))
 ifneq ($(ARDUINO),1)
 	${AVR_OBJCOPY} -j .eeprom --set-section-flags=.eeprom=alloc,load --change-section-lma .eeprom=0 --no-change-warnings -O binary ${DISTDIR}/${IMAGE_TYPE}/${OUTPUTNAME}.production.${DEBUGGABLE_SUFFIX} ../proteus/eeprom_$(MP_PROCESSOR_OPTION).bin
 endif
@@ -115,13 +116,15 @@ ifneq ($(OUTDIR),)
 endif
 ifdef XC8-TOOLCHAIN
 	MCU=pic16f876a $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
-	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
+#	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
 	MCU=pic16f1938 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
+#	MCU=pic18f242 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
 	MCU=pic18f252 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
 endif
 ifdef AVR-GCC-TOOLCHAIN
+#	MCU=atmega168p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
 	MCU=atmega328p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
-	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
+#	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) CPPFLAGS=${CPPFLAGS} LDFLAGS=${LDFLAGS} OUTDIR=${OUTDIR_FIRMWARE} build
 endif
 
 clobber:
@@ -129,7 +132,9 @@ clobber:
 	MCU=pic16f876a $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=pic16f1938 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=pic18f242 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=pic18f252 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=atmega168p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=atmega328p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 

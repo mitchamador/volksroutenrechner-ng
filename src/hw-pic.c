@@ -8,7 +8,7 @@ __interrupt() void HW_isr(void) {
 
     /* pin change interrupt */
     if (PIN_CHANGE_IF) {
-#if defined(_16F876A) || defined(_18F252)
+#if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
         /* Dummy read of the port, as per datasheet */
         asm("movf PORTB,f");
 #endif
@@ -16,7 +16,7 @@ __interrupt() void HW_isr(void) {
         PIN_CHANGE_CLEAR_IF = 0;
 
         /* Capture main timer value */
-#if defined(_18F252)
+#if defined(_18F252)  || defined(_18F242)
         // read 16bit TMR1 value with RD16 = 1
         *((uint8_t*) (&main_timer) + 0) = TMR1L;
         *((uint8_t*) (&main_timer) + 1) = TMR1H;
@@ -79,7 +79,7 @@ void HW_Init(void) {
     TMR0 = 0; TMR1 = 0;
 
     // timer 0 init
-#if defined(_18F252)
+#if defined(_18F252)  || defined(_18F242)
     T0CON = (0 << _T0CON_TMR0ON_POSITION) | (1 << _T0CON_T08BIT_POSITION) | (0 << _T0CON_T0CS_POSITION) | (0 << _T0CON_T0SE_POSITION) | (1 << _T0CON_PSA_POSITION) \
                  | (0 << _T0CON_T0PS2_POSITION) | (0 << _T0CON_T0PS1_POSITION) | (0 << _T0CON_T0PS0_POSITION);    
 #elif defined(_16F876A)
@@ -91,13 +91,13 @@ void HW_Init(void) {
 #endif
 
     // timer 1 init (prescaler 1:8, timer on)
-#if defined(_18F252)
+#if defined(_18F252)  || defined(_18F242)
     T1CON = (1 << _T1CON_RD16_POSITION) | (1 << _T1CON_T1CKPS1_POSITION) | (1 << _T1CON_T1CKPS0_POSITION) | (0 << _T1CON_TMR1ON_POSITION);
 #else
     T1CON = (1 << _T1CON_T1CKPS1_POSITION) | (1 << _T1CON_T1CKPS0_POSITION) | (0 << _T1CON_TMR1ON_POSITION);
 #endif
 
-#if defined(_16F876A) || defined(_18F252)
+#if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
     // ccp2 init (compare special event trigger 10ms + start adc)
     CCP2CON = (1 << _CCP2CON_CCP2M3_POSITION) | (0 << _CCP2CON_CCP2M2_POSITION) | (1 << _CCP2CON_CCP2M1_POSITION) | (1 << _CCP2CON_CCP2M0_POSITION);
     CCPR2 = MAIN_TIMER_TICKS_PER_PERIOD;
@@ -110,7 +110,7 @@ void HW_Init(void) {
     // adc interrupt
     PIE1 = (1 << _PIE1_ADIE_POSITION);
 
-#if defined(_16F876A) || defined(_18F252)
+#if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
     // ccp2 compare interrupt enable
     PIE2 = (1 << _PIE2_CCP2IE_POSITION);
 #elif defined(_16F1936) || defined(_16F1938)
@@ -125,7 +125,7 @@ void HW_Init(void) {
 #endif    
 
     // enable timer0 overflow interrupt, peripheral interrupt, pinb/io change interrupt
-#if defined(_16F876A) || defined(_18F252)
+#if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
     INTCON = (1 << _INTCON_T0IE_POSITION) | (1 << _INTCON_PEIE_POSITION) | (1 << _INTCON_RBIE_POSITION);
 #elif defined(_16F1936) || defined(_16F1938)
     INTCON = (1 << _INTCON_T0IE_POSITION) | (1 << _INTCON_PEIE_POSITION) | (1 << _INTCON_IOCIE_POSITION);
