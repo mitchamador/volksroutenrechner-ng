@@ -2,7 +2,6 @@
 #define	UTILS_H
 
 #include "core.h"
-#include "ds1307.h"
 
 typedef enum {
     ALIGN_NONE = 0,

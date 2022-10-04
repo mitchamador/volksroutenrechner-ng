@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "hw.h"
-#include "ds1307.h"
+#include "ds3231.h"
 
 // power supply threshold 
 // with default divider resistor's (8,2k (to Vcc) + 3,6k (to GND)) values
@@ -316,15 +316,6 @@ extern volatile uint16_t taho_timer;
 #endif
 #ifndef speed_timer
 extern volatile uint16_t speed_timer;
-#endif
-
-extern char buf[16];
-
-// time
-#if defined(_16F876A)
-__bank2 extern ds_time time;
-#else
-extern ds_time time;
 #endif
 
 void read_ds_time(void);

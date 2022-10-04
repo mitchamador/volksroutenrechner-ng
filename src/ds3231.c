@@ -1,9 +1,15 @@
-#include "core.h"
-#include "ds1307.h"
+#include "ds3231.h"
 #include "ds18b20.h"
 #include "version.h"
 
-void get_ds_time(ds_time* time) {
+// time
+#if defined(_16F876A)
+__bank2 ds_time time;
+#else
+ds_time time;
+#endif
+
+void DS3231_time_read(ds_time* time) {
     unsigned char seconds = 0x80;
     if (I2C_Master_Start(0xD0) == ACK) {
         I2C_Master_Write(0x00); // start reading from 0x00 - seconds
@@ -27,11 +33,11 @@ void get_ds_time(ds_time* time) {
         time->month = VERSION_MONTH_BCD;
         time->year = VERSION_YEAR_BCD;
         time->flags.is_valid = 0;
-        set_ds_time(time);
+        DS3231_time_write(time);
     }
 }
 
-void set_ds_time(ds_time* time) {
+void DS3231_time_write(ds_time* time) {
 	if (I2C_Master_Start(0xD0) == ACK) {
         I2C_Master_Write(0x00);
         I2C_Master_Write(0x00); // seconds
@@ -46,7 +52,7 @@ void set_ds_time(ds_time* time) {
 }
 
 #ifdef DS3231_TEMP
-void get_ds_temp(uint16_t* raw_temp_value) {
+void DS3231_temp_read(uint16_t* raw_temp_value) {
     if (I2C_Master_Start(0xD0) == ACK) {
         I2C_Master_Write(DS3231_REG_TEMP); // start reading from 0x11 - temp
         I2C_Master_RepeatedStart(0xD1);
@@ -61,7 +67,7 @@ void get_ds_temp(uint16_t* raw_temp_value) {
     I2C_Master_Stop();
 }
 
-void start_ds_temp() {
+void DS3231_temp_start() {
     if (I2C_Master_Start(0xD0) == ACK) {
         I2C_Master_Write(DS3231_REG_CTRL);                          // 0x0E - control register
         I2C_Master_Write(DS3231_CTRL_DEFAULT | DS3231_CTRL_CONV);   // start conversion

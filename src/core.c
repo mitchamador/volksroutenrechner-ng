@@ -1,15 +1,5 @@
 #include "core.h"
-#include "ds1307.h"
-
-// buffer for strings
-char buf[16];
-
-// time
-#if defined(_16F876A)
-__bank2 ds_time time;
-#else
-ds_time time;
-#endif
+#include "ds3231.h"
 
 // __near forces xc8 to use bitbssCOMMON section
 __near volatile __bit screen_refresh;
@@ -815,7 +805,7 @@ void cd_increment_filter() {
 void read_ds_time() {
     if (timeout_ds_read == 0) {
         timeout_ds_read = TIMEOUT_DS_READ;
-        get_ds_time(&time);
+        DS3231_time_read(&time);
     }
 }
 

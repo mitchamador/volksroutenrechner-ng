@@ -11,7 +11,7 @@
       <itemPath>include/core.h</itemPath>
       <itemPath>include/main.h</itemPath>
       <itemPath>include/ds18b20.h</itemPath>
-      <itemPath>include/ds1307.h</itemPath>
+      <itemPath>include/ds3231.h</itemPath>
       <itemPath>include/i2c.h</itemPath>
       <itemPath>include/lcd.h</itemPath>
       <itemPath>include/locale.h</itemPath>
@@ -34,7 +34,7 @@
       <itemPath>src/hw-avr.c</itemPath>
       <itemPath>src/main.c</itemPath>
       <itemPath>src/ds18b20.c</itemPath>
-      <itemPath>src/ds1307.c</itemPath>
+      <itemPath>src/ds3231.c</itemPath>
       <itemPath>src/i2c.c</itemPath>
       <itemPath>src/lcd.c</itemPath>
       <itemPath>src/utils.c</itemPath>

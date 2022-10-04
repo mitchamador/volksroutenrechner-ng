@@ -2,6 +2,7 @@
 #define	DS1307_H
 
 #include "hw.h"
+#include <stdint.h>
 
 #define DS3231_REG_CTRL     0x0E
 #define DS3231_REG_TEMP     0x11
@@ -28,10 +29,17 @@ typedef struct {
     time_flags_u flags;
 } ds_time;
 
-void get_ds_time(ds_time*);
-void set_ds_time(ds_time*);
-void get_ds_temp(uint16_t*);
-void start_ds_temp(void);
+// time
+#if defined(_16F876A)
+__bank2 extern ds_time time;
+#else
+extern ds_time time;
+#endif
+
+void DS3231_time_read(ds_time*);
+void DS3231_time_write(ds_time*);
+void DS3231_temp_read(uint16_t*);
+void DS3231_temp_start(void);
 
 #endif	/* DS1307_H */
 

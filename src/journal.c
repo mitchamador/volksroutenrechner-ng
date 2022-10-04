@@ -45,6 +45,8 @@ void journal_update_header() {
 void journal_check_eeprom() {
     // check mark
     bool init_fl = true;
+    unsigned char buf[8];
+
     while (1) {
         JOURNAL_read_eeprom_block((unsigned char *) &buf, J_EEPROM_MARK_POS, 8);
         if (memcmp(&buf, &journal_mark, (sizeof (journal_mark) - 1) <= 8 ? (sizeof (journal_mark) - 1) : 8) != 0) {

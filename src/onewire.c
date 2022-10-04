@@ -2,6 +2,10 @@
 #include "utils.h"
 #include <string.h>
 
+__bit onewire_search();
+__bit onewire_read_bit(void);
+void onewire_write_bit(uint8_t);
+
 void onewire_write_bit(uint8_t value) {
     value = value & 0x01;
     if (value) {

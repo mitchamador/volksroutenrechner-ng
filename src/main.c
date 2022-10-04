@@ -2,7 +2,7 @@
 #include "locale.h"
 #include "eeprom.h"
 #include "lcd.h"
-#include "ds1307.h"
+#include "ds3231.h"
 #include "ds18b20.h"
 #include "i2c-eeprom.h"
 #include "utils.h"
@@ -11,6 +11,9 @@
 #include <string.h>
 
 //========================================================================================
+
+// buffer for strings
+char buf[16];
 
 __bit drive_min_speed_fl;
 
@@ -542,7 +545,7 @@ void screen_time(void) {
         LCD_CMD(LCD_CURSOR_OFF);
         // save time
         if (save_time != 0) {
-            set_ds_time(&time);
+            DS3231_time_write(&time);
         }
         screen_refresh = 1;
 
@@ -1923,15 +1926,9 @@ void set_consts() {
 
 #if defined(TEMPERATURE_SUPPORT)
 
-//#define TEMP_CRC_ERROR
-
-#if defined(DS18B20_TEMP)
-#if defined(TEMP_CRC_ERROR)
-uint8_t t_error[3] = {0, 0, 0};
-#endif
-#endif
-
 void handle_temp() {
+    unsigned char buf[8];
+
     if (temperature_conv_fl != 0) {
         temperature_conv_fl = 0;
         // read temperature for ds18b20/ds3231
@@ -1941,20 +1938,9 @@ void handle_temp() {
         for (unsigned char i = 0; i < 3; i++) {
             HW_read_eeprom_block((unsigned char *) &buf, _temps_ee_addr, 8);
             if (ds18b20_read_temp_matchrom((unsigned char *) &buf, &_t) == 0) {
-#if defined(TEMP_CRC_ERROR)
-                if (t_error[i] >= 5) { // max sequential crc errors
-                    temps[i] = DS18B20_TEMP_NONE;
-                } else {
-                    t_error[i]++;
-                }
-#else
                 temps[i] = DS18B20_TEMP_NONE;
-#endif                
             } else {
                 temps[i] = _t;
-#if defined(TEMP_CRC_ERROR)
-                t_error[i] = 0;
-#endif
             }
             _temps_ee_addr += 8;
         }
@@ -1964,7 +1950,7 @@ void handle_temp() {
         if (config.settings.ds3231_temp)
 #endif
         {
-          get_ds_temp(&temps[TEMP_IN]);
+          DS3231_temp_read(&temps[TEMP_IN]);
         }
 #endif        
     } else {
@@ -1979,7 +1965,7 @@ void handle_temp() {
         if (config.settings.ds3231_temp)
 #endif
         {
-          start_ds_temp();
+          DS3231_temp_start();
         }
 #endif        
     }
