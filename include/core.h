@@ -41,7 +41,11 @@ extern config_t config;
 extern trips_t trips;
 extern services_t services;
 
-extern volatile __bit taho_fl, drive_fl, motor_fl, save_tripc_time_fl, shutdown_fl, screen_refresh;
+__near extern volatile __bit screen_refresh;
+
+extern volatile __bit taho_fl, drive_fl, motor_fl, shutdown_fl;
+
+extern volatile __bit save_tripc_time_fl;
 
 // key variables and flags
 extern volatile uint8_t key_repeat_counter;

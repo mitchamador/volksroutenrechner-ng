@@ -275,7 +275,7 @@ void print_time_hm(uint8_t hour, uint8_t minute, align_t align) {
     _print8(5, align);
 }
 
-void print_time_dmy(uint8_t day, uint8_t month, uint8_t year) {
+void print_time_dmy(uint8_t day, uint8_t month, uint8_t year, align_t align) {
     if (day == 0x00 || day == 0xFF) {
         strcpy2(buf, (char*) &no_time_string, 0);
     } else {
@@ -284,7 +284,11 @@ void print_time_dmy(uint8_t day, uint8_t month, uint8_t year) {
         buf[5] = '\'';
         bcd8_to_str(&buf[6], year);
     }
-    _print8(8, ALIGN_LEFT);
+    _print8(8, align);
+}
+
+void print_time_dow(uint8_t day_of_week, align_t align) {
+    _print16(strcpy2((char *) buf, (char*) day_of_week_array, day_of_week), align);
 }
 
 void print_time(ds_time* time) {
@@ -292,10 +296,10 @@ void print_time(ds_time* time) {
     print_time_hm(time->hour, time->minute, ALIGN_LEFT);
 
     LCD_CMD(0x88);
-    print_time_dmy(time->day, time->month, time->year);
+    print_time_dmy(time->day, time->month, time->year, ALIGN_LEFT);
 
     LCD_CMD(0xC0);
-    _print16(strcpy2((char *) buf, (char*) day_of_week_array, time->day_of_week), ALIGN_LEFT);
+    print_time_dow(time->day_of_week, ALIGN_LEFT);
 }
 
 uint16_t get_trip_average_speed(trip_t* t) {
@@ -1264,7 +1268,7 @@ void screen_service_counters() {
     s_time = srv->time;
 
     LCD_CMD(0xC8);
-    print_time_dmy(s_time.day, s_time.month, s_time.year);
+    print_time_dmy(s_time.day, s_time.month, s_time.year, ALIGN_LEFT);
     
     if (request_screen((char *) &reset_string) != 0) {
         read_ds_time();

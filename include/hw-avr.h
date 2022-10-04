@@ -20,6 +20,8 @@ typedef uint32_t uint24_t;
 typedef uint16_t eeaddr_t;
 
 #define __bit uint8_t
+
+#define __near
 #define __bank0
 #define __bank1
 #define __bank2

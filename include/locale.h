@@ -411,7 +411,7 @@ typedef enum {
 #define SETTING_INOUT_TEMP              "\0"
 #endif
 
-#ifndef JOURNAL_SUPPORT
+#ifndef SETTING_TRIPB_MONTH
 #define SETTING_TRIPB_MONTH             "\0"
 #endif
 

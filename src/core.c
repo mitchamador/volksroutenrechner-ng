@@ -1,8 +1,12 @@
 #include "main.h"
 #include "core.h"
 
+// __near forces xc8 to use bitbssCOMMON section
+__near volatile __bit screen_refresh;
+
 // misc flags
 volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, acc_power_off_fl, shutdown_fl;
+
 volatile __bit save_tripc_time_fl = 0;
 
 config_t config;
@@ -51,9 +55,6 @@ volatile __bit key3_press, key3_longpress;
 #endif
 
 volatile uint8_t acc_power_off_counter;
-
-// main interval
-volatile __bit screen_refresh;
 
 // timeout1 (resolution - 1 s)
 volatile uint8_t timeout_timer1;
@@ -184,7 +185,7 @@ void int_capture_injector_level_change() {
     }
 }
 
-__section("text999") void int_taho_timer_overflow() {
+__section("text1001") void int_taho_timer_overflow() {
     if (taho_measure_fl != 0) {
         if (++taho_timer_ofl == TAHO_OVERFLOW) {
             taho_measure_fl = 0;
@@ -244,7 +245,7 @@ void int_capture_speed_level_change() {
     }
 }
 
-__section("text999") void int_speed_timer_overflow() {
+__section("text1002") void int_speed_timer_overflow() {
     if (accel_meas_fl != 0) {
         if (++speed_timer_ofl == ACCEL_MEAS_OVERFLOW) {
             accel_meas_fl = 0;
