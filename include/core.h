@@ -100,6 +100,18 @@ void cd_init(void);
 void cd_increment_filter(void);
 #endif
 
+#if defined(KEY3_SUPPORT) || defined(ADC_BUTTONS)
+#define no_key_pressed() (key1_press == 0 && key2_press == 0 && key3_press == 0)
+#define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0; key3_longpress = 0
+#else
+#define no_key_pressed() (key1_press == 0 && key2_press == 0)
+#define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
+#endif
+
+void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value);
+void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value);
+
+void wait_refresh_timeout(void);
 
 #endif	/* CORE_H */
 

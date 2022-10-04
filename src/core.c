@@ -185,7 +185,7 @@ void int_capture_injector_level_change() {
     }
 }
 
-__section("text1001") void int_taho_timer_overflow() {
+__section("text999") void int_taho_timer_overflow() {
     if (taho_measure_fl != 0) {
         if (++taho_timer_ofl == TAHO_OVERFLOW) {
             taho_measure_fl = 0;
@@ -245,7 +245,7 @@ void int_capture_speed_level_change() {
     }
 }
 
-__section("text1002") void int_speed_timer_overflow() {
+__section("text999") void int_speed_timer_overflow() {
     if (accel_meas_fl != 0) {
         if (++speed_timer_ofl == ACCEL_MEAS_OVERFLOW) {
             accel_meas_fl = 0;
@@ -658,6 +658,65 @@ void adc_handler_fuel_tank(filtered_value_t *f) {
 #endif
 
 #endif
+
+void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value) {
+    uint8_t _v = *v;
+    if (key1_press != 0) {
+        if (_v++ == max_value) {
+            _v = min_value;
+        }
+        timeout_timer1 = 5;
+    }
+#if defined(ENCODER_SUPPORT)
+    if (config.settings.encoder != 0 && key2_press != 0) {
+        timeout_timer1 = 0;
+    }
+    if ((config.settings.encoder == 0 && (key2_press != 0 || key3_press != 0)) || (config.settings.encoder != 0 && key3_press != 0)) {
+#elif !defined(KEY3_SUPPORT)
+    if (key2_press != 0) {
+#else
+    if (key2_press != 0 || key3_press != 0) {
+#endif
+        if (_v-- == min_value) {
+            _v = max_value;
+        }
+        timeout_timer1 = 5;
+    }
+    *v = _v;
+}
+
+void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
+    uint8_t _v = *v;
+    // change cursor to next position
+    if (key1_press != 0) {
+        if (_v++ == max_value) {
+            _v = min_value;
+        }
+        timeout_timer1 = 5;
+    }
+
+#if defined(KEY3_SUPPORT)
+    // change cursor to prev position
+    if (key3_press != 0) {
+        if (_v-- == min_value) {
+            _v = max_value;
+        }
+        timeout_timer1 = 5;
+    }
+#endif
+    *v = _v;
+}
+
+void wait_refresh_timeout() {
+
+    if (key2_longpress != 0) {
+        screen_refresh = 1;
+        timeout_timer1 = 0;
+    }
+
+    clear_keys_state();
+    while (screen_refresh == 0 && timeout_timer1 != 0);
+}
 
 uint16_t calc_filtered_value(filtered_value_t *f, uint16_t v) {
     if (f->filter == 0) {

@@ -15,14 +15,6 @@
 
 __bit drive_min_speed_fl;
 
-#if defined(KEY3_SUPPORT) || defined(ADC_BUTTONS)
-#define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0 && key3_press == 0)
-#define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0; key3_longpress = 0
-#else
-#define NO_KEY_PRESSED (key1_press == 0 && key2_press == 0)
-#define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
-#endif
-
 #ifdef TEMPERATURE_SUPPORT
 __bit temperature_conv_fl;
 
@@ -152,57 +144,6 @@ void save_eeprom(void);
 void save_eeprom_trips(void);
 void save_eeprom_config(void);
 
-void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value);
-void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value);
-
-void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value) {
-    uint8_t _v = *v;
-    if (key1_press != 0) {
-        if (_v++ == max_value) {
-            _v = min_value;
-        }
-        timeout_timer1 = 5;
-    }
-#if defined(ENCODER_SUPPORT)
-    if (config.settings.encoder != 0 && key2_press != 0) {
-        timeout_timer1 = 0;
-    }
-    if ((config.settings.encoder == 0 && (key2_press != 0 || key3_press != 0)) || (config.settings.encoder != 0 && key3_press != 0)) {
-#elif !defined(KEY3_SUPPORT)
-    if (key2_press != 0) {
-#else
-    if (key2_press != 0 || key3_press != 0) {
-#endif
-        if (_v-- == min_value) {
-            _v = max_value;
-        }
-        timeout_timer1 = 5;
-    }
-    *v = _v;
-}
-
-void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
-    uint8_t _v = *v;
-    // change cursor to next position
-    if (key1_press != 0) {
-        if (_v++ == max_value) {
-            _v = min_value;
-        }
-        timeout_timer1 = 5;
-    }
-
-#if defined(KEY3_SUPPORT)
-    // change cursor to prev position
-    if (key3_press != 0) {
-        if (_v-- == min_value) {
-            _v = max_value;
-        }
-        timeout_timer1 = 5;
-    }
-#endif
-    *v = _v;
-}
-
 /**
  * print symbols from symbols_str with [index] in buf at [len] position
  * @param len
@@ -289,17 +230,6 @@ void print_time_dmy(uint8_t day, uint8_t month, uint8_t year, align_t align) {
 
 void print_time_dow(uint8_t day_of_week, align_t align) {
     _print16(strcpy2((char *) buf, (char*) day_of_week_array, day_of_week), align);
-}
-
-void print_time(ds_time* time) {
-    LCD_CMD(0x80);
-    print_time_hm(time->hour, time->minute, ALIGN_LEFT);
-
-    LCD_CMD(0x88);
-    print_time_dmy(time->day, time->month, time->year, ALIGN_LEFT);
-
-    LCD_CMD(0xC0);
-    print_time_dow(time->day_of_week, ALIGN_LEFT);
 }
 
 uint16_t get_trip_average_speed(trip_t* t) {
@@ -539,15 +469,15 @@ uint8_t print_voltage(uint16_t *adc_voltage, uint8_t prefix_pos, align_t align) 
     return _print8_suffix(len, POS_VOLT, align);
 }
 
-void wait_refresh_timeout() {
+void print_time(ds_time* time) {
+    LCD_CMD(0x80);
+    print_time_hm(time->hour, time->minute, ALIGN_LEFT);
 
-    if (key2_longpress != 0) {
-        screen_refresh = 1;
-        timeout_timer1 = 0;
-    }
+    LCD_CMD(0x88);
+    print_time_dmy(time->day, time->month, time->year, ALIGN_LEFT);
 
-    clear_keys_state();
-    while (screen_refresh == 0 && timeout_timer1 != 0);
+    LCD_CMD(0xC0);
+    print_time_dow(time->day_of_week, ALIGN_LEFT);
 }
 
 const time_editor_item_t time_editor_items_array[] = {
@@ -827,7 +757,7 @@ unsigned char request_screen(char* request_str) {
         _print16(strcpy2(buf, request_str, 0), ALIGN_CENTER);
 
         timeout_timer1 = 5;
-        while (timeout_timer1 != 0 && NO_KEY_PRESSED);
+        while (timeout_timer1 != 0 && no_key_pressed());
 
         if (key2_press != 0) {
             res = 1;
@@ -928,7 +858,7 @@ void acceleration_measurement(uint8_t index) {
     timeout_timer1 = 16;
 
     timeout_timer2 = 0;
-    while (_accel_meas_exit == 0 && NO_KEY_PRESSED) {
+    while (_accel_meas_exit == 0 && no_key_pressed()) {
         if (timeout_timer1 != 0 && drive_fl == 0) {
             if (timeout_timer2 == 0) {
                 timeout_timer2 = INIT_TIMEOUT(0.25f);
@@ -982,7 +912,7 @@ void acceleration_measurement(uint8_t index) {
 #ifdef SOUND_SUPPORT
                     buzzer_mode_index = BUZZER_WARN;
 #endif
-                    timeout_timer1 = 10; while (timeout_timer1 != 0 && NO_KEY_PRESSED);
+                    timeout_timer1 = 10; while (timeout_timer1 != 0 && no_key_pressed());
                     _accel_meas_exit = 1;
                 }
             }
@@ -1954,7 +1884,7 @@ void print_warning_service_counters(unsigned char warn) {
             _print16(strcpy2(buf, (char*) &service_counters_array, i + 1), ALIGN_CENTER);
 
             timeout_timer1 = 5;
-            while (timeout_timer1 != 0 && NO_KEY_PRESSED)
+            while (timeout_timer1 != 0 && no_key_pressed())
                 ;
             clear_keys_state();
         }
