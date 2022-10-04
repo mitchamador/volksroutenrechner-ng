@@ -1,7 +1,6 @@
 #ifndef I2C_EEPROM_H
 #define	I2C_EEPROM_H
 
-#include "main.h"
 #include "utils.h"
 
 #define WAIT_RESPONSE_MS 10

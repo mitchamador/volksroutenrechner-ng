@@ -1,13 +1,12 @@
 #include "main.h"
-#include "core.h"
 #include "locale.h"
 #include "eeprom.h"
-#include "i2c.h"
 #include "lcd.h"
 #include "ds1307.h"
 #include "ds18b20.h"
 #include "i2c-eeprom.h"
 #include "utils.h"
+#include "journal.h"
 #include <stdbool.h>
 #include <string.h>
 
@@ -27,15 +26,7 @@ uint8_t tmp_param = 0, main_param = 0, misc_param = 0;
 uint8_t service_param = 0;
 #endif
         
-// buffer for strings
-char buf[16];
 uint8_t len;
-
-#if defined(_16F876A)
-__bank2 ds_time time;
-#else
-ds_time time;
-#endif
 
 uint8_t fuel2_const;
 uint16_t odo_con4;
@@ -127,9 +118,6 @@ const screen_config_item_t items_service[] = {
 #endif
     {config_screen_version, VERSION_INFO_INDEX},
 };
-
-void read_ds_time(void);
-void fill_trip_time(trip_time_t *);
 
 uint8_t request_screen(char *);
 
@@ -230,23 +218,6 @@ void print_time_dmy(uint8_t day, uint8_t month, uint8_t year, align_t align) {
 
 void print_time_dow(uint8_t day_of_week, align_t align) {
     _print16(strcpy2((char *) buf, (char*) day_of_week_array, day_of_week), align);
-}
-
-uint16_t get_trip_average_speed(trip_t* t) {
-    uint16_t average_speed = 0;
-    if (t->time > 0) {
-        average_speed = (uint16_t) ((uint32_t) ((t->odo * 36000UL) + (t->odo_temp * 36000UL / config.odo_const)) / t->time);
-    }
-    return average_speed;
-}
-
-uint16_t get_trip_odometer(trip_t* t) {
-    //     //bug(?) in xc8 or proteus for 16f1938
-    //     return (uint16_t) (t->odo * 10UL + (uint16_t) (t->odo_temp * 10UL / config.odo_const));
-
-    uint16_t int_part = t->odo * 10;
-    uint16_t frac_part = (uint16_t) (t->odo_temp * 10UL / config.odo_const);
-    return int_part + frac_part;
 }
 
 /**
@@ -1216,158 +1187,6 @@ void screen_service_counters() {
 
 #ifdef JOURNAL_SUPPORT
 
-__bit journal_support;
-
-journal_header_t journal_header = {
-    // journal_type_pos_t
-    {
-        {0xFF, J_EEPROM_TRIPC_COUNT},
-        {0xFF, J_EEPROM_TRIPA_COUNT},
-        {0xFF, J_EEPROM_TRIPB_COUNT},
-        {0xFF, J_EEPROM_ACCEL_COUNT}
-    },
-};
-
-void journal_update_header() {
-    JOURNAL_write_eeprom_block((unsigned char *) &journal_header, J_EEPROM_MARK_POS + 8, sizeof (journal_header));
-}
-
-void journal_check_eeprom() {
-    // check mark
-    bool init_fl = true;
-    while (1) {
-        JOURNAL_read_eeprom_block((unsigned char *) &buf, J_EEPROM_MARK_POS, 8);
-        if (memcmp(&buf, &journal_mark, (sizeof(journal_mark) - 1) <= 8 ? (sizeof (journal_mark) - 1) : 8) != 0) {
-            if (init_fl) {
-                // save init values on first attempt
-                memcpy(&buf, &journal_mark, (sizeof (journal_mark) - 1) <= 8 ? (sizeof (journal_mark) - 1) : 8);
-                JOURNAL_write_eeprom_block((unsigned char *) &buf, J_EEPROM_MARK_POS, 8);
-
-                read_ds_time();
-                fill_trip_time(&journal_header.time_trip_c);
-                fill_trip_time(&journal_header.time_trip_a);
-                fill_trip_time(&journal_header.time_trip_b);
-
-                journal_update_header();
-            } else {
-                // set flag for no journal eeprom
-                journal_support = 0;
-                break;
-            }
-            init_fl = false;
-        } else {
-            // set flag for journal support
-            journal_support = 1;
-            break;
-        }
-    }
-    if (journal_support != 0) {
-        // read journal header
-        JOURNAL_read_eeprom_block((unsigned char *) &journal_header, J_EEPROM_MARK_POS + 8, sizeof (journal_header));
-    }
-}
-
-uint16_t journal_find_eeaddr(uint8_t index, int8_t item_index) {
-    uint16_t eeaddr = J_EEPROM_DATA;
-    for (uint8_t i = 0; i < index; i++) {
-        eeaddr += sizeof(journal_trip_item_t) * journal_header.journal_type_pos[i].max;
-    }
-    journal_type_pos_t *pos = &journal_header.journal_type_pos[index];
-    if (item_index == -1) {
-        if (++pos->current >= pos->max) {
-            pos->current = 0;
-        }
-        item_index = (int8_t) pos->current;
-    }
-    return eeaddr + (uint16_t) ((index == 3 ? sizeof(journal_accel_item_t) : sizeof(journal_trip_item_t)) * ((uint8_t) item_index));
-}
-
-void journal_save_trip(trip_t *trip) {
-    if (journal_support == 0) return;
-    
-    uint8_t index;
-    trip_time_t *trip_time;
-
-    journal_trip_item_t trip_item;
-
-    if (trip == &trips.tripC) {
-        index = 0;
-        trip_item.start_time = journal_header.time_trip_c;
-        trip_time = &journal_header.time_trip_c;
-    } else if (trip == &trips.tripA) {
-        index = 1;
-        trip_item.start_time = journal_header.time_trip_a;
-        trip_time = &journal_header.time_trip_a;
-    } else if (trip == &trips.tripB) {
-        index = 2;
-        trip_item.start_time = journal_header.time_trip_b;
-        trip_time = &journal_header.time_trip_b;
-    } else {
-        return;
-    }
-
-    uint16_t odo = get_trip_odometer(trip);
-
-    // skip if zero distance
-    if (odo != 0) {
-        trip_item.status = JOURNAL_ITEM_OK;
-        memcpy(&trip_item.trip, trip, sizeof(trip_t));
-        // save trip item
-        JOURNAL_write_eeprom_block((unsigned char *) &trip_item, journal_find_eeaddr(index, -1), sizeof(journal_trip_item_t));
-    }
-    
-    // update header time
-    read_ds_time();
-    fill_trip_time(trip_time);
-
-    // update header
-    journal_update_header();
-
-}
-
-void journal_save_accel(uint8_t index) {
-    if (journal_support == 0) return;
-
-    journal_accel_item_t accel_item;
-
-    accel_item.status = JOURNAL_ITEM_OK;
-    accel_item.time = accel_meas_timer;
-
-#ifdef EXTENDED_ACCELERATION_MEASUREMENT
-    switch (index) {
-        case 0:
-            accel_item.lower = ACCEL_MEAS_LOWER_0;
-            accel_item.upper = ACCEL_MEAS_UPPER_0;
-            break;
-        case 1:
-            accel_item.lower = ACCEL_MEAS_LOWER_1;
-            accel_item.upper = ACCEL_MEAS_UPPER_1;
-            break;
-        case 2:
-            accel_item.lower = ACCEL_MEAS_LOWER_2;
-            accel_item.upper = ACCEL_MEAS_UPPER_2;
-            break;
-        case 3:
-            accel_item.lower = ACCEL_MEAS_LOWER_3;
-            accel_item.upper = ACCEL_MEAS_UPPER_3;
-            break;
-    }
-#else
-    accel_item.lower = 0;
-    accel_item.upper = 100;
-#endif
-
-    read_ds_time();
-    fill_trip_time(&accel_item.start_time);
-
-    // save accel item
-    JOURNAL_write_eeprom_block((unsigned char *) &accel_item, journal_find_eeaddr(3, -1), sizeof (journal_accel_item_t));
-    
-    // update header
-    journal_update_header();
-}
-
-
 uint8_t journal_print_item_time(char *buf, trip_time_t *trip_time) {
     uint8_t len = 0;
     bcd8_to_str(&buf[len], trip_time->day);
@@ -1432,68 +1251,51 @@ void screen_journal_viewer() {
                 if (key2_press != 0) {
                     key2_press = 0;
 
-                    uint8_t item_current = journal_header.journal_type_pos[journal_type].current;
-                    uint8_t item_max = journal_header.journal_type_pos[journal_type].max;
+                    journal_reader_t jr = {journal_header.journal_type_pos[journal_type].current, journal_header.journal_type_pos[journal_type].max, 0, 0xFF, 0};
 
-                    uint8_t item_num = 0;
-                    uint8_t item_prev = ~item_num;
-
-                    // item buffer
-                    unsigned char item[sizeof(journal_trip_item_t) >= sizeof(journal_accel_item_t) ? sizeof(journal_trip_item_t) : sizeof(journal_accel_item_t)];
                     journal_accel_item_t *accel_item;
                     journal_trip_item_t *trip_item;
-                    trip_time_t *trip_time;
 
                     uint8_t item_page = 0;
-                    uint8_t item_page_max = journal_type == 3 ? 0 : 2;
 
                     timeout_timer1 = 5;
                     while (timeout_timer1 != 0) {
                         screen_refresh = 0;
 
-                        if (item_current != 0xFF) {
-                            handle_keys_next_prev(&item_num, 0, item_max - 1);
+                        if (jr.item_current != 0xFF) {
+                            handle_keys_next_prev(&jr.item_num, 0, jr.item_max - 1);
 
-                            if (item_prev != item_num) {
-                                uint8_t item_index = item_current + item_max - item_num;
-                                if (item_num <= item_current) {
-                                    item_index -= item_max;
+                            if (jr.item_prev != jr.item_num) {
+                                jr.item_index = jr.item_current + jr.item_max - jr.item_num;
+                                if (jr.item_num <= jr.item_current) {
+                                    jr.item_index -= jr.item_max;
                                 }
 
-                                while (1) {
-                                    // read item from eeprom
-                                    if (journal_type == 3) {
-                                        // accel
-                                        JOURNAL_read_eeprom_block((unsigned char *) &item, journal_find_eeaddr(journal_type, (int8_t) (item_num == 0 ? item_current : item_index)), sizeof(journal_accel_item_t));
-                                        accel_item = (journal_accel_item_t *) &item;
-                                        trip_time = &accel_item->start_time;
-                                    } else {
-                                        // trip
-                                        JOURNAL_read_eeprom_block((unsigned char *) &item, journal_find_eeaddr(journal_type, (int8_t) (item_num == 0 ? item_current : item_index)), sizeof(journal_trip_item_t));
-                                        trip_item = (journal_trip_item_t *) &item;
-                                        trip_time = &trip_item->start_time;
-                                    }
-                                    // check, if item is valid. if not, read first item
-                                    if (item[0] == JOURNAL_ITEM_OK || item_num == 0) {
-                                        break;
-                                    }
-                                    item_num = 0;
-                                };
-                                item_page = 0;
-                                
-                                item_prev = item_num;
+                                unsigned char *item = journal_read_item(&jr, journal_type);
 
-                                if (item[0] != JOURNAL_ITEM_OK && item_num == 0) {
-                                    item_current = 0xFF;
+                                jr.item_prev = jr.item_num;
+
+                                if (*item != JOURNAL_ITEM_OK && jr.item_num == 0) {
+                                    jr.item_current = 0xFF;
+                                } else {
+                                    item_page = 0;
+                                    if (journal_type == 3) {
+                                        accel_item = (journal_accel_item_t *) item;
+                                    } else {
+                                        trip_item = (journal_trip_item_t *) item;
+                                    }
                                 }
                             }
                             
-                            if (item_current != 0xFF) {
+                            if (jr.item_current != 0xFF) {
+
+                                trip_time_t *trip_time;
 
                                 LCD_CMD(0xC0);
                                 // show journal item data
                                 if (journal_type == 3) {
                                     // accel_item
+                                    trip_time = &accel_item->start_time;
 
                                     // upper-lower
                                     len = ultoa2(buf, accel_item->lower, 10);
@@ -1508,6 +1310,7 @@ void screen_journal_viewer() {
 
                                 } else {
                                     // trip_item
+                                    trip_time = &trip_item->start_time;
 
                                     switch(item_page) {
                                         case 0:
@@ -1528,7 +1331,7 @@ void screen_journal_viewer() {
                                 _memset(buf, ' ', 16);
                                 len = journal_print_item_time((char *) buf, trip_time);
 
-                                uint8_t _len = ultoa2(_buf, item_num + 1, 10);
+                                uint8_t _len = ultoa2(_buf, jr.item_num + 1, 10);
                                 _buf[_len++] = '.';
                                 
                                 add_leading_symbols(buf, ' ', (16 - _len), 16);
@@ -1544,15 +1347,16 @@ void screen_journal_viewer() {
                                 _print16(len, ALIGN_LEFT);
 
                                 if (key2_press != 0) {
-                                    timeout_timer1 = 5;
-                                    if (++item_page > item_page_max) {
+                                    if (journal_type != 3 && ++item_page > 2) {
                                         item_page = 0;
                                     }
+                                    timeout_timer1 = 5;
+                                    screen_refresh = 1;
                                 }
                             }
                         }
 
-                        if (item_current == 0xFF) {
+                        if (jr.item_current == 0xFF) {
                             // no items for current journal
                             LCD_CMD(0x80);
                             _print16(strcpy2(buf, (char *) journal_viewer_items_array, journal_type + 1), ALIGN_LEFT);
@@ -2039,21 +1843,6 @@ void save_eeprom() {
 #ifdef CONTINUOUS_DATA_SUPPORT
     HW_write_eeprom_block((unsigned char*) &cd, EEPROM_CONTINUOUS_DATA_ADDRESS, sizeof (continuous_data_t));
 #endif
-}
-
-void read_ds_time() {
-    if (timeout_ds_read == 0) {
-        timeout_ds_read = TIMEOUT_DS_READ;
-        get_ds_time(&time);
-    }
-}
-
-void fill_trip_time(trip_time_t *trip_time) {
-    trip_time->minute = time.minute;
-    trip_time->hour = time.hour;
-    trip_time->day = time.day;
-    trip_time->month = time.month;
-    trip_time->year = time.year;
 }
 
 uint16_t get_yday(uint8_t month, uint8_t day) {

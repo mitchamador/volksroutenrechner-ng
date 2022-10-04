@@ -3,7 +3,6 @@
 
 #if defined(__XC8) && (defined(_16F876A) || defined(_16F1936) || defined(_16F1938) || defined(_18F252)  || defined(_18F242))
 
-#include <stdint.h>
 #include <xc.h>
 
 #if defined(_16F876A)

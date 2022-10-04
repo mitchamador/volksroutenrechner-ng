@@ -52,9 +52,6 @@ typedef enum {
     VERSION_INFO_INDEX,
 } services_str_t;
 
-// 8 symbols
-#define JOURNAL_MARK                    "JOURTRIP"
-
 #define EMPTY                           "----"
 #define NO_TIME                         "-----'--"
 
@@ -489,7 +486,6 @@ PROGMEM const char day_of_week_array[] = DAY_OF_WEEK_ARRAY;
 PROGMEM const char month_array[] = MONTH_ARRAY;
 
 #ifdef JOURNAL_SUPPORT
-const char journal_mark[] = JOURNAL_MARK;
 PROGMEM const char journal_viewer_string[] = JOURNAL_VIEWER;
 PROGMEM const char journal_viewer_items_array[] = JOURNAL_VIEWER_ITEMS_ARRAY;
 PROGMEM const char journal_viewer_no_items_string[] = JOURNAL_VIEWER_NO_ITEMS;

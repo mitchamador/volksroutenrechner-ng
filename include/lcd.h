@@ -1,7 +1,6 @@
 #ifndef _LCD_H
 #define _LCD_H
 
-#include "main.h"
 #include "i2c.h"
 #include "utils.h"
 

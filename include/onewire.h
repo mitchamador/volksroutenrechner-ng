@@ -1,7 +1,7 @@
 #ifndef ONEWIRE_H
 #define	ONEWIRE_H
 
-#include "main.h"
+#include "core.h"
 
 #if defined(__AVR__)
 #include <util/crc16.h>

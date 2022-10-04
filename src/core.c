@@ -1,5 +1,15 @@
-#include "main.h"
 #include "core.h"
+#include "ds1307.h"
+
+// buffer for strings
+char buf[16];
+
+// time
+#if defined(_16F876A)
+__bank2 ds_time time;
+#else
+ds_time time;
+#endif
 
 // __near forces xc8 to use bitbssCOMMON section
 __near volatile __bit screen_refresh;
@@ -801,3 +811,35 @@ void cd_increment_filter() {
     }
 }
 #endif
+
+void read_ds_time() {
+    if (timeout_ds_read == 0) {
+        timeout_ds_read = TIMEOUT_DS_READ;
+        get_ds_time(&time);
+    }
+}
+
+void fill_trip_time(trip_time_t *trip_time) {
+    trip_time->minute = time.minute;
+    trip_time->hour = time.hour;
+    trip_time->day = time.day;
+    trip_time->month = time.month;
+    trip_time->year = time.year;
+}
+
+uint16_t get_trip_average_speed(trip_t* t) {
+    uint16_t average_speed = 0;
+    if (t->time > 0) {
+        average_speed = (uint16_t) ((uint32_t) ((t->odo * 36000UL) + (t->odo_temp * 36000UL / config.odo_const)) / t->time);
+    }
+    return average_speed;
+}
+
+uint16_t get_trip_odometer(trip_t* t) {
+    //     //bug(?) in xc8 or proteus for 16f1938
+    //     return (uint16_t) (t->odo * 10UL + (uint16_t) (t->odo_temp * 10UL / config.odo_const));
+
+    uint16_t int_part = t->odo * 10;
+    uint16_t frac_part = (uint16_t) (t->odo_temp * 10UL / config.odo_const);
+    return int_part + frac_part;
+}

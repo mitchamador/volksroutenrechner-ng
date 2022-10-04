@@ -1,6 +1,4 @@
-#include "hw.h"
-#include "i2c.h"
-#include "main.h"
+#include "core.h"
 
 #if defined(__AVR)
 

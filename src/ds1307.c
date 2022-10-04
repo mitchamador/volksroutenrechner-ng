@@ -1,8 +1,6 @@
-#include "main.h"
+#include "core.h"
 #include "ds1307.h"
 #include "ds18b20.h"
-#include "utils.h"
-#include "i2c.h"
 #include "version.h"
 
 void get_ds_time(ds_time* time) {

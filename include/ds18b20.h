@@ -1,7 +1,6 @@
 #ifndef DS18B20_H
 #define	DS18B20_H
 
-#include "main.h"
 #include "onewire.h"
 
 // magic number

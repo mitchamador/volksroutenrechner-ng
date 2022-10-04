@@ -1,6 +1,4 @@
-#include "hw.h"
-#include "i2c.h"
-#include "main.h"
+#include "core.h"
 
 #if defined(_PIC14) || defined(_PIC14E) || defined(_PIC18)
 

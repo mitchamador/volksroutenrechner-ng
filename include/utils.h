@@ -1,11 +1,8 @@
 #ifndef UTILS_H
 #define	UTILS_H
 
-#include "hw.h"
+#include "core.h"
 #include "ds1307.h"
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 typedef enum {
     ALIGN_NONE = 0,
