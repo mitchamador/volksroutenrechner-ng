@@ -11,32 +11,9 @@
 // ds1307 read timeout
 #define TIMEOUT_DS_READ 10
 
-// power supply threshold 
-// with default divider resistor's (8,2k (to Vcc) + 3,6k (to GND)) values
-// THRESHOLD_VOLTAGE * (3,6 / (3,6 + 8,2)) * (1024 / 5) = THRESHOLD_VOLTAGE_ADC_VALUE
-// 2,048V ~ 128
-#define THRESHOLD_VOLTAGE_ADC_VALUE 128
-
 // const for voltage adjust
 #define VOLTAGE_ADJUST_CONST_MIN 140
 #define VOLTAGE_ADJUST_CONST_MAX 230
-
-#ifdef ADC_BUTTONS
-// threshold for buttons +-0,2v
-#define ADC_BUTTONS_THRESHOLD 40
-#define ADC_BUTTONS_1V (1024/5)            
-#endif
-
-// misc constants (in seconds)
-#define MAIN_INTERVAL ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
-#define DEBOUNCE ((uint8_t) (0.04f / MAIN_TIMER_PERIOD))
-#define SHORTKEY ((uint8_t) (0.5f / MAIN_TIMER_PERIOD))
-#define LONGKEY ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
-#define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / MAIN_TIMER_PERIOD))
-// timeout constant in 0.01 ms resolution
-#define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / MAIN_TIMER_PERIOD))
-// time with power supply measurements lower than threshold before shutdown
-#define SHUTDOWN ((uint8_t) (0.25f / MAIN_TIMER_PERIOD))
 
 // default min speed for drive mode (km/h)
 #define MIN_SPEED_DEFAULT 5
@@ -58,24 +35,12 @@
 
 // round taho
 #define TAHO_ROUND 10
-// min rpm
-#define TAHO_MIN_RPM 100UL
-// min rpm constant (1/(TAHO_MIN_RPM/60sec)/0.01s) 0.01s timer overflow
-#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / TAHO_TIMER_PERIOD))
 // taho const 
 #define TAHO_CONST ((uint32_t) (60 / TAHO_TIMER_PERIOD * TAHO_TIMER_TICKS_PER_PERIOD))
 
 // speed timer counts between speed pulses when speed is X km/h
 // (1 / ((config.odo_const * X) / 3600)) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD) = ((3600 / X) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD) / config.odo_const
 #define speed_const(x) ((uint32_t) ((3600 / x) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD)))
-
-// minimum pulse width for acceleration measurement calculation (0.1s)
-#define ACCEL_MEAS_OVERFLOW_CONST 10            /* (0.1f / SPEED_TIMER_PERIOD) */
-#if (65536 / SPEED_TIMER_TICKS_PER_PERIOD) >= ACCEL_MEAS_OVERFLOW_CONST
-#define ACCEL_MEAS_OVERFLOW ACCEL_MEAS_OVERFLOW_CONST
-#else
-#define ACCEL_MEAS_OVERFLOW (65536 / SPEED_TIMER_TICKS_PER_PERIOD)
-#endif
 
 typedef union {
     // a structure with 16 single bit bit-field objects, overlapping the union member "word"
@@ -273,11 +238,6 @@ typedef struct {
     filtered_value_t *f;                    // filtered value struct    (5 bytes)
     uint8_t channel;                        // adc channel              (1 byte)
 } adc_item_t;
-
-// continuous data parameters
-#define CD_FILTER_VALUE_MIN      6
-#define CD_FILTER_VALUE_MAX      9
-#define CD_TIME_THRESHOLD_INIT   ((1 << CD_FILTER_VALUE_MIN) * 6)
 
 typedef struct {
     filtered_value_t f_kmh;                 // filtered speed (pulses) value

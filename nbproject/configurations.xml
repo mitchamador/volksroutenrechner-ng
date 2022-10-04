@@ -19,6 +19,7 @@
       <itemPath>include/config.h</itemPath>
       <itemPath>include/hw-avr.h</itemPath>
       <itemPath>include/hw-pic.h</itemPath>
+      <itemPath>include/core.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -37,6 +38,7 @@
       <itemPath>src/i2c.c</itemPath>
       <itemPath>src/onewire.c</itemPath>
       <itemPath>src/i2c-eeprom.c</itemPath>
+      <itemPath>src/core.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"

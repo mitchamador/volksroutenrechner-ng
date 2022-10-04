@@ -122,7 +122,9 @@ typedef enum {
 
 #define SETTING_MH_RPM                  "\0mh rpm"
 
+#ifdef JOURNAL_SUPPORT
 #define SETTING_TRIPB_MONTH             "\0trip B month"
+#endif
 
 #define SETTING_TRIPC_DAY               "\0trip C day"
 
@@ -271,7 +273,9 @@ typedef enum {
 #define SETTING_MH_RPM                  "\0\xBC/\xC0 \x6F\xB2/\xBC\xB8\xBD"
 
 // "проб. B мес."
+#ifdef JOURNAL_SUPPORT
 #define SETTING_TRIPB_MONTH             "\0\xBE\x70\x6F\xB2. B \xBC\x65\x63."
+#endif
 
 // "проб. C дн."
 #define SETTING_TRIPC_DAY               "\0\xBE\x70\x6F\xB2. C \xE3\xBD."
@@ -405,6 +409,10 @@ typedef enum {
 
 #ifndef SETTING_INOUT_TEMP
 #define SETTING_INOUT_TEMP              "\0"
+#endif
+
+#ifndef JOURNAL_SUPPORT
+#define SETTING_TRIPB_MONTH             "\0"
 #endif
 
 #ifndef SETTING_SHOW_MISC_SCREEN
