@@ -444,11 +444,11 @@ uint8_t print_voltage(uint16_t *adc_voltage, uint8_t prefix_pos, align_t align) 
 }
 
 void print_time(ds_time* time) {
-    LCD_CMD(0x80);
+    //LCD_CMD(0x80);
     print_time_hm(time->hour, time->minute, ALIGN_LEFT);
 
-    LCD_CMD(0x88);
-    print_time_dmy(time->day, time->month, time->year, ALIGN_LEFT);
+    //LCD_CMD(0x88);
+    print_time_dmy(time->day, time->month, time->year, ALIGN_RIGHT);
 
     LCD_CMD(0xC0);
     print_time_dow(time->day_of_week, ALIGN_LEFT);
@@ -942,6 +942,9 @@ typedef enum {
     main_screen_page1_param_max
 } main_screen_add_page_param;
 
+#define ADDPAGE_TIMEOUT_DRIVE   3
+#define ADDPAGE_TIMEOUT_IDLE    10
+
 void screen_main(void) {
 
     static uint8_t tmp_param2;
@@ -961,22 +964,23 @@ void screen_main(void) {
     //  speed           taho
     //  param1          fuel_km
     
-    //  tmp_param == 1 (drive_min_speed_fl == 0 && motor_fl != 0)
+    //  tmp_param == 1 (idling or moving)
     //  key2 press to switch params (tmp_param2)
     //  temp/odo        voltage
     //  avg_speed       avg_fuel (tmp_param2 == 0)
     //  cd_speed        cd_fuel  (tmp_param2 == 1) (continuous data support)
 
-    if (drive_min_speed_fl == 0 && motor_fl != 0) {
+    if (motor_fl != 0) {
         if (key2_press != 0 || key1_longpress != 0) {
-            timeout_timer1 = 10;
+            timeout_timer1 = ADDPAGE_TIMEOUT_IDLE;
             if (key1_longpress != 0) {
                 key1_longpress = 0;
                 tmp_param++;
                 tmp_param2 = 0;
             }
         }
-        if (timeout_timer1 == 0 || tmp_param >= main_screen_page_max) {
+        if (timeout_timer1 == 0 || tmp_param >= main_screen_page_max
+             || (drive_min_speed_fl != 0 && (ADDPAGE_TIMEOUT_IDLE - timeout_timer1 >= ADDPAGE_TIMEOUT_DRIVE))) {
             tmp_param = 0;
         } else if (key2_longpress != 0 && tmp_param != 0) {
             key2_longpress = 0;
@@ -986,9 +990,9 @@ void screen_main(void) {
         tmp_param = 0;
     }
     
+    //LCD_CMD(0x80);
     switch (tmp_param) {
         case main_screen_page0:
-            LCD_CMD(0x80);
             if (drive_min_speed_fl == 0) {
                 read_ds_time();
                 print_time_hm(time.hour, time.minute, ALIGN_LEFT);
@@ -1025,7 +1029,6 @@ void screen_main(void) {
 #endif        
             break;
         case main_screen_page1:
-            LCD_CMD(0x80);
 #if defined(TEMPERATURE_SUPPORT)
             print_temp((config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, ALIGN_LEFT);
 #else
@@ -1083,7 +1086,7 @@ void screen_trip() {
     len = strcpy2(buf, (char *) &trip_string, 0);
     len += strcpy2(&buf[len], (char *) trips_array, trips_pos);
 
-    LCD_CMD(0x80);
+    //LCD_CMD(0x80);
     _print8(len, ALIGN_LEFT);
 
     print_trip_odometer(trip, ALIGN_RIGHT);
@@ -1122,7 +1125,7 @@ void screen_misc() {
     if (config.settings.show_misc_screen == 0) {
         item_skip = 1;
     } else {
-        LCD_CMD(0x80);
+        //LCD_CMD(0x80);
         switch(select_param(&misc_param, screen_misc_max)) {
 #if defined(TEMPERATURE_SUPPORT)
             case screen_misc_temperature:
@@ -1220,7 +1223,7 @@ void screen_service_counters() {
     
     select_param(&service_param, 5);
 
-    LCD_CMD(0x80);
+    //LCD_CMD(0x80);
     _print16(strcpy2((char*)buf, (char *) &service_counters_array, service_param + 1), ALIGN_LEFT);
 
     if (service_param == 0) {
@@ -1242,7 +1245,7 @@ void screen_service_counters() {
     s_time = srv->time;
 
     LCD_CMD(0xC8);
-    print_time_dmy(s_time.day, s_time.month, s_time.year, ALIGN_LEFT);
+    print_time_dmy(s_time.day, s_time.month, s_time.year, ALIGN_RIGHT);
     
     if (request_screen((char *) &reset_string) != 0) {
         read_ds_time();
@@ -1296,7 +1299,7 @@ void screen_journal_viewer() {
         item_skip = 1;
     } else {
 
-        LCD_CMD(0x80);
+        //LCD_CMD(0x80);
         _print16(strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
 
         LCD_CMD(0xC0);
@@ -1700,7 +1703,7 @@ void config_screen() {
 
     screen_config_item_t *item = (screen_config_item_t *) &items_service[c_item];
     
-    LCD_CMD(0x80);
+    //LCD_CMD(0x80);
     _print16(strcpy2(buf, (char *) &config_menu_title_string, 0), ALIGN_LEFT);
 
     LCD_CMD(0xC0);
@@ -2199,7 +2202,6 @@ void main() {
                 prev_main_item  = c_item;
                 c_item = prev_config_item;
                 config_mode = 1;
-                //LCD_Clear();
                 clear_keys_state();
             } else if (config_mode != 0) {
                 prev_config_item = c_item;
@@ -2209,7 +2211,6 @@ void main() {
                 save_eeprom_config();
                 // set consts
                 set_consts();
-                //LCD_Clear();
                 clear_keys_state();
             }
         }
@@ -2235,6 +2236,8 @@ void main() {
             tmp_param = 0;
             clear_keys_state();
         }
+        
+        LCD_CMD(0x80); // set cursor to (1,1)
         
         if (config_mode != 0) {
             config_screen();
