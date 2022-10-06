@@ -723,7 +723,7 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
 unsigned char request_screen(char* request_str) {
     unsigned char res = 0;
     if (key2_longpress != 0) {
-        clear_keys_state();
+        key2_longpress = 0;
 
         LCD_Clear();
 
@@ -828,9 +828,9 @@ void acceleration_measurement(uint8_t index) {
     
     _memset(buf, '=', 16);
 
+    clear_keys_state();
     // 16 sec waiting for start
     timeout_timer1 = 16;
-
     timeout_timer2 = 0;
     while (_accel_meas_exit == 0 && no_key_pressed()) {
         if (timeout_timer1 != 0 && drive_fl == 0) {
@@ -893,12 +893,10 @@ void acceleration_measurement(uint8_t index) {
         }
     }
     accel_meas_process_fl = 0;
-    clear_keys_state();
 }
 
 #ifdef EXTENDED_ACCELERATION_MEASUREMENT
 void select_acceleration_measurement() {
-    clear_keys_state();
 
     LCD_Clear();
 
@@ -971,10 +969,9 @@ void screen_main(void) {
     //  cd_speed        cd_fuel  (tmp_param2 == 1) (continuous data support)
 
     if (motor_fl != 0) {
-        if (key2_press != 0 || key1_longpress != 0) {
+        if (key1_longpress != 0) {
             timeout_timer1 = ADDPAGE_TIMEOUT_IDLE;
             if (key1_longpress != 0) {
-                key1_longpress = 0;
                 tmp_param++;
                 tmp_param2 = 0;
             }
@@ -982,14 +979,22 @@ void screen_main(void) {
         if (timeout_timer1 == 0 || tmp_param >= main_screen_page_max
              || (drive_min_speed_fl != 0 && (ADDPAGE_TIMEOUT_IDLE - timeout_timer1 >= ADDPAGE_TIMEOUT_DRIVE))) {
             tmp_param = 0;
-        } else if (key2_longpress != 0 && tmp_param != 0) {
-            key2_longpress = 0;
-            tmp_param = 0;
         }
     } else {
         tmp_param = 0;
     }
-    
+
+    if (tmp_param != 0) {
+        if (key2_longpress != 0) {
+            tmp_param = 0;
+        }
+#if !defined(CONTINUOUS_DATA_SUPPORT)
+        if (key2_press != 0) {
+            tmp_param = 0;
+        }
+#endif
+    }
+
     //LCD_CMD(0x80);
     switch (tmp_param) {
         case main_screen_page0:
@@ -1020,6 +1025,7 @@ void screen_main(void) {
             }
 #ifdef EXTENDED_ACCELERATION_MEASUREMENT
             if (drive_fl == 0 && motor_fl != 0 && key2_longpress != 0) {
+                key2_longpress = 0;
                 select_acceleration_measurement();
             }
 #else
@@ -1665,7 +1671,7 @@ void config_screen_service_counters() {
     _print16(2 + strcpy2(&buf[2], (char *) &service_counters_array, c_sub_item + 1), ALIGN_LEFT);
 
     if (key2_press != 0) {
-        clear_keys_state();
+        key2_press = 0;
 
         LCD_CMD(0x80);
         _print16(strcpy2(buf, (char *) &service_counters_array, c_sub_item + 1), ALIGN_LEFT);
@@ -1692,7 +1698,7 @@ void config_screen_ua_const() {
 }
 
 void config_screen_version() {
-    if (key1_press || key2_press != 0) {
+    if (key1_press != 0 || key2_press != 0) {
         timeout_timer1 = 0;
     }
     LCD_CMD(0xC0);
@@ -2181,7 +2187,7 @@ void main() {
     }
 #endif
     
-    clear_keys_state();
+    //clear_keys_state();
     
     // wait first adc conversion
     while (adc_voltage.current == 0 && screen_refresh == 0)
@@ -2269,6 +2275,8 @@ void main() {
                 }
             } while (item_skip != 0);
         }
+        
+        clear_keys_state();
         
         while (screen_refresh == 0);
     }
