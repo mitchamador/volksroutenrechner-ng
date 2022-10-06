@@ -444,7 +444,7 @@ uint8_t print_voltage(uint16_t *adc_voltage, uint8_t prefix_pos, align_t align) 
 }
 
 void print_time(ds_time* time) {
-    //LCD_CMD(0x80);
+    LCD_CMD(0x80);
     print_time_hm(time->hour, time->minute, ALIGN_LEFT);
 
     //LCD_CMD(0x88);
@@ -460,7 +460,7 @@ const time_editor_item_t time_editor_items_array[] = {
     {&time.day, 1, 31, 0x89},
     {&time.month, 1, 12, 0x8c},
     {&time.year, VERSION_YEAR, VERSION_YEAR + 10, 0x8f},
-    {&time.day_of_week, 0, 23, 0xc0},
+    {&time.day_of_week, 1, 7, 0xc0},
 };
 
 void screen_time(void) {
@@ -487,7 +487,7 @@ void screen_time(void) {
             if (config.settings.encoder == 0 || edit_mode == 0)
 #endif
             {
-                handle_keys_next_prev(&c, 0, 6 - 1);
+                handle_keys_next_prev(&c, 0, sizeof(time_editor_items_array) / sizeof(time_editor_items_array[0]) - 1);
                 time_editor_item = (time_editor_item_t *) &time_editor_items_array[c];
             }
 #if defined(ENCODER_SUPPORT)
@@ -1769,7 +1769,7 @@ void print_warning_service_counters(unsigned char warn) {
             LCD_CMD(0xC0);
             _print16(strcpy2(buf, (char*) &service_counters_array, i + 1), ALIGN_CENTER);
 
-            timeout_timer1 = 5;
+            timeout_timer1 = 3;
             while (timeout_timer1 != 0 && no_key_pressed())
                 ;
             clear_keys_state();
