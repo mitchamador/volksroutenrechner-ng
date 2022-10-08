@@ -1831,20 +1831,6 @@ void beep(uint8_t beep)
 
 #if defined(PROGMEM_EEPROM) || defined (ENCODER_SUPPORT)
 
-#if defined(PROGMEM_EEPROM)
-void check_eeprom(uint8_t c) {
-    unsigned char tbuf[8];
-    HW_read_eeprom_block((unsigned char*) &tbuf, sizeof(eedata) - 8, 8);
-    if (c == FORCE_SETTING_EEPROM_REWRITE || memcmp_P((unsigned char*) &tbuf, &eedata[sizeof(eedata) - 8], 8) != 0) {
-        uint8_t c;
-        for (c = 0; c < sizeof(eedata); c += 8) {
-            memcpy_P(&tbuf, &eedata[c], 8);
-            HW_write_eeprom_block((unsigned char*) &tbuf, c, 8);
-        }
-    }
-}
-#endif
-
 #define SETTINGS_DELAY 150
 
 uint8_t stage_setting = 0;
@@ -1860,6 +1846,19 @@ typedef enum {
     FORCE_SETTING_MAX    
 } pre_settings_t;
 
+#if defined(PROGMEM_EEPROM)
+void check_eeprom(uint8_t c) {
+    unsigned char tbuf[8];
+    HW_read_eeprom_block((unsigned char*) &tbuf, sizeof(eedata) - 8, 8);
+    if (c == FORCE_SETTING_EEPROM_REWRITE || memcmp_P((unsigned char*) &tbuf, &eedata[sizeof(eedata) - 8], 8) != 0) {
+        uint8_t c;
+        for (c = 0; c < sizeof(eedata); c += 8) {
+            memcpy_P(&tbuf, &eedata[c], 8);
+            HW_write_eeprom_block((unsigned char*) &tbuf, c, 8);
+        }
+    }
+}
+#endif
 
 // force settings overwrite
 // press ok button before start
