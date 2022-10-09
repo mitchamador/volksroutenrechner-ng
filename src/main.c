@@ -16,6 +16,7 @@
 char buf[16];
 
 __bit drive_min_speed_fl;
+__bit custom_keys_handler;
 
 #ifdef TEMPERATURE_SUPPORT
 __bit temperature_conv_fl;
@@ -24,7 +25,7 @@ uint16_t _t;
 uint16_t temps[4] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE};
 #endif
 
-uint8_t main_screen_page = 0, main_param = 0, misc_param = 0;
+uint8_t main_screen_page = 0, main_param = 0, main_add_param = 0;
 #ifdef SERVICE_COUNTERS_SUPPORT
 uint8_t service_param = 0;
 #endif
@@ -45,7 +46,6 @@ uint16_t cd_speed;
 
 void screen_main(void);
 void screen_tripC(void);
-void screen_misc(void);
 void screen_max(void);
 void screen_tripA(void);
 void screen_tripB(void);
@@ -58,16 +58,12 @@ void screen_trip(void);
 typedef enum {
     drive_mode_screen_main,
     drive_mode_screen_tripC,
-#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
-    drive_mode_screen_misc,
-#endif
     drive_mode_screen_max
 } drive_mode_screens;
 
 typedef enum {
     SCREEN_INDEX_MAIN = 0,
     SCREEN_INDEX_TRIP_C,
-    SCREEN_INDEX_MISC,
     SCREEN_INDEX_TRIP_A,
     SCREEN_INDEX_TRIP_B,
     SCREEN_INDEX_TIME,
@@ -78,9 +74,6 @@ typedef enum {
 const screen_item_t items_main[] = {
     {screen_main, SCREEN_INDEX_MAIN},
     {screen_trip, SCREEN_INDEX_TRIP_C},
-#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
-    {screen_misc, SCREEN_INDEX_MISC},
-#endif
     {screen_trip, SCREEN_INDEX_TRIP_A},
     {screen_trip, SCREEN_INDEX_TRIP_B},
     {screen_time, SCREEN_INDEX_TIME},
@@ -933,6 +926,12 @@ void select_acceleration_measurement() {
 
 typedef enum {
     main_screen_page1_param_avg = 0,
+#if defined(MIN_MAX_VOLTAGES_SUPPORT)
+    main_screen_page1_param_voltages,
+#endif
+#if defined(TEMPERATURE_SUPPORT)
+    main_screen_page1_param_temperature,
+#endif
 #if defined(CONTINUOUS_DATA_SUPPORT)
     main_screen_page1_param_cd,
 #endif
@@ -943,8 +942,6 @@ typedef enum {
 #define ADDPAGE_TIMEOUT_IDLE    10
 
 void screen_main(void) {
-
-    static uint8_t main_add_param = 0;
 
     //  long press key1 (or doubleclick key2 when encoder control) to switch page (main_screen_page)
 
@@ -986,23 +983,17 @@ void screen_main(void) {
             main_screen_page = 0;
         }
     }
-
-    if (main_screen_page != 0) {
-        // if (key2_longpress != 0) {
-        //     main_screen_page = 0;
-        // }
-        if (key2_press != 0) {
-#if defined(CONTINUOUS_DATA_SUPPORT)
-            timeout_timer1 = ADDPAGE_TIMEOUT_IDLE;
+#if defined(KEY3_SUPPORT)
+    if (key1_press != 0 || key3_press != 0) {
 #else
-            key2_press = 0;
-            main_screen_page = 0;
+    if (key1_press != 0) {
 #endif
-        }
+        main_screen_page = 0;                
     }
 
     //LCD_CMD(0x80);
     if (main_screen_page == 0) {
+        custom_keys_handler = 0;
         // main page
         if (drive_min_speed_fl == 0) {
             read_ds_time();
@@ -1041,105 +1032,27 @@ void screen_main(void) {
 #endif        
     } else {
         // additional page
-#if defined(TEMPERATURE_SUPPORT)
-        print_temp((config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, ALIGN_LEFT);
-#else
-        print_trip_odometer(&trips.tripC, ALIGN_LEFT);
-#endif
-        print_voltage((uint16_t *) & adc_voltage.current, POS_NONE, ALIGN_RIGHT);
-
-        LCD_CMD(0xC0);
-#if defined(CONTINUOUS_DATA_SUPPORT)
+        custom_keys_handler = 1;
+        if (key2_press != 0) {
+            timeout_timer1 = ADDPAGE_TIMEOUT_IDLE;
+        }
         switch (select_param(&main_add_param, main_screen_page1_param_max)) {
             case main_screen_page1_param_avg:
+#if defined(TEMPERATURE_SUPPORT)
+                print_temp((config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, ALIGN_LEFT);
+#else
+                print_trip_odometer(&trips.tripC, ALIGN_LEFT);
 #endif
+                print_voltage((uint16_t *) & adc_voltage.current, POS_NONE, ALIGN_RIGHT);
+
+                LCD_CMD(0xC0);
+
                 print_trip_average_speed(&trips.tripC, ALIGN_LEFT);
                 print_trip_average_fuel(&trips.tripC, ALIGN_RIGHT);
-#if defined(CONTINUOUS_DATA_SUPPORT)
                 break;
-            case main_screen_page1_param_cd:
-                print_speed(cd_speed, POS_NONE, 0, ALIGN_LEFT);
-                print_fuel(cd_fuel, cd_kmh, drive_min_cd_speed_fl, ALIGN_RIGHT);
-                break;
-        }
-#endif
-    }
-}
 
-void clear_trip(bool force, trip_t* trip) {
-    if (force || request_screen((char *) &reset_string) != 0) {
-#ifdef JOURNAL_SUPPORT
-        journal_save_trip(trip);
-#endif
-        _memset(trip, 0, sizeof(trip_t));
-        
-        save_eeprom_trips();
-    }
-}
-
-void screen_trip() {
-    trip_t *trip;
-    uint8_t trips_pos;
-    
-    uint8_t item_index = items_main[c_item].index;
-
-    if (item_index == SCREEN_INDEX_TRIP_C) {
-            trip = &trips.tripC;
-            trips_pos = config.settings.daily_tripc ? TRIPS_POS_DAY : TRIPS_POS_CURR;
-    } else if (item_index == SCREEN_INDEX_TRIP_A) {
-            trip = &trips.tripA;
-            trips_pos = TRIPS_POS_A;
-    } else /*if (item_index == SCREEN_INDEX_TRIP_B) */{
-            trip = &trips.tripB;
-            trips_pos = TRIPS_POS_B;
-    };
-
-    uint8_t len = strcpy2(buf, (char *) &trip_string, 0);
-    len += strcpy2(&buf[len], (char *) trips_array, trips_pos);
-
-    //LCD_CMD(0x80);
-    _print8(len, ALIGN_LEFT);
-
-    print_trip_odometer(trip, ALIGN_RIGHT);
-    
-    LCD_CMD(0xC0);
-    switch (select_param(&main_screen_page, 2)) {
-        case 0:
-            print_trip_average_fuel(trip, ALIGN_LEFT);
-            print_trip_average_speed(trip, ALIGN_RIGHT);
-            break;
-        case 1:
-            print_trip_time(trip, ALIGN_LEFT);
-            print_trip_total_fuel(trip, ALIGN_RIGHT);
-            break;
-    }
-
-    clear_trip(false, trip);
-}
-
-#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
-
-typedef enum {
 #if defined(TEMPERATURE_SUPPORT)
-    screen_misc_temperature,
-#endif
-#if defined(MIN_MAX_VOLTAGES_SUPPORT)
-    screen_misc_voltages,
-#endif
-#if defined(CONTINUOUS_DATA_SUPPORT)
-    screen_misc_cd,
-#endif
-    screen_misc_max
-} screen_misc_items;
-
-void screen_misc() {
-    if (config.settings.show_misc_screen == 0) {
-        item_skip = 1;
-    } else {
-        //LCD_CMD(0x80);
-        switch(select_param(&misc_param, screen_misc_max)) {
-#if defined(TEMPERATURE_SUPPORT)
-            case screen_misc_temperature:
+            case main_screen_page1_param_temperature:
                 // show temp sensors config on ok key longpress
 #if defined(DS18B20_CONFIG)
                 if (key2_longpress != 0) {
@@ -1167,7 +1080,7 @@ void screen_misc() {
                 break;
 #endif
 #if defined(MIN_MAX_VOLTAGES_SUPPORT)
-            case screen_misc_voltages:
+            case main_screen_page1_param_voltages:
                 if (request_screen((char *) &reset_string) != 0) {
                     adc_voltage.min = adc_voltage.max = adc_voltage.current;
                 }
@@ -1180,7 +1093,7 @@ void screen_misc() {
                 break;
 #endif
 #if defined(CONTINUOUS_DATA_SUPPORT)
-            case screen_misc_cd:
+            case main_screen_page1_param_cd:
                 if (request_screen((char *) &reset_string) != 0) {
                     cd.filter = 0;
                     cd_init();
@@ -1209,7 +1122,57 @@ void screen_misc() {
 
     }
 }
+
+void clear_trip(bool force, trip_t* trip) {
+    if (force || request_screen((char *) &reset_string) != 0) {
+#ifdef JOURNAL_SUPPORT
+        journal_save_trip(trip);
 #endif
+        _memset(trip, 0, sizeof(trip_t));
+        
+        save_eeprom_trips();
+    }
+}
+
+void screen_trip() {
+    trip_t *trip;
+    uint8_t trips_pos;
+    
+    uint8_t item_index = items_main[c_item].index;
+
+    if (item_index == SCREEN_INDEX_TRIP_C) {
+        trip = &trips.tripC;
+        trips_pos = config.settings.daily_tripc ? TRIPS_POS_DAY : TRIPS_POS_CURR;
+    } else if (item_index == SCREEN_INDEX_TRIP_A) {
+        trip = &trips.tripA;
+        trips_pos = TRIPS_POS_A;
+    } else /*if (item_index == SCREEN_INDEX_TRIP_B) */{
+        trip = &trips.tripB;
+        trips_pos = TRIPS_POS_B;
+    };
+
+    uint8_t len = strcpy2(buf, (char *) &trip_string, 0);
+    len += strcpy2(&buf[len], (char *) trips_array, trips_pos);
+
+    //LCD_CMD(0x80);
+    _print8(len, ALIGN_LEFT);
+
+    print_trip_odometer(trip, ALIGN_RIGHT);
+    
+    LCD_CMD(0xC0);
+    switch (select_param(&main_screen_page, 2)) {
+        case 0:
+            print_trip_average_fuel(trip, ALIGN_LEFT);
+            print_trip_average_speed(trip, ALIGN_RIGHT);
+            break;
+        case 1:
+            print_trip_time(trip, ALIGN_LEFT);
+            print_trip_total_fuel(trip, ALIGN_RIGHT);
+            break;
+    }
+
+    clear_trip(false, trip);
+}
 
 #ifdef SERVICE_COUNTERS_SUPPORT
 /**
@@ -1467,7 +1430,7 @@ void screen_journal_viewer() {
             }
             
             screen_refresh = 1;
-            c_item = 0;
+            c_item = SCREEN_INDEX_MAIN;
         }
     }
 }
@@ -1995,7 +1958,7 @@ void set_consts() {
     }
 
     main_param = config.selected_param.main_param;
-    misc_param = config.selected_param.misc_param;
+    main_add_param = config.selected_param.main_add_param;
 #ifdef SERVICE_COUNTERS_SUPPORT
     service_param = config.selected_param.service_param;
 #endif
@@ -2161,7 +2124,7 @@ void power_off() {
 
 
     config.selected_param.main_param = main_param;
-    config.selected_param.misc_param = misc_param;
+    config.selected_param.main_add_param = main_add_param;
 #ifdef SERVICE_COUNTERS_SUPPORT
     config.selected_param.service_param = service_param;
 #endif
@@ -2211,7 +2174,8 @@ void main() {
 
         if (key2_longpress != 0) {
             // long keypress for service key - switch service mode and main mode
-            if (config_mode == 0 && motor_fl == 0 && drive_fl == 0 && c_item == 0) {
+            if (config_mode == 0 && motor_fl == 0 && drive_fl == 0
+                && custom_keys_handler == 0) {
                 prev_main_item  = c_item;
                 c_item = prev_config_item;
                 config_mode = 1;
@@ -2243,7 +2207,10 @@ void main() {
         // show next/prev screen
         c_item_prev = c_item;
 
-        handle_keys_next_prev(&c_item, 0, max_item);
+        // skip next/prev key for additional page of main screen
+        if (custom_keys_handler == 0) {
+            handle_keys_next_prev(&c_item, 0, max_item);
+        }
 
         if (c_item_prev != c_item) {
             main_screen_page = 0;
@@ -2256,8 +2223,9 @@ void main() {
             config_screen();
         } else {
             do {
-                if (drive_min_speed_fl != 0 && c_item > (drive_mode_screen_max - 1)) {
-                    c_item = 0;
+                //if (drive_min_speed_fl != 0 && c_item > (drive_mode_screen_max - 1)) {
+                if (drive_min_speed_fl != 0) {
+                    c_item = SCREEN_INDEX_MAIN;
                     //LCD_Clear();
                 }
                 item_skip = 0;

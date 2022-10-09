@@ -61,15 +61,16 @@
 #define BUZZER_WARN             2
 #define BUZZER_NONE             -1
 
+// 10ms resolution
 #define BUZZER_KEY_COUNTER      1
-#define BUZZER_KEY_SOUND        1
-#define BUZZER_KEY_PAUSE        1
+#define BUZZER_KEY_SOUND        8
+#define BUZZER_KEY_PAUSE        0
 #define BUZZER_LONGKEY_COUNTER  1
-#define BUZZER_LONGKEY_SOUND    4
-#define BUZZER_LONGKEY_PAUSE    1
+#define BUZZER_LONGKEY_SOUND    40
+#define BUZZER_LONGKEY_PAUSE    0
 #define BUZZER_WARN_COUNTER     3
-#define BUZZER_WARN_SOUND       3
-#define BUZZER_WARN_PAUSE       2
+#define BUZZER_WARN_SOUND       30
+#define BUZZER_WARN_PAUSE       20
 
 #define FILTERED_VALUE_FIRST_SAMPLE 0x80
 
@@ -105,7 +106,7 @@ typedef union {
         unsigned mh_rpm : 1; // show motorhours based on rpm (96000 per hour)
         unsigned service_alarm : 1; // alarm for service counters
         unsigned key_sound : 1; // keys sound
-        unsigned show_misc_screen : 1; // show temperature/misc screen
+        unsigned deprecated_show_misc_screen : 1; // show temperature/misc screen
         unsigned par_injection : 1; // pair/parallel injection
     };
 } settings_u;
@@ -119,7 +120,7 @@ typedef union {
         uint8_t main_param : 4;
         uint8_t service_param : 4;
         uint8_t min_speed : 4;
-        uint8_t misc_param : 4;
+        uint8_t main_add_param : 4;
     };
 } param_u;
 

@@ -542,10 +542,6 @@ void int_main_timer_overflow() {
 #ifdef SOUND_SUPPORT
 
     static __bit buzzer_fl, buzzer_init_fl;
-    static __bit buzzer_snd_fl, buzzer_repeat_fl;
-    static uint8_t buzzer_counter_r;
-    static uint8_t buzzer_counter, buzzer_counter_01sec;
-
     static uint8_t buzzer_mode_counter, buzzer_mode_sound, buzzer_mode_pause;
 
     if (buzzer_mode_index != BUZZER_NONE) {
@@ -569,46 +565,47 @@ void int_main_timer_overflow() {
                     buzzer_mode_pause = BUZZER_WARN_PAUSE;
                     break;
             }
-            buzzer_counter_01sec = 1;
         }
         buzzer_mode_index = BUZZER_NONE;
     }
 
+    static __bit buzzer_snd_fl, buzzer_repeat_fl;
+    static uint8_t buzzer_counter_r;
+    static uint8_t buzzer_counter;
+
     if (buzzer_fl != 0) {
-        if (--buzzer_counter_01sec == 0) {
-            buzzer_counter_01sec = INIT_TIMEOUT(0.1f);
-            if (buzzer_init_fl == 0) {
-                buzzer_init_fl = 1;
-                buzzer_repeat_fl = 1;
-                buzzer_counter_r = buzzer_mode_counter + 1;
-            }
-
-            if (buzzer_repeat_fl != 0) {
-                buzzer_repeat_fl = 0;
-                if (--buzzer_counter_r > 0) {
-                    buzzer_snd_fl = 1;
-                    buzzer_counter = buzzer_mode_sound;
-                } else {
-                    buzzer_fl = 0;
-                    buzzer_init_fl = 0;
-                }
-            }
-
-            if (buzzer_snd_fl != 0) {
-                if (buzzer_counter == 0) {
-                    buzzer_snd_fl = 0;
-                    buzzer_counter = buzzer_mode_pause - 1;
-                }
-                SND_ON;
-            }
-            if (buzzer_snd_fl == 0) {
-                if (buzzer_counter == 0) {
-                    buzzer_repeat_fl = 1;
-                }
-                SND_OFF;
-            }
-            buzzer_counter--;
+        if (buzzer_init_fl == 0) {
+            buzzer_init_fl = 1;
+            buzzer_repeat_fl = 1;
+            buzzer_counter_r = buzzer_mode_counter;
         }
+
+        if (buzzer_repeat_fl != 0) {
+            buzzer_repeat_fl = 0;
+            if (buzzer_counter_r == 0) {
+                buzzer_fl = 0;
+                buzzer_init_fl = 0;
+            } else {
+                buzzer_counter_r--;
+                buzzer_snd_fl = 1;
+                buzzer_counter = buzzer_mode_sound;
+            }
+        }
+
+        if (buzzer_snd_fl != 0) {
+            if (buzzer_counter == 0) {
+                buzzer_snd_fl = 0;
+                buzzer_counter = buzzer_mode_pause;
+            }
+            SND_ON;
+        }
+        if (buzzer_snd_fl == 0) {
+            if (buzzer_counter == 0) {
+                buzzer_repeat_fl = 1;
+            }
+            SND_OFF;
+        }
+        buzzer_counter--;
     }
 #endif
 }
