@@ -21,8 +21,9 @@
 // misc constants (in seconds)
 #define MAIN_INTERVAL ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
 #define DEBOUNCE ((uint8_t) (0.04f / MAIN_TIMER_PERIOD))
-#define SHORTKEY ((uint8_t) (0.5f / MAIN_TIMER_PERIOD))
+#define SHORTKEY ((uint8_t) (0.2f / MAIN_TIMER_PERIOD))
 #define LONGKEY ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
+#define MULTICLICK ((uint8_t) (0.2f / MAIN_TIMER_PERIOD))
 #define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / MAIN_TIMER_PERIOD))
 // timeout constant in 0.01 ms resolution
 #define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / MAIN_TIMER_PERIOD))
@@ -236,8 +237,15 @@ extern volatile __bit taho_fl, drive_fl, motor_fl, shutdown_fl;
 extern volatile __bit save_tripc_time_fl;
 
 // key variables and flags
-extern volatile uint8_t key_repeat_counter;
-extern volatile __bit key1_press, key2_press, key1_longpress, key2_longpress, key_pressed, key_longpressed;
+extern volatile __bit key1_press, key2_press, key1_longpress, key2_longpress;
+
+#if defined(ENCODER_SUPPORT)
+extern volatile __bit key2_doubleclick;
+#endif
+
+#if defined(KEY3_SUPPORT)
+extern volatile __bit key3_press, key3_longpress;
+#endif
 
 extern volatile uint24_t taho;
 extern volatile uint16_t fuel_duration;
@@ -249,9 +257,6 @@ extern volatile uint8_t timeout_timer2;
 
 extern volatile adc_voltage_t adc_voltage;
 
-#if defined(KEY3_SUPPORT)
-extern volatile __bit key3_press, key3_longpress;
-#endif
 
 // acceleration measurement flags and variables
 extern volatile __bit accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl;
@@ -290,7 +295,11 @@ void cd_increment_filter(void);
 
 #if defined(KEY3_SUPPORT) || defined(ADC_BUTTONS)
 #define no_key_pressed() (key1_press == 0 && key2_press == 0 && key3_press == 0)
+#if defined(ENCODER_SUPPORT)
+#define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key2_doubleclick = 0; key3_press = 0; key3_longpress = 0
+#else
 #define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0; key3_longpress = 0
+#endif
 #else
 #define no_key_pressed() (key1_press == 0 && key2_press == 0)
 #define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0

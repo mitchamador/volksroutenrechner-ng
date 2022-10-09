@@ -48,10 +48,14 @@ volatile uint8_t adc_key;
 
 // key variables and flags
 volatile uint8_t key_repeat_counter;
-volatile __bit key1_press, key2_press, key1_longpress, key2_longpress, key_pressed, key_longpressed;
+volatile __bit key1_press, key2_press, key1_longpress, key2_longpress, key_pressed;
 
 #if defined(KEY3_SUPPORT)
 volatile __bit key3_press, key3_longpress;
+#endif
+
+#if defined(ENCODER_SUPPORT)
+volatile __bit key2_doubleclick;
 #endif
 
 volatile uint8_t acc_power_off_counter;
@@ -288,6 +292,11 @@ void int_fuel_timer_overflow() {
 }
 
 void int_main_timer_overflow() {
+    static __bit key_longpressed;
+#if defined(ENCODER_SUPPORT)
+    static uint8_t key2_multiclick_counter, key2_clicks;
+    static __bit key_multiclicked;
+#endif    
     static uint8_t key1_counter = 0, key2_counter = 0;
 #ifdef KEY3_SUPPORT
     static uint8_t key3_counter = 0;
@@ -329,12 +338,47 @@ void int_main_timer_overflow() {
                 key2_longpress = 1;
                 key_longpressed = 1;
             }
+#if defined(ENCODER_SUPPORT)
+            if (config.settings.encoder != 0 && key2_multiclick_counter == 0) {
+                key2_multiclick_counter = MULTICLICK;
+            }
+#endif
         } else // key released
         {
-            if (key2_counter > DEBOUNCE && key2_counter <= SHORTKEY) {
-                // key press
-                key2_press = 1;
-                key_pressed = 1;
+#if defined(ENCODER_SUPPORT)
+            if (config.settings.encoder != 0) {
+                if (key2_counter >= LONGKEY) {
+                    key2_multiclick_counter = 0;
+                    key2_clicks = 0;
+                } else {
+                    if (key2_counter > DEBOUNCE && key2_counter <= SHORTKEY) {
+                        key2_clicks++;
+#if defined(SOUND_SUPPORT)
+                        buzzer_mode_index = BUZZER_KEY;
+#endif                    
+                    }
+                    if (key2_multiclick_counter == 0) {
+                        if (key2_clicks == 1) {
+                            key2_press = 1;
+                            key_multiclicked = 1;
+                        } else if (key2_clicks == 2) {
+                            key2_doubleclick = 1;
+                            key_multiclicked = 1;
+                        }
+                        key2_clicks = 0;
+                    } else {
+                        key2_multiclick_counter--;
+                    }
+                }
+            }
+            else
+#endif
+            {
+                if (key2_counter > DEBOUNCE && key2_counter <= SHORTKEY) {
+                    // key press
+                    key2_press = 1;
+                    key_pressed = 1;
+                }
             }
             key2_counter = 0;
         }
@@ -368,18 +412,30 @@ void int_main_timer_overflow() {
         key_repeat_counter--;
     }
 
+#if defined(ENCODER_SUPPORT)
+    if (key_pressed != 0 || key_longpressed != 0 || key_multiclicked != 0) {
+#else
     if (key_pressed != 0 || key_longpressed != 0) {
+#endif
 #ifdef SOUND_SUPPORT
         if (key_pressed != 0) {
             buzzer_mode_index = BUZZER_KEY;
-        } else {
+        } else if (key_longpressed != 0) {
             buzzer_mode_index = BUZZER_LONGKEY;
         }
 #endif
         key_pressed = 0;
         key_longpressed = 0;
-        screen_refresh = 1;
+#if defined(ENCODER_SUPPORT)
+        if (key_multiclicked != 0) {
+            key_multiclicked = 0;
+        } else {
+            key_repeat_counter = KEY_REPEAT_PAUSE;
+        }
+#else
         key_repeat_counter = KEY_REPEAT_PAUSE;
+#endif
+        screen_refresh = 1;
     }
 
     if (acc_power_off_fl != 0) {

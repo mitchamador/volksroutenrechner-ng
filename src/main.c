@@ -24,7 +24,7 @@ uint16_t _t;
 uint16_t temps[4] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE};
 #endif
 
-uint8_t tmp_param = 0, main_param = 0, misc_param = 0;
+uint8_t main_screen_page = 0, main_param = 0, misc_param = 0;
 #ifdef SERVICE_COUNTERS_SUPPORT
 uint8_t service_param = 0;
 #endif
@@ -932,14 +932,10 @@ void select_acceleration_measurement() {
 #endif
 
 typedef enum {
-    main_screen_page0 = 0,
-    main_screen_page1,
-    main_screen_page_max
-} main_screen_page_t;
-
-typedef enum {
     main_screen_page1_param_avg = 0,
+#if defined(CONTINUOUS_DATA_SUPPORT)
     main_screen_page1_param_cd,
+#endif
     main_screen_page1_param_max
 } main_screen_add_page_param;
 
@@ -948,11 +944,11 @@ typedef enum {
 
 void screen_main(void) {
 
-    static uint8_t tmp_param2;
+    static uint8_t main_add_param = 0;
 
-    //  long press key1 to switch page (tmp_param) (no encoder support yet)
+    //  long press key1 (or doubleclick key2 when encoder control) to switch page (main_screen_page)
 
-    //  tmp_param == 0
+    //  main_screen_page == 0
     //  1) drive_min_speed_fl == 0 && motor_fl == 0 (engine off)
     //  time            main_odo
     //  temp/odo        voltage
@@ -961,107 +957,112 @@ void screen_main(void) {
     //  time            taho
     //  param1          fuel_lh
     //
-    //  3) drive_min_speed_fl != 0                  (moving)
+    //  3) drive_min_speed_fl != 0                  (driving)
     //  speed           taho
     //  param1          fuel_km
     
-    //  tmp_param == 1 (idling or moving)
-    //  key2 press to switch params (tmp_param2)
+    //  main_screen_page != 0 (auto timeout when idling (ADDPAGE_TIMEOUT_IDLE) or driving (ADDPAGE_TIMEOUT_DRIVE))
+    //  key2 press to switch params (main_add_param)
+    //
+    //  main_screen_page1_param_avg
     //  temp/odo        voltage
-    //  avg_speed       avg_fuel (tmp_param2 == 0)
-    //  cd_speed        cd_fuel  (tmp_param2 == 1) (continuous data support)
+    //  avg_speed       avg_fuel 
+    //
+    //  main_screen_page1_param_cd
+    //  temp/odo        voltage
+    //  cd_speed        cd_fuel
 
-    if (motor_fl != 0) {
-        if (key1_longpress != 0) {
-            timeout_timer1 = ADDPAGE_TIMEOUT_IDLE;
-            if (key1_longpress != 0) {
-                tmp_param++;
-                tmp_param2 = 0;
-            }
-        }
-        if (timeout_timer1 == 0 || tmp_param >= main_screen_page_max
-             || (drive_min_speed_fl != 0 && (ADDPAGE_TIMEOUT_IDLE - timeout_timer1 >= ADDPAGE_TIMEOUT_DRIVE))) {
-            tmp_param = 0;
-        }
-    } else {
-        tmp_param = 0;
+#if defined(ENCODER_SUPPORT)
+    if ((config.settings.encoder != 0 && key2_doubleclick != 0) || (config.settings.encoder == 0 && key1_longpress != 0)) {
+#else
+    if (key1_longpress != 0) {
+#endif
+        timeout_timer1 = ADDPAGE_TIMEOUT_IDLE;
+        main_screen_page = ~main_screen_page;
     }
 
-    if (tmp_param != 0) {
-        if (key2_longpress != 0) {
-            tmp_param = 0;
+    if (motor_fl != 0) {
+        if (timeout_timer1 == 0 || (drive_min_speed_fl != 0 && (ADDPAGE_TIMEOUT_IDLE - timeout_timer1 >= ADDPAGE_TIMEOUT_DRIVE))) {
+            main_screen_page = 0;
         }
-#if !defined(CONTINUOUS_DATA_SUPPORT)
+    }
+
+    if (main_screen_page != 0) {
+        // if (key2_longpress != 0) {
+        //     main_screen_page = 0;
+        // }
         if (key2_press != 0) {
+#if defined(CONTINUOUS_DATA_SUPPORT)
+            timeout_timer1 = ADDPAGE_TIMEOUT_IDLE;
+#else
             key2_press = 0;
-            tmp_param = 0;
-        }
+            main_screen_page = 0;
 #endif
+        }
     }
 
     //LCD_CMD(0x80);
-    switch (tmp_param) {
-        case main_screen_page0:
-            if (drive_min_speed_fl == 0) {
-                read_ds_time();
-                print_time_hm(time.hour, time.minute, ALIGN_LEFT);
-            } else {
-                print_speed(speed, POS_NONE, 0, ALIGN_LEFT);
-            }
+    if (main_screen_page == 0) {
+        // main page
+        if (drive_min_speed_fl == 0) {
+            read_ds_time();
+            print_time_hm(time.hour, time.minute, ALIGN_LEFT);
+        } else {
+            print_speed(speed, POS_NONE, 0, ALIGN_LEFT);
+        }
 
-            if (drive_min_speed_fl == 0 && motor_fl == 0) {
-                print_main_odo(ALIGN_RIGHT);
-            } else {
-                print_taho(ALIGN_RIGHT);
-            }
+        if (drive_min_speed_fl == 0 && motor_fl == 0) {
+            print_main_odo(ALIGN_RIGHT);
+        } else {
+            print_taho(ALIGN_RIGHT);
+        }
 
-            LCD_CMD(0xC0);
-            if (drive_min_speed_fl == 0 && motor_fl == 0) {
-#if defined(TEMPERATURE_SUPPORT)
-                print_temp((config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, ALIGN_LEFT);
-#else
-                print_trip_odometer(&trips.tripC, ALIGN_LEFT);
-#endif
-                print_voltage((uint16_t *) & adc_voltage.current, POS_NONE, ALIGN_RIGHT);
-            } else {
-                print_selected_param1(ALIGN_LEFT);
-                print_fuel(fuel, kmh, drive_min_speed_fl, ALIGN_RIGHT);
-            }
-#ifdef EXTENDED_ACCELERATION_MEASUREMENT
-            if (drive_fl == 0 && motor_fl != 0 && key2_longpress != 0) {
-                key2_longpress = 0;
-                select_acceleration_measurement();
-            }
-#else
-            if (drive_fl == 0 && motor_fl != 0 && request_screen((char *) &accel_meas_string) != 0) {
-                acceleration_measurement(0);
-            }
-#endif        
-            break;
-        case main_screen_page1:
+        LCD_CMD(0xC0);
+        if (drive_min_speed_fl == 0 && motor_fl == 0) {
 #if defined(TEMPERATURE_SUPPORT)
             print_temp((config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, ALIGN_LEFT);
 #else
             print_trip_odometer(&trips.tripC, ALIGN_LEFT);
 #endif
             print_voltage((uint16_t *) & adc_voltage.current, POS_NONE, ALIGN_RIGHT);
+        } else {
+            print_selected_param1(ALIGN_LEFT);
+            print_fuel(fuel, kmh, drive_min_speed_fl, ALIGN_RIGHT);
+        }
+#ifdef EXTENDED_ACCELERATION_MEASUREMENT
+        if (drive_fl == 0 && motor_fl != 0 && key2_longpress != 0) {
+            key2_longpress = 0;
+            select_acceleration_measurement();
+        }
+#else
+        if (drive_fl == 0 && motor_fl != 0 && request_screen((char *) &accel_meas_string) != 0) {
+            acceleration_measurement(0);
+        }
+#endif        
+    } else {
+        // additional page
+#if defined(TEMPERATURE_SUPPORT)
+        print_temp((config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, ALIGN_LEFT);
+#else
+        print_trip_odometer(&trips.tripC, ALIGN_LEFT);
+#endif
+        print_voltage((uint16_t *) & adc_voltage.current, POS_NONE, ALIGN_RIGHT);
 
-            LCD_CMD(0xC0);
+        LCD_CMD(0xC0);
 #if defined(CONTINUOUS_DATA_SUPPORT)
-            switch (select_param(&tmp_param2, main_screen_page1_param_max)) {
-                case main_screen_page1_param_avg:
+        switch (select_param(&main_add_param, main_screen_page1_param_max)) {
+            case main_screen_page1_param_avg:
 #endif
-                    print_trip_average_speed(&trips.tripC, ALIGN_LEFT);
-                    print_trip_average_fuel(&trips.tripC, ALIGN_RIGHT);
-                    break;
+                print_trip_average_speed(&trips.tripC, ALIGN_LEFT);
+                print_trip_average_fuel(&trips.tripC, ALIGN_RIGHT);
 #if defined(CONTINUOUS_DATA_SUPPORT)
-                case main_screen_page1_param_cd:
-                    print_speed(cd_speed, POS_NONE, 0, ALIGN_LEFT);
-                    print_fuel(cd_fuel, cd_kmh, drive_min_cd_speed_fl, ALIGN_RIGHT);
-                    break;
-            }
+                break;
+            case main_screen_page1_param_cd:
+                print_speed(cd_speed, POS_NONE, 0, ALIGN_LEFT);
+                print_fuel(cd_fuel, cd_kmh, drive_min_cd_speed_fl, ALIGN_RIGHT);
+                break;
+        }
 #endif
-            break;
     }
 }
 
@@ -1102,7 +1103,7 @@ void screen_trip() {
     print_trip_odometer(trip, ALIGN_RIGHT);
     
     LCD_CMD(0xC0);
-    switch (select_param(&tmp_param, 2)) {
+    switch (select_param(&main_screen_page, 2)) {
         case 0:
             print_trip_average_fuel(trip, ALIGN_LEFT);
             print_trip_average_speed(trip, ALIGN_RIGHT);
@@ -2245,7 +2246,7 @@ void main() {
         handle_keys_next_prev(&c_item, 0, max_item);
 
         if (c_item_prev != c_item) {
-            tmp_param = 0;
+            main_screen_page = 0;
             clear_keys_state();
         }
         
