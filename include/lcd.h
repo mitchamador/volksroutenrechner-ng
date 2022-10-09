@@ -53,8 +53,14 @@
 #define LCD_delay_4bits()
 
 void LCD_Init(void);
-void LCD_CMD(char CMD);
 void LCD_Clear(void);
+
+void LCD_CMD(char);
+
+#define LCD_cursor_off() LCD_CMD(LCD_CURSOR_OFF);
+#define LCD_cursor_blink(pos) { LCD_CMD(pos); LCD_CMD(LCD_BLINK_CURSOR_ON); }
+#define LCD_cursor_underline(pos)  { LCD_CMD(pos); LCD_CMD(LCD_UNDERLINE_ON); }
+#define LCD_cursor_set_position(pos) LCD_CMD(pos);
 
 void LCD_Write_String(char*, unsigned char, unsigned char, align_t);
 
