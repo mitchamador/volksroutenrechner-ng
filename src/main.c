@@ -511,7 +511,7 @@ void screen_time(void) {
                 time_editor_item = (time_editor_item_t *) &time_editor_items_array[c];
             }
 #if defined(ENCODER_SUPPORT)
-            if ((config.settings.encoder != 0 && (key1_press != 0 || key3_press != 0)) || (config.settings.encoder == 0 && key2_press != 0)) {           
+            if ((config.settings.encoder != 0 && (key1_press != 0 || key3_press != 0) && edit_mode != 0) || (config.settings.encoder == 0 && key2_press != 0)) {           
 #else
             if (key2_press != 0) {
 #endif
