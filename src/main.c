@@ -1312,7 +1312,7 @@ void screen_journal_viewer() {
                 if (key2_press != 0) {
                     key2_press = 0;
 
-                    journal_reader_t jr = {journal_header.journal_type_pos[journal_type].current, journal_header.journal_type_pos[journal_type].max, 0, 0xFF, 0};
+                    journal_reader_t jr = {journal_header.journal_type_pos[journal_type].current, journal_header.journal_type_pos[journal_type].max, 0, 0xFF};
 
                     journal_accel_item_t *accel_item;
                     journal_trip_item_t *trip_item;
@@ -1324,14 +1324,9 @@ void screen_journal_viewer() {
                         screen_refresh = 0;
 
                         if (jr.item_current != 0xFF) {
-                            handle_keys_next_prev(&jr.item_num, 0, jr.item_max - 1);
+                            handle_keys_next_prev(&jr.item_num, 0, jr.item_current);
 
                             if (jr.item_prev != jr.item_num) {
-                                jr.item_index = jr.item_current + jr.item_max - jr.item_num;
-                                if (jr.item_num <= jr.item_current) {
-                                    jr.item_index -= jr.item_max;
-                                }
-
                                 unsigned char *item = journal_read_item(&jr, journal_type);
 
                                 jr.item_prev = jr.item_num;

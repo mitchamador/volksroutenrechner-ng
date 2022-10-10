@@ -12,7 +12,6 @@ typedef struct {
     uint8_t item_max;
     uint8_t item_num;
     uint8_t item_prev;
-    uint8_t item_index;
 } journal_reader_t;
 
 typedef struct {
