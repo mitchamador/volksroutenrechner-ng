@@ -16,7 +16,6 @@
 char buf[16];
 
 __bit drive_min_speed_fl;
-__bit custom_keys_handler;
 
 #ifdef TEMPERATURE_SUPPORT
 __bit temperature_conv_fl;
@@ -993,7 +992,6 @@ void screen_main(void) {
     }
 
     if (main_screen_page == 0) {
-        custom_keys_handler = 0;
         // main page
         if (drive_min_speed_fl == 0) {
             read_ds_time();
@@ -1031,7 +1029,6 @@ void screen_main(void) {
 #endif        
     } else {
         // additional page
-        custom_keys_handler = 1;
         if (key2_press != 0) {
             timeout_timer1 = ADDPAGE_TIMEOUT_IDLE;
         }
@@ -2142,7 +2139,7 @@ void main() {
         if (key2_longpress != 0) {
             // long keypress for service key - switch service mode and main mode
             if (config_mode == 0 && motor_fl == 0 && drive_fl == 0
-                && custom_keys_handler == 0) {
+                && (c_item == SCREEN_INDEX_MAIN && main_screen_page == 0)) {
                 prev_main_item  = c_item;
                 c_item = prev_config_item;
                 config_mode = 1;
@@ -2175,7 +2172,7 @@ void main() {
         c_item_prev = c_item;
 
         // skip next/prev key for additional page of main screen
-        if (custom_keys_handler == 0) {
+        if (!(c_item == SCREEN_INDEX_MAIN && main_screen_page != 0)) {
             handle_keys_next_prev(&c_item, 0, max_item);
         }
 
