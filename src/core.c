@@ -760,17 +760,6 @@ void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
     *v = _v;
 }
 
-void wait_refresh_timeout() {
-
-    if (key2_longpress != 0) {
-        screen_refresh = 1;
-        timeout_timer1 = 0;
-    }
-
-    clear_keys_state();
-    while (screen_refresh == 0 && timeout_timer1 != 0);
-}
-
 uint16_t calc_filtered_value(filtered_value_t *f, uint16_t v) {
     if (f->filter == 0) {
         f->tmp = v;

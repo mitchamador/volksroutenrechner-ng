@@ -72,7 +72,11 @@ void LCD_Init(void) {
     for (i = 0; i < 64; i = i + 8) {
         LCD_CMD(LCD_SETCGRAMADDR | (i & ~0x07));
         HW_read_eeprom_block((unsigned char*) tbuf, EEPROM_CUSTOM_CHARS_ADDRESS + i, 8);
+#if defined(LCD_BUFFERED)
+        LCD_Write_Buffer(tbuf, 8);
+#else
         LCD_Write_String(tbuf, 8, 8, ALIGN_NONE);
+#endif
     }
 
 }
@@ -115,6 +119,86 @@ void LCD_CMD(char CMD) {
 
 #endif
 
+#if defined(LCD_BUFFERED)
+char lcd_buf[LCD_WIDTH * 2];
+uint8_t lcd_cursor_mode = LCD_CURSOR_OFF;
+uint8_t lcd_cursor_position;
+#endif
+
+void LCD_Clear(void) {
+#if defined(LCD_BUFFERED)
+    _memset(lcd_buf, ' ', LCD_WIDTH * 2);
+#endif    
+    LCD_CMD(LCD_CLEAR);
+    delay_us(LCD_DELAY_CLEAR);
+}
+
+#if defined(LCD_BUFFERED)
+
+void LCD_Write_Buffer(char *src, uint8_t len) {
+    len++;
+    while (--len != 0) {
+        uint8_t ch = *src++;
+#ifdef LCD_LEGACY
+        RS_HIGH;
+        LCD_Write_4Bit(ch);
+        LCD_delay_4bits();
+        LCD_Write_4Bit((unsigned char) (ch << 4));
+        LCD_Check_Busy();
+#else
+        LCD_Write_4Bit(ch & 0xF0, RS);
+        LCD_Write_4Bit((ch << 4) & 0xF0, RS);
+        LCD_Check_Busy();
+#endif
+    }
+}
+
+void LCD_flush_buffer() {
+    LCD_CMD(LCD_CURSOR_OFF);
+
+    LCD_CMD(LCD_FIRST_ROW);
+    LCD_Write_Buffer(&lcd_buf[LCD_CURSOR_POS_00], LCD_WIDTH);
+    LCD_CMD(LCD_SECOND_ROW);
+    LCD_Write_Buffer(&lcd_buf[LCD_CURSOR_POS_10], LCD_WIDTH);
+
+    if (lcd_cursor_mode != LCD_CURSOR_OFF) {
+        LCD_CMD(lcd_cursor_position);
+        LCD_CMD(lcd_cursor_mode);
+    }
+}
+
+void LCD_cursor_set_state(uint8_t mode, uint8_t pos) {
+    lcd_cursor_mode = mode;
+    lcd_cursor_position = pos;
+}
+
+void LCD_cursor_set_position(uint8_t _pos) {
+    lcd_cursor_position = _pos;
+}
+
+void LCD_Write_String(char* buf, unsigned char len, unsigned char max, align_t align) {
+    unsigned char p_lower = max - len, p_upper = max;
+    if (align == ALIGN_LEFT) {
+        p_lower = 0;
+    } else if (align == ALIGN_CENTER) {
+        p_lower >>= 1;
+    };
+    p_upper = p_lower + len;
+    
+    char *dst = (char *) &lcd_buf[lcd_cursor_position + max];
+    char *src = (char *) &buf[len];
+
+    while (max-- > 0) {
+        if (max < p_lower || max >= p_upper) {
+            *--dst = ' ';
+        } else {
+            *--dst = *--src;
+        }
+    }
+}
+
+#else
+
 void LCD_Write_String(char* str, unsigned char len, unsigned char max, align_t align) {
     //if (align == ALIGN_NONE) return;
     
@@ -148,7 +232,4 @@ void LCD_Write_String(char* str, unsigned char len, unsigned char max, align_t a
     }
 }
 
-void LCD_Clear(void) {
-  LCD_CMD(LCD_CLEAR);
-  delay_us(LCD_DELAY_CLEAR);
-}
+#endif

@@ -314,8 +314,6 @@ void cd_increment_filter(void);
 void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value);
 void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value);
 
-void wait_refresh_timeout(void);
-
 void int_capture_injector_level_change(void);
 void int_taho_timer_overflow(void);
 void int_capture_speed_level_change(void);
