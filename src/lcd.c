@@ -121,7 +121,13 @@ void LCD_CMD(char CMD) {
 
 #if defined(LCD_BUFFERED)
 char lcd_buf[LCD_WIDTH * 2];
-uint8_t lcd_cursor_mode = LCD_CURSOR_OFF;
+
+typedef struct {
+    uint8_t mode;
+    uint8_t pos;
+} lcd_cursor_t;
+
+lcd_cursor_t lcd_cursor = {LCD_CURSOR_OFF};
 uint8_t lcd_cursor_position;
 #endif
 
@@ -161,15 +167,20 @@ void LCD_flush_buffer() {
     LCD_CMD(LCD_SECOND_ROW);
     LCD_Write_Buffer(&lcd_buf[LCD_CURSOR_POS_10], LCD_WIDTH);
 
-    if (lcd_cursor_mode != LCD_CURSOR_OFF) {
-        LCD_CMD(lcd_cursor_position);
-        LCD_CMD(lcd_cursor_mode);
+    if (lcd_cursor.mode != LCD_CURSOR_OFF) {
+        LCD_CMD(lcd_cursor.pos);
+        LCD_CMD(lcd_cursor.mode);
     }
 }
 
 void LCD_cursor_set_state(uint8_t mode, uint8_t pos) {
-    lcd_cursor_mode = mode;
-    lcd_cursor_position = pos;
+    lcd_cursor.mode = mode;
+    // convert buffered cursor position to real position
+    if (pos >= LCD_WIDTH) {
+        lcd_cursor.pos = LCD_SECOND_ROW - LCD_WIDTH + pos;
+    } else {
+        lcd_cursor.pos = LCD_FIRST_ROW + pos;
+    }
 }
 
 void LCD_cursor_set_position(uint8_t _pos) {

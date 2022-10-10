@@ -3,6 +3,10 @@
 
 #include "core.h"
 
+#if defined(__AVR)
+#include <string.h>
+#endif
+
 typedef enum {
     ALIGN_NONE = 0,
     ALIGN_LEFT,
