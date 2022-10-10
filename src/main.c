@@ -12,8 +12,8 @@
 
 //========================================================================================
 
-// buffer for strings
-char buf[LCD_WIDTH];
+// buffer for strings (LCD_WIDTH + 4 bytes for prefix)
+char buf[LCD_WIDTH + 4];
 
 __bit drive_min_speed_fl;
 
@@ -150,7 +150,7 @@ void wait_refresh_timeout() {
 #define print_symbols_str(len, index) strcpy2(&buf[len], (char *)symbols_array, index)
 
 /**
- * print aligned string from buffer (16 bytes total length)
+ * print aligned string from buffer (lcd full width bytes total length)
  * @param len
  * @param align
  */
@@ -162,7 +162,7 @@ void _print_full_width(uint8_t cursor_pos, uint8_t len, align_t align) {
 }
 
 /**
- * print aligned string from buffer (8 bytes total length)
+ * print aligned string from buffer (lcd half width bytes total length)
  * @param len
  * @param align
  */
@@ -174,14 +174,28 @@ void _print_half_width(uint8_t cursor_pos, uint8_t len, align_t align) {
 }
 
 /**
- * print aligned string with suffix from buffer (8 bytes total length)
+ * print aligned string with prefix/suffix from buffer (lcd half width bytes total length)
  * @param len
  * @param pos
  * @param align
  * @return 
  */
-uint8_t _print_half_width_suffix(uint8_t cursor_pos, uint8_t len, unsigned char pos, align_t align) {
-    len += print_symbols_str(len, pos);
+uint8_t _print_half_width2(uint8_t cursor_pos, uint8_t len, unsigned char pos_prefix, unsigned char pos_suffix, align_t align) {
+
+    // prefix
+    uint8_t len_prefix = print_symbols_str(LCD_WIDTH, pos_prefix);
+
+    add_leading_symbols((char *) &buf, ' ', len, len + len_prefix);
+
+    len += len_prefix;
+
+    while (len_prefix-- != 0) {
+        buf[len_prefix] = buf[LCD_WIDTH + len_prefix];
+    }
+
+    // suffix
+    len += print_symbols_str(len, pos_suffix);
+
     if (cursor_pos != 0xFF) {
         LCD_cursor_set_position(cursor_pos);
         LCD_Write_String(buf, len, LCD_WIDTH / 2, align);
@@ -191,12 +205,11 @@ uint8_t _print_half_width_suffix(uint8_t cursor_pos, uint8_t len, unsigned char 
 
 /**
  * print fractional number [num/10^frac].[num%10^frac]
- * @param buf
  * @param num
  * @param frac numbers after '.'
  * @return 
  */
-uint8_t print_fract(char * buf, uint16_t num, uint8_t frac) {
+uint8_t print_fract(uint16_t num, uint8_t frac) {
     uint8_t len = ultoa2(buf, num, 10);
 
     // add leading zeroes
@@ -256,7 +269,9 @@ uint8_t print_trip_time(uint8_t cursor_pos, trip_t* t, align_t align) {
     bcd8_to_str(&buf[len], bin8_to_bcd(time % 60));
     len += 2;
    
-    return _print_half_width_suffix(cursor_pos, len, POS_NONE, align);
+    _print_half_width(cursor_pos, len, align);
+
+    return len;
 }
 
 /**
@@ -271,10 +286,10 @@ uint8_t print_trip_average_speed(uint8_t cursor_pos, trip_t* t, align_t align) {
     if (average_speed == 0) {
         len = strcpy2(buf, (char *) &empty_string, 0);
     } else {
-        len = print_fract(buf, average_speed, 1);
+        len = print_fract(average_speed, 1);
     }
 
-    return _print_half_width_suffix(cursor_pos, len, POS_KMH, align);
+    return _print_half_width2(cursor_pos, len, POS_NONE, POS_KMH, align);
 }
 
 /**
@@ -283,10 +298,9 @@ uint8_t print_trip_average_speed(uint8_t cursor_pos, trip_t* t, align_t align) {
  * @param align
  */
 uint8_t print_trip_odometer(uint8_t cursor_pos, trip_t* t, align_t align) {
-    uint8_t len;
     uint16_t odo = get_trip_odometer(t);
-    len = print_fract(buf, odo, 1);
-    return _print_half_width_suffix(cursor_pos, len, POS_KM, align);
+    uint8_t len = print_fract(odo, 1);
+    return _print_half_width2(cursor_pos, len, POS_NONE, POS_KM, align);
 }
 
 /**
@@ -296,8 +310,8 @@ uint8_t print_trip_odometer(uint8_t cursor_pos, trip_t* t, align_t align) {
  */
 uint8_t print_trip_total_fuel(uint8_t cursor_pos, trip_t* t, align_t align) {
     uint8_t len;
-    len = print_fract(buf, t->fuel / 10, 1);
-    return _print_half_width_suffix(cursor_pos, len, POS_LITR, align);
+    len = print_fract(t->fuel / 10, 1);
+    return _print_half_width2(cursor_pos, len, POS_NONE, POS_LITR, align);
 }
 
 /**
@@ -311,10 +325,10 @@ uint8_t print_trip_average_fuel(uint8_t cursor_pos, trip_t* t, align_t align) {
     if (t->fuel < AVERAGE_MIN_FUEL || odo < AVERAGE_MIN_DIST) {
         len = strcpy2(buf, (char *) &empty_string, 0);
     } else {
-        len = print_fract(buf, (uint16_t) (t->fuel * 100UL / odo), 1);
+        len = print_fract((uint16_t) (t->fuel * 100UL / odo), 1);
     }
 
-    return _print_half_width_suffix(cursor_pos, len, POS_LKM, align);
+    return _print_half_width2(cursor_pos, len, POS_NONE, POS_LKM, align);
 }
 
 /**
@@ -325,17 +339,15 @@ uint8_t print_trip_average_fuel(uint8_t cursor_pos, trip_t* t, align_t align) {
  * @param align
  */
 uint8_t print_speed(uint8_t cursor_pos, uint16_t speed, uint8_t pos_prefix, uint8_t frac, align_t align) {
-    uint8_t len = print_symbols_str(0, pos_prefix);
-
     // use fractional by default
-    len += print_fract(&buf[len], speed, 1);
+    uint8_t len = print_fract(speed, 1);
 
     if (speed > 1000 || frac == 0) {
         // more than 100 km/h (or current speed), skip fractional
         len -= 2;
     }
 
-    return _print_half_width_suffix(cursor_pos, len, POS_KMH, align);
+    return _print_half_width2(cursor_pos, len, pos_prefix, POS_KMH, align);
 }
 
 /**
@@ -354,7 +366,7 @@ uint8_t print_taho(uint8_t cursor_pos, align_t align) {
         len = ultoa2(buf, res, 10);
     }
 
-    return _print_half_width_suffix(cursor_pos, len, POS_OMIN, align);
+    return _print_half_width2(cursor_pos, len, POS_NONE, POS_OMIN, align);
 }
 
 /**
@@ -368,9 +380,9 @@ uint8_t print_fuel_duration(uint8_t cursor_pos, align_t align) {
 //    } else
     {
         uint16_t res = (uint16_t) (fuel_duration * (1000 / 250) / (TAHO_TIMER_TICKS_PER_PERIOD / 250));
-        len = print_fract(buf, res, 2);
+        len = print_fract(res, 2);
     }
-    return _print_half_width_suffix(cursor_pos, len, POS_MS, align);
+    return _print_half_width2(cursor_pos, len, POS_NONE, POS_MS, align);
 }
 
 /**
@@ -393,7 +405,7 @@ uint8_t print_fuel(uint8_t cursor_pos, uint16_t fuel, uint16_t kmh, uint8_t driv
         pos = POS_LKM;
     }
 
-    return _print_half_width_suffix(cursor_pos, print_fract(buf, t, 1), pos, align);
+    return _print_half_width2(cursor_pos, print_fract(t, 1), POS_NONE, pos, align);
 }
 
 /**
@@ -402,7 +414,7 @@ uint8_t print_fuel(uint8_t cursor_pos, uint16_t fuel, uint16_t kmh, uint8_t driv
  */
 uint8_t print_main_odo(uint8_t cursor_pos, align_t align) {
     uint8_t len = ultoa2(buf, (unsigned long) config.odo, 10);
-    return _print_half_width_suffix(cursor_pos, len, POS_KM, align);
+    return _print_half_width2(cursor_pos, len, POS_NONE, POS_KM, align);
 }
 
 #if defined(TEMPERATURE_SUPPORT)
@@ -451,15 +463,14 @@ uint8_t print_temp(uint8_t cursor_pos, uint8_t index, align_t align) {
         pos_suffix = POS_NONE;
     }
     
-    return _print_half_width_suffix(cursor_pos, len, pos_suffix, align);
+    return _print_half_width2(cursor_pos, len, POS_NONE, pos_suffix, align);
 }
 
 #endif
 
 uint8_t print_voltage(uint8_t cursor_pos, uint16_t *adc_voltage, uint8_t prefix_pos, align_t align) {
-    uint8_t len = print_symbols_str(0, prefix_pos);
-    len += print_fract(&buf[len], (uint16_t) (*adc_voltage << 5) / (uint8_t) (VOLTAGE_ADJUST_CONST_MAX - (config.vcc_const - VOLTAGE_ADJUST_CONST_MIN)), 1);
-    return _print_half_width_suffix(cursor_pos, len, POS_VOLT, align);
+    uint8_t len = print_fract((uint16_t) (*adc_voltage << 5) / (uint8_t) (VOLTAGE_ADJUST_CONST_MAX - (config.vcc_const - VOLTAGE_ADJUST_CONST_MIN)), 1);
+    return _print_half_width2(cursor_pos, len, prefix_pos, POS_VOLT, align);
 }
 
 void print_time(ds_time* time) {
@@ -567,7 +578,6 @@ void screen_time(void) {
             wait_refresh_timeout();
 
         }
-        LCD_cursor_off();
         // save time
         if (save_time != 0) {
             DS3231_time_write(&time);
@@ -595,7 +605,7 @@ unsigned char edit_value_char(unsigned char v, edit_value_char_t mode, unsigned 
 
         uint8_t len = ultoa2(buf, (unsigned long) (mode == CHAREDIT_MODE_10000KM ? (v * 1000L) : v), 10);
 
-        _print_half_width_suffix(LCD_CURSOR_POS_10 + LCD_WIDTH / 4, len, (unsigned char) mode, ALIGN_RIGHT);
+        _print_half_width2(LCD_CURSOR_POS_10 + LCD_WIDTH / 4, len, POS_NONE, (unsigned char) mode, ALIGN_RIGHT);
 
         wait_refresh_timeout();
     }
@@ -683,7 +693,6 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
         wait_refresh_timeout();
     }
 
-    LCD_cursor_off();
     screen_refresh = 1;
 
     return strtoul2(buf);
@@ -737,7 +746,6 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
         wait_refresh_timeout();
     }
 
-    LCD_cursor_off();
     screen_refresh = 1;
 
     return v;
@@ -871,7 +879,7 @@ void acceleration_measurement(uint8_t index) {
                     LCD_Clear();
                 }
 
-                uint8_t len = print_fract((char*) buf, accel_meas_timer, 2);
+                uint8_t len = print_fract(accel_meas_timer, 2);
                 len += print_symbols_str(len, POS_SEC);
                 add_leading_symbols(buf, ' ', len, 16);
 
@@ -966,8 +974,9 @@ typedef enum {
     main_screen_page1_param_max
 } main_screen_add_page_param;
 
-#define ADDPAGE_TIMEOUT_DRIVE   3
+#define ADDPAGE_TIMEOUT         20
 #define ADDPAGE_TIMEOUT_IDLE    10
+#define ADDPAGE_TIMEOUT_DRIVE   4
 
 void screen_main(void) {
 
@@ -1002,15 +1011,17 @@ void screen_main(void) {
 #else
     if (key1_longpress != 0) {
 #endif
-        timeout_timer1 = ADDPAGE_TIMEOUT_IDLE;
+        timeout_timer1 = ADDPAGE_TIMEOUT;
         main_screen_page = ~main_screen_page;
     }
 
-    if (motor_fl != 0) {
-        if (timeout_timer1 == 0 || (drive_min_speed_fl != 0 && (ADDPAGE_TIMEOUT_IDLE - timeout_timer1 >= ADDPAGE_TIMEOUT_DRIVE))) {
-            main_screen_page = 0;
-        }
+    uint8_t _d_timeout = ADDPAGE_TIMEOUT - timeout_timer1;
+    if (timeout_timer1 == 0
+        || (drive_min_speed_fl != 0 && (_d_timeout >= ADDPAGE_TIMEOUT_DRIVE))
+        || (motor_fl != 0 && (_d_timeout >= ADDPAGE_TIMEOUT_IDLE))) {
+        main_screen_page = 0;
     }
+
 #if defined(KEY3_SUPPORT)
     if (key1_press != 0 || key3_press != 0) {
 #else
@@ -1058,7 +1069,7 @@ void screen_main(void) {
     } else {
         // additional page
         if (key2_press != 0) {
-            timeout_timer1 = ADDPAGE_TIMEOUT_IDLE;
+            timeout_timer1 = ADDPAGE_TIMEOUT;
         }
         switch (select_param(&main_add_param, main_screen_page1_param_max)) {
             case main_screen_page1_param_avg:
@@ -1132,8 +1143,8 @@ void screen_main(void) {
                     print_fuel(LCD_CURSOR_POS_11, cd_fuel, cd_kmh, drive_min_cd_speed_fl, ALIGN_RIGHT);
                 } else {
                     uint8_t len = strcpy2(buf, (char *) &empty_string, 0);
-                    _print_half_width_suffix(LCD_CURSOR_POS_10, len, POS_KMH, ALIGN_LEFT);
-                    _print_half_width_suffix(LCD_CURSOR_POS_11, len, POS_LKM, ALIGN_RIGHT);
+                    _print_half_width2(LCD_CURSOR_POS_10, len, POS_NONE, POS_KMH, ALIGN_LEFT);
+                    _print_half_width2(LCD_CURSOR_POS_11, len, POS_NONE, POS_LKM, ALIGN_RIGHT);
                 }
                 break;
 #endif
@@ -1360,8 +1371,8 @@ void screen_journal_viewer() {
                                     _print_half_width(LCD_CURSOR_POS_10, len, ALIGN_LEFT);
 
                                     // time
-                                    len = print_fract(buf, accel_item->time, 2);
-                                    _print_half_width_suffix(LCD_CURSOR_POS_11, len, POS_SEC, ALIGN_RIGHT);
+                                    len = print_fract(accel_item->time, 2);
+                                    _print_half_width2(LCD_CURSOR_POS_11, len, POS_NONE, POS_SEC, ALIGN_RIGHT);
 
                                 } else {
                                     // trip_item
@@ -1692,6 +1703,8 @@ void config_screen() {
             _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, item->title_string_index), ALIGN_LEFT);
 
             item->screen();
+
+            LCD_cursor_off();
 
             wait_refresh_timeout();
         }
@@ -2240,6 +2253,7 @@ void main() {
                     }
                 }
             } while (item_skip != 0);
+            LCD_cursor_off();
         }
         
         LCD_flush_buffer();

@@ -24,11 +24,11 @@ unsigned char item[sizeof (journal_trip_item_t) >= sizeof (journal_accel_item_t)
 unsigned char* journal_read_item(journal_reader_t* jr, uint8_t journal_type) {
     while (1) {
         // read item from eeprom
-        uint8_t _index;
+        int8_t _index;
         if (jr->item_num == 0) {
-            _index = jr->item_current;
+            _index = (int8_t) jr->item_current;
         } else {
-            _index = jr->item_current + jr->item_max - jr->item_num;
+            _index = (int8_t) (jr->item_current + jr->item_max - jr->item_num);
             if (jr->item_num <= jr->item_current) {
                 _index -= jr->item_max;
             }
