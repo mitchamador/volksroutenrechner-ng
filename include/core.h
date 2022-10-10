@@ -239,6 +239,7 @@ extern services_t services;
 __near extern volatile __bit screen_refresh;
 
 extern volatile __bit taho_fl, drive_fl, motor_fl, shutdown_fl;
+extern volatile __bit buzzer_fl;
 
 extern volatile __bit save_tripc_time_fl;
 

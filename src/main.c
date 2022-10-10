@@ -1080,8 +1080,8 @@ void screen_main(void) {
                 if (key2_longpress != 0) {
                     key2_longpress = 0;
 
-                    _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX), ALIGN_LEFT);
                     config_screen_temp_sensors();
+
                     clear_keys_state();
                     screen_refresh = 1;
                 } else
@@ -1480,10 +1480,10 @@ void config_screen_temp_sensors() {
     uint16_t _temps[3] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE};
     uint8_t _t_num[3] = {0, 0, 0};
     uint8_t current_device = 0;
-
-    _memset(buf, ' ', 16);
-    strcpy2(buf, (char *) &temp_no_sensors, 0);
-
+    
+    // bad timings for pic?
+    while (buzzer_fl != 0) {};
+    
     uint8_t num_devices = onewire_search_devices((uint8_t *) tbuf, 3);
     
     ds18b20_start_conversion(); config_temperature_conv_fl = 0; timeout_timer2 = 100;
@@ -1536,6 +1536,10 @@ void config_screen_temp_sensors() {
             len = strcpy2(&buf[12], (char *) &temp_sensors_array, _t_num[current_device] + 1);
             add_leading_symbols(&buf[12], ' ', len, 4);
 
+        } else {
+            _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX), ALIGN_LEFT);
+            _memset(buf, ' ', 16);
+            strcpy2(buf, (char *) &temp_no_sensors, 0);
         }
 
         _print_full_width(LCD_CURSOR_POS_10, LCD_WIDTH, ALIGN_NONE);
@@ -1609,12 +1613,10 @@ void config_screen_temp_sensors() {
 #if defined(DS18B20_CONFIG_SHOW_TEMP)        
         if (config_temperature_conv_fl != 0) {
             add_leading_symbols((char *) &buf, ' ', print_temp(LCD_CURSOR_POS_NONE, TEMP_CONFIG, ALIGN_LEFT), 16);
-            
-            strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX);
-            
-            _print_full_width(LCD_CURSOR_POS_00, LCD_WIDTH, ALIGN_NONE);
         }
 #endif
+        _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX), ALIGN_LEFT);
+
         llptrtohex((unsigned char*) tbuf, (unsigned char*) buf);
         len = strcpy2(&buf[12], (char *) &temp_sensors_array, t_num + 1);
         add_leading_symbols(&buf[12], ' ', len, 4);

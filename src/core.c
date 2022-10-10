@@ -77,6 +77,7 @@ volatile uint8_t timeout_ds_read = 0;
 
 #ifdef SOUND_SUPPORT
 volatile int8_t buzzer_mode_index = BUZZER_NONE;
+volatile __bit buzzer_fl;
 #endif
 
 #ifdef TEMPERATURE_SUPPORT
@@ -541,7 +542,7 @@ void int_main_timer_overflow() {
 
 #ifdef SOUND_SUPPORT
 
-    static __bit buzzer_fl, buzzer_init_fl;
+    static __bit buzzer_init_fl;
     static uint8_t buzzer_mode_counter, buzzer_mode_sound, buzzer_mode_pause;
 
     if (buzzer_mode_index != BUZZER_NONE) {

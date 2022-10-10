@@ -12,16 +12,16 @@ void onewire_write_bit(uint8_t value) {
         // Write '1' bit
         ONEWIRE_OUTPUT;
         ONEWIRE_CLEAR;
-        delay_us(5);
+        delay_us(6);
         ONEWIRE_INPUT;
-        delay_us(60);
+        delay_us(64);
     } else {
         // Write '0' bit
         ONEWIRE_OUTPUT;
         ONEWIRE_CLEAR;
-        delay_us(70);
+        delay_us(60);
         ONEWIRE_INPUT;
-        delay_us(2);
+        delay_us(10);
     }
 }
 
@@ -30,9 +30,9 @@ __bit onewire_read_bit(void) {
 
     ONEWIRE_OUTPUT;
     ONEWIRE_CLEAR;
-    delay_us(1);
+    delay_us(6);
     ONEWIRE_INPUT;
-    delay_us(5);
+    delay_us(9);
     result = ONEWIRE_GET;
     delay_us(55);
     return (__bit) result;
