@@ -21,9 +21,14 @@
 // misc constants (in seconds)
 #define MAIN_INTERVAL ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
 #define DEBOUNCE ((uint8_t) (0.04f / MAIN_TIMER_PERIOD))
+#if defined(_DEBUG_)
+#define SHORTKEY ((uint8_t) (0.4f / MAIN_TIMER_PERIOD))
+#define MULTICLICK ((uint8_t) (0.4f / MAIN_TIMER_PERIOD))
+#else
 #define SHORTKEY ((uint8_t) (0.2f / MAIN_TIMER_PERIOD))
-#define LONGKEY ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
 #define MULTICLICK ((uint8_t) (0.2f / MAIN_TIMER_PERIOD))
+#endif
+#define LONGKEY ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
 #define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / MAIN_TIMER_PERIOD))
 // timeout constant in 0.01 ms resolution
 #define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / MAIN_TIMER_PERIOD))

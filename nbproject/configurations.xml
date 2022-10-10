@@ -2488,7 +2488,7 @@
         <property key="no-system-directories" value="false"/>
         <property key="optimization-level" value="-Os"/>
         <property key="pack-struct" value="true"/>
-        <property key="preprocessor-macros" value="PROTEUS_DEBUG"/>
+        <property key="preprocessor-macros" value=""/>
         <property key="preprocessor-macros-undefined" value=""/>
         <property key="save-temps" value="false"/>
         <property key="short-calls" value="false"/>
@@ -3079,7 +3079,7 @@
         <property key="no-system-directories" value="false"/>
         <property key="optimization-level" value="-Os"/>
         <property key="pack-struct" value="true"/>
-        <property key="preprocessor-macros" value="ARDUINO;PROTEUS_DEBUG"/>
+        <property key="preprocessor-macros" value="ARDUINO"/>
         <property key="preprocessor-macros-undefined" value=""/>
         <property key="save-temps" value="false"/>
         <property key="short-calls" value="false"/>

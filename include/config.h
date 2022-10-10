@@ -1,6 +1,10 @@
 #ifndef CONFIG_H
 #define	CONFIG_H
 
+#if defined(__DEBUG) || defined(DEBUG)
+#define _DEBUG_
+#endif
+
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 
 #if defined(__AVR_ATmega168P__)
