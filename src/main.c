@@ -2128,8 +2128,8 @@ void power_off() {
 
 void main() {
     static __bit config_mode;
-    static __bit item_change;
-    static __bit mode_change;
+    static __bit item_change_fl;
+    static __bit mode_change_fl;
 
     uint8_t c_item = 0, c_item_prev = 0;
     uint8_t prev_main_item = 0, prev_config_item = 0;
@@ -2158,65 +2158,62 @@ void main() {
     while (adc_voltage.current == 0 && screen_refresh == 0)
         ;
     
-    
     while (1) {
-        screen_refresh = 0;
+        if (screen_refresh != 0) {           
+            screen_refresh = 0;
+            handle_misc_values();
+        }
 
         // check power
         if (shutdown_fl != 0) {
             power_off();
         }
 
-        if (mode_change == 0) {
-            if (config_mode == 0) {
-                max_item = sizeof (items_main) / sizeof (items_main[0]) - 1;
+#ifdef TEMPERATURE_SUPPORT
+        if (timeout_temperature == 0) {
+            handle_temp();
+        }
+#endif 
 
-                do {
-//                    if (drive_min_speed_fl != 0) {
-//                        c_item = SCREEN_INDEX_MAIN;
-//                    }
+        if (config_mode == 0) {
+            max_item = sizeof (items_main) / sizeof (items_main[0]) - 1;
 
-                    current_item_main = &items_main[c_item];
+            do {
+                current_item_main = &items_main[c_item];
 
-                    if (current_item_main->page.skip != 0 || (drive_min_speed_fl != 0 && current_item_main->page.drive_mode == 0)) {
+                if (current_item_main->page.skip != 0 || (drive_min_speed_fl != 0 && current_item_main->page.drive_mode == 0)) {
 #ifdef KEY3_SUPPORT
-                        if (c_item < c_item_prev) {
-                            if (c_item == 0) {
-                                c_item = max_item;
-                            } else {
-                                c_item--;
-                            }
-                        } else
+                    if (c_item < c_item_prev) {
+                        if (c_item == 0) {
+                            c_item = max_item;
+                        } else {
+                            c_item--;
+                        }
+                    } else
 #endif
-                        {
-                            if (c_item == max_item) {
-                                    c_item = 0;
-                            } else {
-                                c_item++;
-                            }
+                    {
+                        if (c_item == max_item) {
+                                c_item = 0;
+                        } else {
+                            c_item++;
                         }
                     }
-                } while (current_item_main->page.skip != 0 || (drive_min_speed_fl != 0 && current_item_main->page.drive_mode == 0));
-
-#ifdef TEMPERATURE_SUPPORT
-                if (timeout_temperature == 0) {
-                    handle_temp();
                 }
-#endif            
-                handle_misc_values();
-            } else {
-                max_item = sizeof (items_config) / sizeof (items_config[0]) - 1;
-                current_item_config = &items_config[c_item];
-                current_item_config->page.index = c_item;
-            }
+            } while (current_item_main->page.skip != 0 || (drive_min_speed_fl != 0 && current_item_main->page.drive_mode == 0));
+        } else {
+            max_item = sizeof (items_config) / sizeof (items_config[0]) - 1;
+            current_item_config = &items_config[c_item];
+            current_item_config->page.index = c_item;
+        }
 
-            if (key2_longpress != 0) {
+        if (mode_change_fl == 0) {
+            if (item_change_fl == 0 && key2_longpress != 0) {
                 // long keypress for service key - switch service mode and main mode
                 if (config_mode == 0 && motor_fl == 0 && drive_fl == 0 && current_item_main->page.config_switch) {
-                    prev_main_item  = c_item;
+                    prev_main_item = c_item;
                     c_item = prev_config_item;
                     config_mode = 1;
-                    mode_change = 1;
+                    mode_change_fl = 1;
                 } else if (config_mode != 0) {
                     prev_config_item = c_item;
                     c_item = prev_main_item;
@@ -2225,16 +2222,15 @@ void main() {
                     // set consts
                     set_consts();
                     config_mode = 0;
-                    mode_change = 1;
+                    mode_change_fl = 1;
                 }
             }
         } else {
-            mode_change = 0;
+            mode_change_fl = 0;
         }
         
-        
-        if (mode_change == 0) {
-            if (item_change == 0) {
+        if (mode_change_fl == 0) {
+            if (item_change_fl == 0) {
                 // show next/prev screen
                 c_item_prev = c_item;
 
@@ -2244,13 +2240,14 @@ void main() {
                 }
 
                 if (c_item != c_item_prev) {
-                    item_change = 1;
+                    item_change_fl = 1;
                 }
             } else {
                 params.tmp = 0;
-                item_change = 0;
+                item_change_fl = 0;
             }
-            if (item_change == 0) {
+
+            if (item_change_fl == 0) {
                 if (config_mode != 0) {
                     config_screen();
                 } else {
@@ -2263,6 +2260,6 @@ void main() {
 
         clear_keys_state();
         
-        while (screen_refresh == 0 && mode_change == 0 && item_change == 0);
+        while (screen_refresh == 0 && mode_change_fl == 0 && item_change_fl == 0);
     }
 }
