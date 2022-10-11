@@ -42,13 +42,13 @@
 // simple adc handler
 #define SIMPLE_ADC
 // skip oled lcd reset sequence (though works ok without it after power up with EH1602 REV.J)
-//#define NO_LCD_OLED_RESET
+#define NO_LCD_OLED_RESET
 // simple checking time difference (decrease memory usage)
 //#define SIMPLE_TRIPC_TIME_CHECK
 // auto calculate day of week
 //#define NO_AUTO_DAY_OF_WEEK
 // min speed settings
-//#define NO_MIN_SPEED_CONFIG
+#define NO_MIN_SPEED_CONFIG
 // speed 0-100 measurement only
 #define NO_EXTENDED_ACCELERATION_MEASUREMENT
 // disable all service counters' support
@@ -81,18 +81,18 @@
 // simple adc handler
 #define SIMPLE_ADC
 // speed 0-100 measurement only
-#define NO_EXTENDED_ACCELERATION_MEASUREMENT
+//#define NO_EXTENDED_ACCELERATION_MEASUREMENT
 // disable all service counters' support
 //#define NO_SERVICE_COUNTERS
 // disable service counters' configuration and checking
-//#define NO_SERVICE_COUNTERS_CHECKS
+#define NO_SERVICE_COUNTERS_CHECKS
 // journal trip
 #define NO_JOURNAL
 // disable temperature support
 //#define NO_TEMPERATURE
 // ds18b20 configuration
 //#define NO_DS18B20
-// support for prev key for legacy hw
+// use temp sensor from ds3231
 //#define NO_DS3231_TEMP
 // use ds18b20 temp sensors
 //#define NO_DS18B20_CONFIG
@@ -113,6 +113,8 @@
 #define SIMPLE_ADC
 // disable service counters' configuration and checking
 #define NO_SERVICE_COUNTERS_CHECKS
+// use temp sensor from ds3231
+#define NO_DS3231_TEMP
 // support for prev key for legacy hw
 #define NO_KEY3
 // no fuel tank support
