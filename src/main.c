@@ -171,7 +171,7 @@ void wait_timeout(uint8_t timeout) {
  * @param len
  * @param align
  */
-void _print_full_width(uint8_t cursor_pos, uint8_t len, align_t align) {
+void lcd_print_full_width(uint8_t cursor_pos, uint8_t len, align_t align) {
     if (cursor_pos != 0xFF) {
         LCD_cursor_set_position(cursor_pos);
         LCD_Write_String(buf, len, LCD_WIDTH, align);
@@ -183,7 +183,7 @@ void _print_full_width(uint8_t cursor_pos, uint8_t len, align_t align) {
  * @param len
  * @param align
  */
-void _print_half_width(uint8_t cursor_pos, uint8_t len, align_t align) {
+void lcd_print_half_width(uint8_t cursor_pos, uint8_t len, align_t align) {
     if (cursor_pos != 0xFF) {
         LCD_cursor_set_position(cursor_pos);
         LCD_Write_String(buf, len, LCD_WIDTH / 2, align);
@@ -197,8 +197,7 @@ void _print_half_width(uint8_t cursor_pos, uint8_t len, align_t align) {
  * @param align
  * @return 
  */
-uint8_t _print_half_width2(uint8_t cursor_pos, uint8_t len, unsigned char pos_prefix, unsigned char pos_suffix, align_t align) {
-
+uint8_t lcd_print_half_width2(uint8_t cursor_pos, uint8_t len, unsigned char pos_prefix, unsigned char pos_suffix, align_t align) {
     // prefix
     uint8_t len_prefix = print_symbols_str(LCD_WIDTH, pos_prefix);
 
@@ -245,11 +244,17 @@ uint8_t print_fract(uint16_t num, uint8_t frac) {
     return len + 1;
 }
 
+uint8_t print_index_number(uint8_t index) {
+    uint8_t len = ultoa2(buf, index, 10);
+    buf[len++] = '.';
+    return len;
+}
+
 uint8_t print_time_hm(uint8_t cursor_pos, uint8_t hour, uint8_t minute, align_t align) {
     bcd8_to_str(buf, hour);
     buf[2] = ':';
     bcd8_to_str(&buf[3], minute);
-    _print_half_width(cursor_pos, 5, align);
+    lcd_print_half_width(cursor_pos, 5, align);
     return 5;
 }
 
@@ -262,13 +267,13 @@ uint8_t print_time_dmy(uint8_t cursor_pos, uint8_t day, uint8_t month, uint8_t y
         buf[5] = '\'';
         bcd8_to_str(&buf[6], year);
     }
-    _print_half_width(cursor_pos, 8, align);
+    lcd_print_half_width(cursor_pos, 8, align);
     return 8;
 }
 
 uint8_t print_time_dow(uint8_t cursor_pos, uint8_t day_of_week, align_t align) {
     uint8_t len = strcpy2((char *) buf, (char*) day_of_week_array, day_of_week);
-    _print_full_width(cursor_pos, len, align);
+    lcd_print_full_width(cursor_pos, len, align);
     return len;
 }
 
@@ -286,7 +291,7 @@ uint8_t print_trip_time(uint8_t cursor_pos, trip_t* t, align_t align) {
     bcd8_to_str(&buf[len], bin8_to_bcd(time % 60));
     len += 2;
    
-    _print_half_width(cursor_pos, len, align);
+    lcd_print_half_width(cursor_pos, len, align);
 
     return len;
 }
@@ -306,7 +311,7 @@ uint8_t print_trip_average_speed(uint8_t cursor_pos, trip_t* t, align_t align) {
         len = print_fract(average_speed, 1);
     }
 
-    return _print_half_width2(cursor_pos, len, POS_NONE, POS_KMH, align);
+    return lcd_print_half_width2(cursor_pos, len, POS_NONE, POS_KMH, align);
 }
 
 /**
@@ -317,7 +322,7 @@ uint8_t print_trip_average_speed(uint8_t cursor_pos, trip_t* t, align_t align) {
 uint8_t print_trip_odometer(uint8_t cursor_pos, trip_t* t, align_t align) {
     uint16_t odo = get_trip_odometer(t);
     uint8_t len = print_fract(odo, 1);
-    return _print_half_width2(cursor_pos, len, POS_NONE, POS_KM, align);
+    return lcd_print_half_width2(cursor_pos, len, POS_NONE, POS_KM, align);
 }
 
 /**
@@ -328,7 +333,7 @@ uint8_t print_trip_odometer(uint8_t cursor_pos, trip_t* t, align_t align) {
 uint8_t print_trip_total_fuel(uint8_t cursor_pos, trip_t* t, align_t align) {
     uint8_t len;
     len = print_fract(t->fuel / 10, 1);
-    return _print_half_width2(cursor_pos, len, POS_NONE, POS_LITR, align);
+    return lcd_print_half_width2(cursor_pos, len, POS_NONE, POS_LITR, align);
 }
 
 /**
@@ -345,7 +350,7 @@ uint8_t print_trip_average_fuel(uint8_t cursor_pos, trip_t* t, align_t align) {
         len = print_fract((uint16_t) (t->fuel * 100UL / odo), 1);
     }
 
-    return _print_half_width2(cursor_pos, len, POS_NONE, POS_LKM, align);
+    return lcd_print_half_width2(cursor_pos, len, POS_NONE, POS_LKM, align);
 }
 
 /**
@@ -364,7 +369,7 @@ uint8_t print_speed(uint8_t cursor_pos, uint16_t speed, uint8_t pos_prefix, uint
         len -= 2;
     }
 
-    return _print_half_width2(cursor_pos, len, pos_prefix, POS_KMH, align);
+    return lcd_print_half_width2(cursor_pos, len, pos_prefix, POS_KMH, align);
 }
 
 /**
@@ -383,7 +388,7 @@ uint8_t print_taho(uint8_t cursor_pos, align_t align) {
         len = ultoa2(buf, res, 10);
     }
 
-    return _print_half_width2(cursor_pos, len, POS_NONE, POS_OMIN, align);
+    return lcd_print_half_width2(cursor_pos, len, POS_NONE, POS_OMIN, align);
 }
 
 /**
@@ -399,7 +404,7 @@ uint8_t print_fuel_duration(uint8_t cursor_pos, align_t align) {
         uint16_t res = (uint16_t) (fuel_duration * (1000 / 250) / (TAHO_TIMER_TICKS_PER_PERIOD / 250));
         len = print_fract(res, 2);
     }
-    return _print_half_width2(cursor_pos, len, POS_NONE, POS_MS, align);
+    return lcd_print_half_width2(cursor_pos, len, POS_NONE, POS_MS, align);
 }
 
 /**
@@ -422,7 +427,7 @@ uint8_t print_fuel(uint8_t cursor_pos, uint16_t fuel, uint16_t kmh, uint8_t driv
         pos = POS_LKM;
     }
 
-    return _print_half_width2(cursor_pos, print_fract(t, 1), POS_NONE, pos, align);
+    return lcd_print_half_width2(cursor_pos, print_fract(t, 1), POS_NONE, pos, align);
 }
 
 /**
@@ -431,7 +436,7 @@ uint8_t print_fuel(uint8_t cursor_pos, uint16_t fuel, uint16_t kmh, uint8_t driv
  */
 uint8_t print_main_odo(uint8_t cursor_pos, align_t align) {
     uint8_t len = ultoa2(buf, (unsigned long) config.odo, 10);
-    return _print_half_width2(cursor_pos, len, POS_NONE, POS_KM, align);
+    return lcd_print_half_width2(cursor_pos, len, POS_NONE, POS_KM, align);
 }
 
 #if defined(TEMPERATURE_SUPPORT)
@@ -480,14 +485,14 @@ uint8_t print_temp(uint8_t cursor_pos, uint8_t index, align_t align) {
         pos_suffix = POS_NONE;
     }
     
-    return _print_half_width2(cursor_pos, len, POS_NONE, pos_suffix, align);
+    return lcd_print_half_width2(cursor_pos, len, POS_NONE, pos_suffix, align);
 }
 
 #endif
 
 uint8_t print_voltage(uint8_t cursor_pos, uint16_t *adc_voltage, uint8_t prefix_pos, align_t align) {
     uint8_t len = print_fract((uint16_t) (*adc_voltage << 5) / (uint8_t) (VOLTAGE_ADJUST_CONST_MAX - (config.vcc_const - VOLTAGE_ADJUST_CONST_MIN)), 1);
-    return _print_half_width2(cursor_pos, len, prefix_pos, POS_VOLT, align);
+    return lcd_print_half_width2(cursor_pos, len, prefix_pos, POS_VOLT, align);
 }
 
 void print_time(ds_time* time) {
@@ -621,7 +626,7 @@ unsigned char edit_value_char(unsigned char v, edit_value_char_t mode, unsigned 
 
         uint8_t len = ultoa2(buf, (unsigned long) (mode == CHAREDIT_MODE_10000KM ? (v * 1000L) : v), 10);
 
-        _print_half_width2(LCD_CURSOR_POS_10 + LCD_WIDTH / 4, len, POS_NONE, (unsigned char) mode, ALIGN_RIGHT);
+        lcd_print_half_width2(LCD_CURSOR_POS_10 + LCD_WIDTH / 4, len, POS_NONE, (unsigned char) mode, ALIGN_RIGHT);
 
         wait_refresh_timeout();
     }
@@ -691,7 +696,7 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
         }
 
         LCD_cursor_off();
-        _print_half_width(cursor_pos, max_len, ALIGN_LEFT);
+        lcd_print_half_width(cursor_pos, max_len, ALIGN_LEFT);
         
 #if defined(ENCODER_SUPPORT)
         if (config.settings.encoder != 0 && edit_mode == 0) {
@@ -742,7 +747,7 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
             }
         }
 
-        _print_full_width(LCD_CURSOR_POS_10, LCD_WIDTH, ALIGN_NONE);
+        lcd_print_full_width(LCD_CURSOR_POS_10, LCD_WIDTH, ALIGN_NONE);
 
         _memset(buf, ' ', 16);
         uint8_t len = strcpy2((char*) buf, (char *) str, pos + 1);
@@ -750,7 +755,7 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
             // print on/off
             strcpy2((char*) &buf[12], (char *) &on_off_array, _onoff);
         }
-        _print_full_width(LCD_CURSOR_POS_00, LCD_WIDTH, ALIGN_NONE);
+        lcd_print_full_width(LCD_CURSOR_POS_00, LCD_WIDTH, ALIGN_NONE);
 
         LCD_cursor_blink(LCD_CURSOR_POS_10 + pos);
         
@@ -769,7 +774,7 @@ unsigned char request_screen(char* request_str) {
 
         LCD_Clear();
 
-        _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, request_str, 0), ALIGN_CENTER);
+        lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, request_str, 0), ALIGN_CENTER);
         
         wait_timeout(5);
 
@@ -856,7 +861,7 @@ void acceleration_measurement(uint8_t index) {
     // acceleration measurement flags and variables
     static flag_t accel_meas_final_fl, _accel_meas_exit, _accel_meas_started_fl;
 
-    _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &accel_meas_wait_string, 0), ALIGN_CENTER);
+    lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &accel_meas_wait_string, 0), ALIGN_CENTER);
 
     accel_meas_fl = 0; accel_meas_ok_fl = 0; accel_meas_timer = 0; accel_meas_final_fl = 0; _accel_meas_exit = 0, _accel_meas_started_fl = 0;
 
@@ -877,7 +882,7 @@ void acceleration_measurement(uint8_t index) {
         if (timeout_timer1 != 0 && accel_meas_drive_fl == 0) {
             if (timeout_timer2 == 0) {
                 timeout_timer2 = INIT_TIMEOUT(0.25f);
-                _print_full_width(LCD_CURSOR_POS_10, timeout_timer1, ALIGN_CENTER);
+                lcd_print_full_width(LCD_CURSOR_POS_10, timeout_timer1, ALIGN_CENTER);
             }
         } else {
             if (timeout_timer1 != 0) {
@@ -890,9 +895,9 @@ void acceleration_measurement(uint8_t index) {
                 }
                 
                 // speed
-                _print_half_width2(LCD_CURSOR_POS_10, ultoa2((char*) buf, accel_meas_drive_fl != 0 ? (uint16_t) ((360000UL * SPEED_TIMER_TICKS_PER_PERIOD / config.odo_const) / accel_meas_speed) : 0, 10), POS_NONE, POS_KMH, ALIGN_LEFT);
+                lcd_print_half_width2(LCD_CURSOR_POS_10, ultoa2((char*) buf, accel_meas_drive_fl != 0 ? (uint16_t) ((360000UL * SPEED_TIMER_TICKS_PER_PERIOD / config.odo_const) / accel_meas_speed) : 0, 10), POS_NONE, POS_KMH, ALIGN_LEFT);
                 // time
-                _print_half_width2(LCD_CURSOR_POS_11, print_fract(accel_meas_timer, 2), POS_NONE, POS_SEC, ALIGN_RIGHT);
+                lcd_print_half_width2(LCD_CURSOR_POS_11, print_fract(accel_meas_timer, 2), POS_NONE, POS_SEC, ALIGN_RIGHT);
             }
 
             if (timeout_timer1 != 0 && accel_meas_ok_fl == 0) {
@@ -906,7 +911,7 @@ void acceleration_measurement(uint8_t index) {
                     accel_meas_process_fl = 0;
                     if (timeout_timer1 == 0) {
                         // timeout
-                        _print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char *) &timeout_string, 0), ALIGN_CENTER);
+                        lcd_print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char *) &timeout_string, 0), ALIGN_CENTER);
                     }
 #ifdef JOURNAL_SUPPORT
                     else {
@@ -951,7 +956,7 @@ void select_acceleration_measurement() {
         uint8_t len = strcpy2(buf, (char *) &accel_meas_timing_string, 0);
         len += strcpy2(&buf[len], (char *) accel_meas_array, v + 1);
 
-        _print_full_width(LCD_CURSOR_POS_00, len, ALIGN_CENTER);
+        lcd_print_full_width(LCD_CURSOR_POS_00, len, ALIGN_CENTER);
 
         wait_refresh_timeout();
     }
@@ -1111,7 +1116,7 @@ void screen_main(void) {
 #endif
                 {
                     print_temp(LCD_CURSOR_POS_00, TEMP_OUT | PRINT_TEMP_PARAM_HEADER | PRINT_TEMP_PARAM_FRACT, ALIGN_RIGHT);
-                    _print_half_width(LCD_CURSOR_POS_01, 0, ALIGN_RIGHT); //empty 
+                    lcd_print_half_width(LCD_CURSOR_POS_01, 0, ALIGN_RIGHT); //empty 
 
                     print_temp(LCD_CURSOR_POS_10, TEMP_IN | PRINT_TEMP_PARAM_HEADER | PRINT_TEMP_PARAM_FRACT, ALIGN_RIGHT);
                     print_temp(LCD_CURSOR_POS_11, TEMP_ENGINE | PRINT_TEMP_PARAM_HEADER | PRINT_TEMP_PARAM_NO_PLUS_SIGN, ALIGN_RIGHT);
@@ -1131,7 +1136,7 @@ void screen_main(void) {
                     }
                     timeout_timer1 = ADDPAGE_TIMEOUT;
                 }
-                _print_half_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) voltage_string, 0), ALIGN_LEFT);
+                lcd_print_half_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) voltage_string, 0), ALIGN_LEFT);
                 print_voltage(LCD_CURSOR_POS_01, (uint16_t*) &adc_voltage.current, POS_NONE, ALIGN_RIGHT);
 
                 print_voltage(LCD_CURSOR_POS_10, (uint16_t*) &adc_voltage.min, POS_MIN, ALIGN_LEFT);
@@ -1151,9 +1156,9 @@ void screen_main(void) {
 #ifdef FUEL_TANK_SUPPORT
                 add_leading_symbols(buf, ' ', ultoa2(buf, adc_fuel_tank, 10), 16);
                 strcpy2(buf, (char *) continuous_data_string, 0);
-                _print_full_width(LCD_CURSOR_POS_00, LCD_WIDTH, ALIGN_NONE);
+                lcd_print_full_width(LCD_CURSOR_POS_00, LCD_WIDTH, ALIGN_NONE);
 #else
-                _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) continuous_data_string, 0), ALIGN_LEFT);
+                lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) continuous_data_string, 0), ALIGN_LEFT);
 #endif
                 
                 if (continuous_data_fl != 0) {
@@ -1161,8 +1166,8 @@ void screen_main(void) {
                     print_fuel(LCD_CURSOR_POS_11, cd_fuel, cd_kmh, drive_min_cd_speed_fl, ALIGN_RIGHT);
                 } else {
                     uint8_t len = strcpy2(buf, (char *) &empty_string, 0);
-                    _print_half_width2(LCD_CURSOR_POS_10, len, POS_NONE, POS_KMH, ALIGN_LEFT);
-                    _print_half_width2(LCD_CURSOR_POS_11, len, POS_NONE, POS_LKM, ALIGN_RIGHT);
+                    lcd_print_half_width2(LCD_CURSOR_POS_10, len, POS_NONE, POS_KMH, ALIGN_LEFT);
+                    lcd_print_half_width2(LCD_CURSOR_POS_11, len, POS_NONE, POS_LKM, ALIGN_RIGHT);
                 }
                 break;
 #endif
@@ -1202,7 +1207,7 @@ void screen_trip() {
     uint8_t len = strcpy2(buf, (char *) &trip_string, 0);
     len += strcpy2(&buf[len], (char *) trips_array, trips_pos);
 
-    _print_half_width(LCD_CURSOR_POS_00, len, ALIGN_LEFT);
+    lcd_print_half_width(LCD_CURSOR_POS_00, len, ALIGN_LEFT);
 
     print_trip_odometer(LCD_CURSOR_POS_01, trip, ALIGN_RIGHT);
     
@@ -1243,7 +1248,7 @@ void screen_service_counters() {
     
     select_param(&service_param, 5);
 
-    _print_full_width(LCD_CURSOR_POS_00, strcpy2((char*)buf, (char *) &service_counters_array, service_param + 1), ALIGN_LEFT);
+    lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2((char*)buf, (char *) &service_counters_array, service_param + 1), ALIGN_LEFT);
 
     if (service_param == 0) {
         srv = &services.srv[0];
@@ -1258,7 +1263,7 @@ void screen_service_counters() {
     len += print_symbols_str(len, service_param == 0 ? POS_HOUR : POS_KM);
 
     buf[len++] = ' ';
-    _print_half_width(LCD_CURSOR_POS_10, len, ALIGN_RIGHT);
+    lcd_print_half_width(LCD_CURSOR_POS_10, len, ALIGN_RIGHT);
     
     s_time = srv->time;
 
@@ -1312,9 +1317,9 @@ uint8_t journal_print_item_time(char *buf, trip_time_t *trip_time) {
 void screen_journal_viewer() {
     uint8_t len;
 
-    _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
+    lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
 
-    _print_full_width(LCD_CURSOR_POS_10, 0, ALIGN_NONE);
+    lcd_print_full_width(LCD_CURSOR_POS_10, 0, ALIGN_NONE);
 
     if (key2_press != 0) {
         key2_press = 0;
@@ -1325,11 +1330,12 @@ void screen_journal_viewer() {
 
             handle_keys_next_prev(&journal_type, 0, 3);
 
-            _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
+            lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
 
-            buf[0] = '1' + journal_type;
-            buf[1] = '.';
-            _print_full_width(LCD_CURSOR_POS_10, strcpy2(&buf[2], (char *) journal_viewer_items_array, journal_type + 1) + 2, ALIGN_LEFT);
+            len = print_index_number(journal_type + 1);
+            len += strcpy2(&buf[len], (char *) journal_viewer_items_array, journal_type + 1);
+
+            lcd_print_full_width(LCD_CURSOR_POS_10, len, ALIGN_LEFT);
 
             if (key2_press != 0) {
                 key2_press = 0;
@@ -1377,11 +1383,11 @@ void screen_journal_viewer() {
                                 buf[len++] = '-';
                                 len += ultoa2(&buf[len], accel_item->upper, 10);
 
-                                _print_half_width(LCD_CURSOR_POS_10, len, ALIGN_LEFT);
+                                lcd_print_half_width(LCD_CURSOR_POS_10, len, ALIGN_LEFT);
 
                                 // time
                                 len = print_fract(accel_item->time, 2);
-                                _print_half_width2(LCD_CURSOR_POS_11, len, POS_NONE, POS_SEC, ALIGN_RIGHT);
+                                lcd_print_half_width2(LCD_CURSOR_POS_11, len, POS_NONE, POS_SEC, ALIGN_RIGHT);
 
                             } else {
                                 // trip_item
@@ -1398,17 +1404,15 @@ void screen_journal_viewer() {
                                         break;
                                     case 2:
                                         print_trip_total_fuel(LCD_CURSOR_POS_10, &trip_item->trip, ALIGN_LEFT);
-                                        _print_half_width(LCD_CURSOR_POS_11, 0, ALIGN_RIGHT);
+                                        lcd_print_half_width(LCD_CURSOR_POS_11, 0, ALIGN_RIGHT);
                                         break;
                                 }
                             }
 
-                            len = ultoa2(buf, jr.item_num + 1, 10);
-                            buf[len++] = '.';
-
+                            len = print_index_number(jr.item_num + 1);
                             len += journal_print_item_time((char *) &buf[len], trip_time);
 
-                            _print_full_width(LCD_CURSOR_POS_00, len > LCD_WIDTH ? LCD_WIDTH : len, ALIGN_LEFT);
+                            lcd_print_full_width(LCD_CURSOR_POS_00, len, ALIGN_LEFT);
 
                             if (key2_press != 0) {
                                 if (journal_type != 3 && ++item_page > 2) {
@@ -1422,8 +1426,8 @@ void screen_journal_viewer() {
 
                     if (jr.item_current == 0xFF) {
                         // no items for current journal
-                        _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) journal_viewer_items_array, journal_type + 1), ALIGN_LEFT);
-                        _print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char *) &journal_viewer_no_items_string, 0), ALIGN_LEFT);
+                        lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) journal_viewer_items_array, journal_type + 1), ALIGN_LEFT);
+                        lcd_print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char *) &journal_viewer_no_items_string, 0), ALIGN_LEFT);
 
                         if (key2_press != 0) {
                             timeout_timer1 = 0;
@@ -1525,7 +1529,7 @@ void config_screen_temp_sensors() {
             buf[10] = '/';
             buf[11] = '0' + num_devices;
 
-            _print_full_width(LCD_CURSOR_POS_00, LCD_WIDTH, ALIGN_NONE);
+            lcd_print_full_width(LCD_CURSOR_POS_00, LCD_WIDTH, ALIGN_NONE);
 
             // convert id to hex string
             llptrtohex((unsigned char*) &tbuf[current_device * 8], (unsigned char*) buf);
@@ -1535,12 +1539,12 @@ void config_screen_temp_sensors() {
             add_leading_symbols(&buf[12], ' ', len, 4);
 
         } else {
-            _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX), ALIGN_LEFT);
+            lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX), ALIGN_LEFT);
             _memset(buf, ' ', 16);
             strcpy2(buf, (char *) &temp_no_sensors, 0);
         }
 
-        _print_full_width(LCD_CURSOR_POS_10, LCD_WIDTH, ALIGN_NONE);
+        lcd_print_full_width(LCD_CURSOR_POS_10, LCD_WIDTH, ALIGN_NONE);
         
         if (request_screen((char *) &reset_string) != 0) {
             _t_num[0] = 1; _t_num[1] = 2; _t_num[2] = 3;
@@ -1609,13 +1613,13 @@ void config_screen_temp_sensors() {
             add_leading_symbols((char *) &buf, ' ', print_temp(LCD_CURSOR_POS_NONE, TEMP_CONFIG, ALIGN_LEFT), 16);
         }
 #endif
-        _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX), ALIGN_LEFT);
+        lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX), ALIGN_LEFT);
 
         llptrtohex((unsigned char*) tbuf, (unsigned char*) buf);
         len = strcpy2(&buf[12], (char *) &temp_sensors_array, t_num + 1);
         add_leading_symbols(&buf[12], ' ', len, 4);
         
-        _print_full_width(LCD_CURSOR_POS_10, LCD_WIDTH, ALIGN_NONE);
+        lcd_print_full_width(LCD_CURSOR_POS_10, LCD_WIDTH, ALIGN_NONE);
 
         wait_refresh_timeout();
     }
@@ -1638,15 +1642,16 @@ void config_screen_service_counters() {
 
     handle_keys_next_prev(&c_sub_item, 0, MAX_SUB_ITEM);
     
-    buf[0] = '1' + c_sub_item;
-    buf[1] = '.';
-    _print_full_width(LCD_CURSOR_POS_10, 2 + strcpy2(&buf[2], (char *) &service_counters_array, c_sub_item + 1), ALIGN_LEFT);
+    uint8_t len = print_index_number(c_sub_item + 1);
+    len += strcpy2(&buf[len], (char *) &service_counters_array, c_sub_item + 1);
+
+    lcd_print_full_width(LCD_CURSOR_POS_10, len, ALIGN_LEFT);
 
     if (key2_press != 0) {
         key2_press = 0;
 
-        _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &service_counters_array, c_sub_item + 1), ALIGN_LEFT);
-        _print_full_width(LCD_CURSOR_POS_10, 0, ALIGN_NONE);
+        lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &service_counters_array, c_sub_item + 1), ALIGN_LEFT);
+        lcd_print_full_width(LCD_CURSOR_POS_10, 0, ALIGN_NONE);
 
         if (c_sub_item == 0) {
             services.mh.limit = (unsigned short) edit_value_long(services.mh.limit, 1999L);
@@ -1670,34 +1675,16 @@ void config_screen_version() {
     if (key1_press != 0 || key2_press != 0) {
         timeout_timer1 = 0;
     }
-    _print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char*) &version_string, 0), ALIGN_LEFT);
+    lcd_print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char*) &version_string, 0), ALIGN_LEFT);
 }
 
-void config_screen() {
+void config_screen_items() {
+    lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &config_menu_title_string, 0), ALIGN_LEFT);
 
-    _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &config_menu_title_string, 0), ALIGN_LEFT);
-
-    buf[0] = '1' + current_item_config->page.index;
-    buf[1] = '.';
-    _print_full_width(LCD_CURSOR_POS_10, strcpy2(&buf[2], (char *) config_menu_array, current_item_config->page.title_string_index) + 2, ALIGN_LEFT);
-
-    if (key2_press != 0) {
-        key2_press = 0;
-        LCD_Clear();
-
-        timeout_timer1_loop(5) {
-            _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, current_item_config->page.title_string_index), ALIGN_LEFT);
-
-            current_item_config->screen();
-
-            LCD_cursor_off();
-
-            wait_refresh_timeout();
-        }
-        screen_refresh = 1;
-    }
+    uint8_t len = print_index_number(current_item_config->page.index + 1);
+    len += strcpy2(&buf[len], (char *) config_menu_array, current_item_config->page.title_string_index);
+    lcd_print_full_width(LCD_CURSOR_POS_10, len, ALIGN_LEFT);
 }
-
 
 #ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
 
@@ -1726,9 +1713,9 @@ void print_warning_service_counters(unsigned char warn) {
 #ifdef SOUND_SUPPORT
             buzzer_mode_index = BUZZER_WARN;
 #endif
-            _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char*) &warning_string, 0), ALIGN_CENTER);
+            lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char*) &warning_string, 0), ALIGN_CENTER);
 
-            _print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char*) &service_counters_array, i + 1), ALIGN_CENTER);
+            lcd_print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char*) &service_counters_array, i + 1), ALIGN_CENTER);
             
             wait_timeout(3);
 
@@ -2184,18 +2171,14 @@ void main() {
                 if (current_item_main->page.skip != 0 || (drive_min_speed_fl != 0 && current_item_main->page.drive_mode == 0)) {
 #ifdef KEY3_SUPPORT
                     if (c_item < c_item_prev) {
-                        if (c_item == 0) {
+                        if (c_item-- == 0) {
                             c_item = max_item;
-                        } else {
-                            c_item--;
                         }
                     } else
 #endif
                     {
-                        if (c_item == max_item) {
-                                c_item = 0;
-                        } else {
-                            c_item++;
+                        if (c_item++ == max_item) {
+                            c_item = 0;
                         }
                     }
                 }
@@ -2249,7 +2232,21 @@ void main() {
 
             if (item_change_fl == 0) {
                 if (config_mode != 0) {
-                    config_screen();
+                    // config screen items
+                    config_screen_items();
+
+                    // config screen items' editor
+                    if (key2_press != 0) {
+                        key2_press = 0;
+                        LCD_Clear();
+                        timeout_timer1_loop(5) {
+                            lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, current_item_config->page.title_string_index), ALIGN_LEFT);
+                            current_item_config->screen();
+                            LCD_cursor_off();
+                            wait_refresh_timeout();
+                        }
+                        screen_refresh = 1;
+                    }
                 } else {
                     current_item_main->screen();
                     LCD_cursor_off();

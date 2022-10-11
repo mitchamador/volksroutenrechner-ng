@@ -188,13 +188,15 @@ void LCD_cursor_set_position(uint8_t _pos) {
 }
 
 void LCD_Write_String(char* buf, unsigned char len, unsigned char max, align_t align) {
-    unsigned char p_lower = max - len, p_upper = max;
+    if (len > max) len = max;
+
+    unsigned char p_lower = max - len;
     if (align == ALIGN_LEFT) {
         p_lower = 0;
     } else if (align == ALIGN_CENTER) {
         p_lower >>= 1;
     };
-    p_upper = p_lower + len;
+    unsigned char p_upper = p_lower + len;
     
     char *dst = (char *) &lcd_buf[lcd_cursor_position + max];
     char *src = (char *) &buf[len];
@@ -211,19 +213,18 @@ void LCD_Write_String(char* buf, unsigned char len, unsigned char max, align_t a
 #else
 
 void LCD_Write_String(char* str, unsigned char len, unsigned char max, align_t align) {
-    //if (align == ALIGN_NONE) return;
-    
-    unsigned char i;
-    unsigned char ch;
+    if (len > max) len = max;
 
-    unsigned char p_lower = max - len, p_upper = max;
+    unsigned char p_lower = max - len;
     if (align == ALIGN_LEFT) {
         p_lower = 0;
     } else if (align == ALIGN_CENTER) {
         p_lower >>= 1;
     };
-    p_upper = p_lower + len;
-    for (i = 0; i < max; i++) {
+    unsigned char p_upper = p_lower + len;
+
+    for (unsigned char i = 0; i < max; i++) {
+        unsigned char ch;
         if (i < p_lower || i >= p_upper) {
             ch = ' ';
         } else {
