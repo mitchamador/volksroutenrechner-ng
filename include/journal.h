@@ -92,13 +92,13 @@ typedef struct {
 
 #define JOURNAL_ITEM_OK 0xA5
 
-extern __bit journal_support;
+extern flag_t journal_support;
 
 extern journal_header_t journal_header;
 
 unsigned char* journal_read_item(journal_reader_t* jr, uint8_t journal_type);
 void journal_update_header(void);
-__bit journal_check_eeprom(void);
+flag_t journal_check_eeprom(void);
 uint16_t journal_find_eeaddr(uint8_t index, int8_t item_index);
 void journal_save_trip(trip_t *trip);
 void journal_save_accel(uint8_t index);

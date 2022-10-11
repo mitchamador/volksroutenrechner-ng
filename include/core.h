@@ -236,22 +236,22 @@ extern config_t config;
 extern trips_t trips;
 extern services_t services;
 
-__near extern volatile __bit screen_refresh;
+__near extern volatile flag_t screen_refresh;
 
-extern volatile __bit taho_fl, drive_fl, motor_fl, shutdown_fl;
-extern volatile __bit buzzer_fl;
+extern volatile flag_t taho_fl, drive_fl, motor_fl, shutdown_fl;
+extern volatile flag_t buzzer_fl;
 
-extern volatile __bit save_tripc_time_fl;
+extern volatile flag_t save_tripc_time_fl;
 
 // key variables and flags
-extern volatile __bit key1_press, key2_press, key1_longpress, key2_longpress;
+extern volatile flag_t key1_press, key2_press, key1_longpress, key2_longpress;
 
 #if defined(ENCODER_SUPPORT)
-extern volatile __bit key2_doubleclick;
+extern volatile flag_t key2_doubleclick;
 #endif
 
 #if defined(KEY3_SUPPORT)
-extern volatile __bit key3_press, key3_longpress;
+extern volatile flag_t key3_press, key3_longpress;
 #endif
 
 extern volatile uint24_t taho;
@@ -266,7 +266,7 @@ extern volatile adc_voltage_t adc_voltage;
 
 
 // acceleration measurement flags and variables
-extern volatile __bit accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl;
+extern volatile flag_t accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl;
 #ifdef EXTENDED_ACCELERATION_MEASUREMENT
 extern volatile uint16_t accel_meas_lower_const;
 #endif
@@ -294,7 +294,7 @@ extern uint8_t fuel1_const;
 #define CD_TIME_THRESHOLD_INIT   ((1 << CD_FILTER_VALUE_MIN) * 6)
 
 extern continuous_data_t cd;
-extern __bit continuous_data_fl;
+extern flag_t continuous_data_fl;
 extern volatile uint16_t cd_kmh, cd_fuel;
 void cd_init(void);
 void cd_increment_filter(void);

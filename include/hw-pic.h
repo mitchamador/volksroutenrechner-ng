@@ -154,6 +154,8 @@
 // define cpu frequency
 #define _XTAL_FREQ 20000000
 
+typedef __bit flag_t;
+
 #define delay_ms(ms) __delay_ms(ms)
 #define delay_us(us) __delay_us(us)
 

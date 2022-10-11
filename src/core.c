@@ -2,12 +2,12 @@
 #include "ds3231.h"
 
 // __near forces xc8 to use bitbssCOMMON section
-__near volatile __bit screen_refresh;
+__near volatile flag_t screen_refresh;
 
 // misc flags
-volatile __bit odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, acc_power_off_fl, shutdown_fl;
+volatile flag_t odom_fl, drive_fl, motor_fl, fuel_fl, taho_fl, taho_measure_fl, acc_power_off_fl, shutdown_fl;
 
-volatile __bit save_tripc_time_fl = 0;
+volatile flag_t save_tripc_time_fl = 0;
 
 config_t config;
 trips_t trips;
@@ -21,7 +21,7 @@ volatile uint8_t taho_timer_ofl;
 volatile uint16_t fuel_duration;
 
 // acceleration measurement flags and variables
-volatile __bit accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl;
+volatile flag_t accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl;
 #ifdef EXTENDED_ACCELERATION_MEASUREMENT
 volatile uint16_t accel_meas_lower_const;
 #endif
@@ -48,14 +48,14 @@ volatile uint8_t adc_key;
 
 // key variables and flags
 volatile uint8_t key_repeat_counter;
-volatile __bit key1_press, key2_press, key1_longpress, key2_longpress, key_pressed;
+volatile flag_t key1_press, key2_press, key1_longpress, key2_longpress, key_pressed;
 
 #if defined(KEY3_SUPPORT)
-volatile __bit key3_press, key3_longpress;
+volatile flag_t key3_press, key3_longpress;
 #endif
 
 #if defined(ENCODER_SUPPORT)
-volatile __bit key2_doubleclick;
+volatile flag_t key2_doubleclick;
 #endif
 
 volatile uint8_t acc_power_off_counter;
@@ -77,7 +77,7 @@ volatile uint8_t timeout_ds_read = 0;
 
 #ifdef SOUND_SUPPORT
 volatile int8_t buzzer_mode_index = BUZZER_NONE;
-volatile __bit buzzer_fl;
+volatile flag_t buzzer_fl;
 #endif
 
 #ifdef TEMPERATURE_SUPPORT
@@ -96,7 +96,7 @@ uint16_t calc_filtered_value(filtered_value_t *, uint16_t);
 
 #ifdef CONTINUOUS_DATA_SUPPORT
 continuous_data_t cd;
-__bit continuous_data_fl, drive_min_cd_speed_fl;
+flag_t continuous_data_fl, drive_min_cd_speed_fl;
 volatile uint16_t cd_kmh, cd_fuel;
 uint16_t cd_speed;
 void cd_init(void);
@@ -293,10 +293,10 @@ void int_fuel_timer_overflow() {
 }
 
 void int_main_timer_overflow() {
-    static __bit key_longpressed;
+    static flag_t key_longpressed;
 #if defined(ENCODER_SUPPORT)
     static uint8_t key2_multiclick_counter, key2_clicks;
-    static __bit key_multiclicked;
+    static flag_t key_multiclicked;
 #endif    
     static uint8_t key1_counter = 0, key2_counter = 0;
 #ifdef KEY3_SUPPORT
@@ -542,7 +542,7 @@ void int_main_timer_overflow() {
 
 #ifdef SOUND_SUPPORT
 
-    static __bit buzzer_init_fl;
+    static flag_t buzzer_init_fl;
     static uint8_t buzzer_mode_counter, buzzer_mode_sound, buzzer_mode_pause;
 
     if (buzzer_mode_index != BUZZER_NONE) {
@@ -570,7 +570,7 @@ void int_main_timer_overflow() {
         buzzer_mode_index = BUZZER_NONE;
     }
 
-    static __bit buzzer_snd_fl, buzzer_repeat_fl;
+    static flag_t buzzer_snd_fl, buzzer_repeat_fl;
     static uint8_t buzzer_counter_r;
     static uint8_t buzzer_counter;
 

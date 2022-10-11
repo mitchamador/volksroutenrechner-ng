@@ -2,8 +2,8 @@
 #include "utils.h"
 #include <string.h>
 
-__bit onewire_search();
-__bit onewire_read_bit(void);
+flag_t onewire_search();
+flag_t onewire_read_bit(void);
 void onewire_write_bit(uint8_t);
 
 void onewire_write_bit(uint8_t value) {
@@ -25,7 +25,7 @@ void onewire_write_bit(uint8_t value) {
     }
 }
 
-__bit onewire_read_bit(void) {
+flag_t onewire_read_bit(void) {
     unsigned char result;
 
     ONEWIRE_OUTPUT;
@@ -35,11 +35,11 @@ __bit onewire_read_bit(void) {
     delay_us(9);
     result = ONEWIRE_GET;
     delay_us(55);
-    return (__bit) result;
+    return (flag_t) result;
 
 }
 
-__bit onewire_start() {
+flag_t onewire_start() {
     unsigned char result;
 
     ONEWIRE_OUTPUT;
@@ -49,7 +49,7 @@ __bit onewire_start() {
     delay_us(70);
     result = !ONEWIRE_GET;
     delay_us(410);
-    return (__bit) result;
+    return (flag_t) result;
 }
 
 uint8_t onewire_read_byte(void) {
@@ -77,14 +77,14 @@ void onewire_write_byte(uint8_t value) {
 }
 
 uint8_t last_discrepancy = 0;
-__bit last_device_fl = 0;
+flag_t last_device_fl = 0;
 uint8_t _rom[8] = {0,0,0,0,0,0,0,0};
 
-__bit onewire_search() {
+flag_t onewire_search() {
 
     uint8_t id_bit_number;
     uint8_t last_zero;
-    static __bit search_result;
+    static flag_t search_result;
     uint8_t id_bit, cmp_id_bit;
 
     uint8_t rom_byte_mask, search_direction;

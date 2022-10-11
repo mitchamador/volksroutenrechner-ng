@@ -3,7 +3,7 @@
 
 #ifdef DS18B20_TEMP
 
-__bit ds18b20_start_conversion() {
+flag_t ds18b20_start_conversion() {
     if (!onewire_start()) // send start pulse
         return 0; // return 0 if error
 
@@ -13,7 +13,7 @@ __bit ds18b20_start_conversion() {
     return 1;
 }
 
-__bit ds18b20_read_rom(unsigned char *buf) {
+flag_t ds18b20_read_rom(unsigned char *buf) {
     if (!onewire_start()) // send start pulse
         return 0; // return 0 if error
 
@@ -27,7 +27,7 @@ __bit ds18b20_read_rom(unsigned char *buf) {
 }
 
 
-__bit ds18b20_read_temp_matchrom(unsigned char *tbuf, uint16_t *raw_temp_value) {
+flag_t ds18b20_read_temp_matchrom(unsigned char *tbuf, uint16_t *raw_temp_value) {
     unsigned char rom_buf[9];
 
     if (!onewire_start()) // send start pulse

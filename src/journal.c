@@ -4,7 +4,7 @@
 
 #if defined(JOURNAL_SUPPORT)
 
-__bit journal_support;
+flag_t journal_support;
 
 journal_header_t journal_header = {
     // journal_type_pos_t
@@ -51,7 +51,7 @@ void journal_update_header() {
     JOURNAL_write_eeprom_block((unsigned char *) &journal_header, J_EEPROM_MARK_POS + 8, sizeof (journal_header));
 }
 
-__bit journal_check_eeprom() {
+flag_t journal_check_eeprom() {
     // check mark
     bool init_fl = true;
     unsigned char buf[8];

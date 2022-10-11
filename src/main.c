@@ -15,10 +15,10 @@
 // buffer for strings (LCD_WIDTH + 4 bytes for prefix/index (iii.))
 char buf[LCD_WIDTH + 4];
 
-__bit drive_min_speed_fl;
+flag_t drive_min_speed_fl;
 
 #ifdef TEMPERATURE_SUPPORT
-__bit temperature_conv_fl;
+flag_t temperature_conv_fl;
 
 uint16_t _t;
 uint16_t temps[4] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE};
@@ -42,7 +42,7 @@ uint16_t odo_con4;
 uint16_t speed;
 
 #ifdef CONTINUOUS_DATA_SUPPORT
-__bit drive_min_cd_speed_fl;
+flag_t drive_min_cd_speed_fl;
 uint16_t cd_speed;
 #endif
 
@@ -854,7 +854,7 @@ accel_meas_limits_t accel_meas_limits[4] = {
 
 void acceleration_measurement(uint8_t index) {
     // acceleration measurement flags and variables
-    static __bit accel_meas_final_fl, _accel_meas_exit, _accel_meas_started_fl;
+    static flag_t accel_meas_final_fl, _accel_meas_exit, _accel_meas_started_fl;
 
     _print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &accel_meas_wait_string, 0), ALIGN_CENTER);
 
@@ -1467,7 +1467,7 @@ void config_screen_min_speed() {
 
 #if defined(DS18B20_CONFIG_EXT)
 
-__bit config_temperature_conv_fl;
+flag_t config_temperature_conv_fl;
 
 /**
  * extended version of temp sensors' configuration (use onewire search)
@@ -1565,7 +1565,7 @@ void config_screen_temp_sensors() {
 
 // show temp of connected sensor
 #if defined(DS18B20_CONFIG_SHOW_TEMP)
-__bit config_temperature_conv_fl;
+flag_t config_temperature_conv_fl;
 #endif
 
 /**
@@ -2127,9 +2127,9 @@ void power_off() {
 }
 
 void main() {
-    static __bit config_mode;
-    static __bit item_change_fl;
-    static __bit mode_change_fl;
+    static flag_t config_mode;
+    static flag_t item_change_fl;
+    static flag_t mode_change_fl;
 
     uint8_t c_item = 0, c_item_prev = 0;
     uint8_t prev_main_item = 0, prev_config_item = 0;

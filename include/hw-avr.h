@@ -19,7 +19,7 @@
 typedef uint32_t uint24_t;
 typedef uint16_t eeaddr_t;
 
-#define __bit uint8_t
+typedef uint8_t flag_t;
 
 #define __near
 #define __bank0
