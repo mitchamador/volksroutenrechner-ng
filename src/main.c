@@ -2192,7 +2192,7 @@ void main() {
         if (mode_change_fl == 0) {
             if (item_change_fl == 0 && key2_longpress != 0) {
                 // long keypress for service key - switch service mode and main mode
-                if (config_mode == 0 && motor_fl == 0 && drive_fl == 0 && current_item_main->page.config_switch) {
+                if (config_mode == 0 && motor_fl == 0 && drive_fl == 0 && (current_item_main->page.config_switch != 0 && current_item_main->page.skip_key_handler == 0)) {
                     prev_main_item = c_item;
                     c_item = prev_config_item;
                     config_mode = 1;
