@@ -2,6 +2,8 @@
 
 #if defined(__AVR__)
 #include <util/crc16.h>
+#else
+#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
 #endif
 
 unsigned char bcd8_to_bin(unsigned char b) {

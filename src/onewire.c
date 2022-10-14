@@ -10,31 +10,31 @@ void onewire_write_bit(uint8_t value) {
     value = value & 0x01;
     if (value) {
         // Write '1' bit
-        ONEWIRE_OUTPUT;
-        ONEWIRE_CLEAR;
-        delay_us(6);
-        ONEWIRE_INPUT;
-        delay_us(64);
+        HW_1wire_output();
+        HW_1wire_clear();
+        HW_delay_us(6);
+        HW_1wire_input();
+        HW_delay_us(64);
     } else {
         // Write '0' bit
-        ONEWIRE_OUTPUT;
-        ONEWIRE_CLEAR;
-        delay_us(60);
-        ONEWIRE_INPUT;
-        delay_us(10);
+        HW_1wire_output();
+        HW_1wire_clear();
+        HW_delay_us(60);
+        HW_1wire_input();
+        HW_delay_us(10);
     }
 }
 
 flag_t onewire_read_bit(void) {
     unsigned char result;
 
-    ONEWIRE_OUTPUT;
-    ONEWIRE_CLEAR;
-    delay_us(6);
-    ONEWIRE_INPUT;
-    delay_us(9);
-    result = ONEWIRE_GET;
-    delay_us(55);
+    HW_1wire_output();
+    HW_1wire_clear();
+    HW_delay_us(6);
+    HW_1wire_input();
+    HW_delay_us(9);
+    result = HW_1wire_get();
+    HW_delay_us(55);
     return (flag_t) result;
 
 }
@@ -42,13 +42,13 @@ flag_t onewire_read_bit(void) {
 flag_t onewire_start() {
     unsigned char result;
 
-    ONEWIRE_OUTPUT;
-    ONEWIRE_CLEAR;
-    delay_us(480);
-    ONEWIRE_INPUT;
-    delay_us(70);
-    result = !ONEWIRE_GET;
-    delay_us(410);
+    HW_1wire_output();
+    HW_1wire_clear();
+    HW_delay_us(480);
+    HW_1wire_input();
+    HW_delay_us(70);
+    result = !HW_1wire_get();
+    HW_delay_us(410);
     return (flag_t) result;
 }
 

@@ -9,7 +9,7 @@ void I2C_read_eeprom_block(unsigned char* p, uint16_t ee_addr, unsigned char len
     while (ack == NACK && wait_ms < WAIT_RESPONSE_MS) {
         ack = I2C_Master_Start(0xA0 | ((ee_addr >> 7) & 0x0E));
         if (ack == NACK) {
-            delay_ms(1);
+            HW_delay_ms(1);
             wait_ms++;
         }
     }
@@ -33,7 +33,7 @@ void I2C_write_eeprom_block(unsigned char* p, uint16_t ee_addr, unsigned char le
         while (ack == NACK && wait_ms < WAIT_RESPONSE_MS) {
             ack = I2C_Master_Start(0xA0 | ((ee_addr >> 7) & 0x0E));
             if (ack == NACK) {
-                delay_ms(1);
+                HW_delay_ms(1);
                 wait_ms++;
             }
         }

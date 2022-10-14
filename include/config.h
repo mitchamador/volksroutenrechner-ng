@@ -44,9 +44,9 @@
 // skip oled lcd reset sequence (though works ok without it after power up with EH1602 REV.J)
 //#define NO_LCD_OLED_RESET
 // simple checking time difference (decrease memory usage)
-//#define SIMPLE_TRIPC_TIME_CHECK
+#define SIMPLE_TRIPC_TIME_CHECK
 // auto calculate day of week
-#define NO_AUTO_DAY_OF_WEEK
+//#define NO_AUTO_DAY_OF_WEEK
 // min speed settings
 //#define NO_MIN_SPEED_CONFIG
 // speed 0-100 measurement only

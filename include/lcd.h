@@ -64,7 +64,7 @@
 #define LCD_DELAY_CMD 53
 #define LCD_DELAY_CLEAR 2160
 
-#define LCD_Check_Busy() delay_us(LCD_DELAY_CMD)
+#define LCD_Check_Busy() HW_delay_us(LCD_DELAY_CMD)
 
 // delay en strobe delay
 #define LCD_delay_en_strobe()

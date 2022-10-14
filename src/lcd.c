@@ -16,8 +16,8 @@ void LCD_Init(void) {
     unsigned char i = 0;
 
 #ifdef LCD_LEGACY
-    RS_HIGH;
-    EN_HIGH;
+    HW_lcd_rs_high();
+    HW_lcd_en_high();
 #else
     if (I2C_Master_Start(LCD_I2C_ADDRESS) == ACK) { // Initialize LCD module with I2C address = 0x4E ((0x27<<1) for PCF8574) or 0x7E ((0x3F<<1) for PCF8574A)
         I2C_Master_Write((RS | EN) | LCD_BACKLIGHT);
@@ -27,7 +27,7 @@ void LCD_Init(void) {
     I2C_Master_Stop();
 #endif
 
-    delay_ms(50);
+    HW_delay_ms(50);
 
 #ifdef NO_LCD_OLED_RESET
     // 0x30 (4100us delay), 0x30 (100us), 0x30 (100us)
@@ -47,9 +47,9 @@ void LCD_Init(void) {
 #endif
 #endif
        if (i > 2) {
-           delay_us(4100);
+           HW_delay_us(4100);
        } else {
-           delay_us(100);
+           HW_delay_us(100);
        }
     }
 
@@ -83,14 +83,14 @@ void LCD_Init(void) {
 
 #ifdef LCD_LEGACY
 void LCD_Write_4Bit(unsigned char data) {
-    LCD_DATA(data);
-    EN_HIGH;
+    HW_lcd_set_data(data);
+    HW_lcd_en_high();
     LCD_delay_en_strobe();
-    EN_LOW;
+    HW_lcd_en_low();
 }
 
 void LCD_CMD(char data) {
-    RS_LOW;
+    HW_lcd_rs_low();
     LCD_Write_4Bit(data);
     LCD_delay_4bits();
     LCD_Write_4Bit((unsigned char) (data << 4));
@@ -136,7 +136,7 @@ void LCD_Clear(void) {
     _memset(lcd_buf, ' ', LCD_WIDTH * 2);
 #endif    
     LCD_CMD(LCD_CLEAR);
-    delay_us(LCD_DELAY_CLEAR);
+    HW_delay_us(LCD_DELAY_CLEAR);
 }
 
 #if defined(LCD_BUFFERED)
@@ -146,7 +146,7 @@ void LCD_Write_Buffer(char *src, uint8_t len) {
     while (--len != 0) {
         uint8_t ch = *src++;
 #ifdef LCD_LEGACY
-        RS_HIGH;
+        HW_rs_high;
         LCD_Write_4Bit(ch);
         LCD_delay_4bits();
         LCD_Write_4Bit((unsigned char) (ch << 4));
@@ -231,7 +231,7 @@ void LCD_Write_String(char* str, unsigned char len, unsigned char max, align_t a
             ch = *str++;
         }
 #ifdef LCD_LEGACY
-        RS_HIGH;
+        HW_lcd_rs_high();
         LCD_Write_4Bit(ch);
         LCD_delay_4bits();
         LCD_Write_4Bit((unsigned char) (ch << 4));

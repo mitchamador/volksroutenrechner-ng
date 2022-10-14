@@ -19,33 +19,33 @@
 #endif
 
 // misc constants (in seconds)
-#define MAIN_INTERVAL ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
-#define DEBOUNCE ((uint8_t) (0.04f / MAIN_TIMER_PERIOD))
+#define MAIN_INTERVAL ((uint8_t) (1.0f / HW_MAIN_TIMER_PERIOD))
+#define DEBOUNCE ((uint8_t) (0.04f / HW_MAIN_TIMER_PERIOD))
 #if defined(_DEBUG_)
-#define SHORTKEY ((uint8_t) (0.4f / MAIN_TIMER_PERIOD))
-#define MULTICLICK ((uint8_t) (0.4f / MAIN_TIMER_PERIOD))
+#define SHORTKEY ((uint8_t) (0.4f / HW_MAIN_TIMER_PERIOD))
+#define MULTICLICK ((uint8_t) (0.4f / HW_MAIN_TIMER_PERIOD))
 #else
-#define SHORTKEY ((uint8_t) (0.2f / MAIN_TIMER_PERIOD))
-#define MULTICLICK ((uint8_t) (0.2f / MAIN_TIMER_PERIOD))
+#define SHORTKEY ((uint8_t) (0.2f / HW_MAIN_TIMER_PERIOD))
+#define MULTICLICK ((uint8_t) (0.2f / HW_MAIN_TIMER_PERIOD))
 #endif
-#define LONGKEY ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
-#define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / MAIN_TIMER_PERIOD))
+#define LONGKEY ((uint8_t) (1.0f / HW_MAIN_TIMER_PERIOD))
+#define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / HW_MAIN_TIMER_PERIOD))
 // timeout constant in 0.01 ms resolution
-#define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / MAIN_TIMER_PERIOD))
+#define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / HW_MAIN_TIMER_PERIOD))
 // time with power supply measurements lower than threshold before shutdown
-#define SHUTDOWN ((uint8_t) (0.25f / MAIN_TIMER_PERIOD))
+#define SHUTDOWN ((uint8_t) (0.25f / HW_MAIN_TIMER_PERIOD))
 
 // min rpm
 #define TAHO_MIN_RPM 100UL
 // min rpm constant (1/(TAHO_MIN_RPM/60sec)/0.01s) 0.01s timer overflow
-#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / TAHO_TIMER_PERIOD))
+#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / HW_TAHO_TIMER_PERIOD))
 
 // minimum pulse width for acceleration measurement calculation (0.1s)
 #define ACCEL_MEAS_OVERFLOW_CONST 10            /* (0.1f / SPEED_TIMER_PERIOD) */
-#if (65536 / SPEED_TIMER_TICKS_PER_PERIOD) >= ACCEL_MEAS_OVERFLOW_CONST
+#if (65536 / HW_SPEED_TIMER_TICKS_PER_PERIOD) >= ACCEL_MEAS_OVERFLOW_CONST
 #define ACCEL_MEAS_OVERFLOW ACCEL_MEAS_OVERFLOW_CONST
 #else
-#define ACCEL_MEAS_OVERFLOW (65536 / SPEED_TIMER_TICKS_PER_PERIOD)
+#define ACCEL_MEAS_OVERFLOW (65536 / HW_SPEED_TIMER_TICKS_PER_PERIOD)
 #endif
 
 // 0 - 100

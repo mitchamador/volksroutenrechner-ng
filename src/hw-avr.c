@@ -17,7 +17,7 @@ ISR(PCINT0_vect) {
 #else
     if ((TIFR1 & (1 << ICF1)) != 0) {
 #endif
-        main_timer += MAIN_TIMER_TICKS_PER_PERIOD;
+        main_timer += HW_MAIN_TIMER_TICKS_PER_PERIOD;
     }
 
     int_capture_injector_level_change();
@@ -105,13 +105,13 @@ void HW_Init(void) {
 #if defined(_DEBUG_)
     ICR1H = 0;
     ICR1L = 0;
-    OCR1AH = (MAIN_TIMER_TICKS_PER_PERIOD - 1) >> 8;
-    OCR1AL = (MAIN_TIMER_TICKS_PER_PERIOD - 1) & 0xFF;
-    OCR1BH = (MAIN_TIMER_TICKS_PER_PERIOD - 1) >> 8;
-    OCR1BL = (MAIN_TIMER_TICKS_PER_PERIOD - 1) & 0xFF;
+    OCR1AH = (HW_MAIN_TIMER_TICKS_PER_PERIOD - 1) >> 8;
+    OCR1AL = (HW_MAIN_TIMER_TICKS_PER_PERIOD - 1) & 0xFF;
+    OCR1BH = (HW_MAIN_TIMER_TICKS_PER_PERIOD - 1) >> 8;
+    OCR1BL = (HW_MAIN_TIMER_TICKS_PER_PERIOD - 1) & 0xFF;
 #else
-    ICR1H = (MAIN_TIMER_TICKS_PER_PERIOD - 1) >> 8;
-    ICR1L = (MAIN_TIMER_TICKS_PER_PERIOD - 1) & 0xFF;
+    ICR1H = (HW_MAIN_TIMER_TICKS_PER_PERIOD - 1) >> 8;
+    ICR1L = (HW_MAIN_TIMER_TICKS_PER_PERIOD - 1) & 0xFF;
     OCR1AH = 0x00;
     OCR1AL = 0x00;
     OCR1BH = 0x00;
@@ -176,7 +176,7 @@ void HW_Init(void) {
     // Digital input buffers on ADC0: On, ADC1: On, ADC2: On, ADC3: On, ADC4: On, ADC5: On
     // ADC interrupt on
     DIDR0 = (0 << ADC5D) | (0 << ADC4D) | (0 << ADC3D) | (0 << ADC2D) | (0 << ADC1D) | (0 << ADC0D);
-    ADMUX = ADC_VREF_TYPE | ADC_CHANNEL_POWER_SUPPLY;
+    ADMUX = ADC_VREF_TYPE | HW_ADC_CHANNEL_POWER_SUPPLY;
     ADCSRA = (1 << ADEN) | (0 << ADSC) | (1 << ADATE) | (0 << ADIF) | (1 << ADIE) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
 #if defined(_DEBUG_)
     ADCSRB = (1 << ADTS2) | (0 << ADTS1) | (1 << ADTS0); // Timer/Counter1 compare match B

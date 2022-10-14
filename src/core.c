@@ -40,9 +40,9 @@ volatile uint16_t kmh, fuel;
 
 volatile uint8_t adc_key;
 
-#define KEY1_PRESSED (adc_key == ADC_KEY_NEXT)
-#define KEY2_PRESSED (adc_key == ADC_KEY_OK)
-#define KEY3_PRESSED (adc_key == ADC_KEY_PREV)
+#define HW_key1_pressed() (adc_key == ADC_KEY_NEXT)
+#define HW_key2_pressed() (adc_key == ADC_KEY_OK)
+#define HW_key3_pressed() (adc_key == ADC_KEY_PREV)
 
 #endif
 
@@ -85,7 +85,7 @@ volatile uint8_t timeout_temperature;
 #endif
 
 #ifdef MIN_MAX_VOLTAGES_SUPPORT
-volatile adc_voltage_t adc_voltage = {0, ADC_MAX, ADC_MIN};
+volatile adc_voltage_t adc_voltage = {0, HW_ADC_MAX, HW_ADC_MIN};
 #else
 volatile adc_voltage_t adc_voltage = {0};
 #endif
@@ -128,16 +128,16 @@ filtered_value_t f_fuel_tank = {0, 3 | FILTERED_VALUE_FIRST_SAMPLE};
 #endif
 
 adc_item_t adc_items[] = {
-    {adc_handler_voltage, &f_voltage, ADC_CHANNEL_POWER_SUPPLY},
+    {adc_handler_voltage, &f_voltage, HW_ADC_CHANNEL_POWER_SUPPLY},
 #ifdef ADC_BUTTONS
-    {adc_handler_buttons, &f_buttons, ADC_CHANNEL_BUTTONS},
+    {adc_handler_buttons, &f_buttons, HW_ADC_CHANNEL_BUTTONS},
 #endif
 #ifdef FUEL_TANK_SUPPORT
-    {adc_handler_fuel_tank, &f_fuel_tank, ADC_CHANNEL_FUEL_TANK},
+    {adc_handler_fuel_tank, &f_fuel_tank, HW_ADC_CHANNEL_FUEL_TANK},
 #endif
 };
 #else
-adc_item_t adc_item = {adc_handler_voltage, &f_voltage, ADC_CHANNEL_POWER_SUPPLY};
+adc_item_t adc_item = {adc_handler_voltage, &f_voltage, HW_ADC_CHANNEL_POWER_SUPPLY};
 #endif
 
 #endif
@@ -146,10 +146,10 @@ adc_item_t adc_item = {adc_handler_voltage, &f_voltage, ADC_CHANNEL_POWER_SUPPLY
 
 void int_capture_injector_level_change() {
     // fuel injector
-    if (FUEL_ACTIVE) {
+    if (HW_fuel_active()) {
         if (fuel_fl == 0) {
             // start fuel timer
-            start_fuel_timer();
+            HW_start_fuel_timer();
             fuel_fl = 1;
             motor_fl = 1;
             save_tripc_time_fl = 1;
@@ -180,7 +180,7 @@ void int_capture_injector_level_change() {
     } else {
         if (fuel_fl != 0) {
             // stop fuel timer
-            stop_fuel_timer();
+            HW_stop_fuel_timer();
             fuel_fl = 0;
             // measure fuel duration                
             if (taho_measure_fl != 0) {
@@ -194,19 +194,19 @@ __section("text999") void int_taho_timer_overflow() {
     if (taho_measure_fl != 0) {
         if (++taho_timer_ofl == TAHO_OVERFLOW) {
             taho_measure_fl = 0;
-            stop_fuel_timer();
+            HW_stop_fuel_timer();
             taho_fl = 0;
             fuel_duration = 0;
             motor_fl = 0;
         } else {
-            taho_timer_ticks += TAHO_TIMER_TICKS_PER_PERIOD;
+            taho_timer_ticks += HW_TAHO_TIMER_TICKS_PER_PERIOD;
         }
     }
 }
 
 void int_capture_speed_level_change() {
     // speed sensor
-    if (TX_ACTIVE) {
+    if (HW_tx_active()) {
         if (odom_fl == 0) {
             odom_fl = 1;
             drive_fl = 1;
@@ -256,7 +256,7 @@ __section("text999") void int_speed_timer_overflow() {
             accel_meas_fl = 0;
             accel_meas_drive_fl = 0;
         } else {
-            speed_timer_ticks += SPEED_TIMER_TICKS_PER_PERIOD;
+            speed_timer_ticks += HW_SPEED_TIMER_TICKS_PER_PERIOD;
         }
     }
 }
@@ -306,9 +306,9 @@ void int_main_timer_overflow() {
 
     if (key_repeat_counter == 0) {
 #ifdef ENCODER_SUPPORT
-        if (config.settings.encoder == 0 && KEY1_PRESSED)
+        if (config.settings.encoder == 0 && HW_key1_pressed())
 #else
-        if (KEY1_PRESSED) // key pressed
+        if (HW_key1_pressed()) // key pressed
 #endif
         {
             if (key1_counter <= LONGKEY) {
@@ -329,7 +329,7 @@ void int_main_timer_overflow() {
             key1_counter = 0;
         }
 
-        if (KEY2_PRESSED) // key pressed
+        if (HW_key2_pressed()) // key pressed
         {
             if (key2_counter <= LONGKEY) {
                 key2_counter++;
@@ -386,9 +386,9 @@ void int_main_timer_overflow() {
 
 #if defined(KEY3_SUPPORT)
 #ifdef ENCODER_SUPPORT
-        if (config.settings.encoder == 0 && KEY3_PRESSED)
+        if (config.settings.encoder == 0 && HW_key3_pressed())
 #else
-        if (KEY3_PRESSED) // key pressed
+        if (HW_key3_pressed()) // key pressed
 #endif
         {
             if (key3_counter <= LONGKEY) {
@@ -516,7 +516,7 @@ void int_main_timer_overflow() {
 
         kmh = kmh_tmp;
         kmh_tmp = 0;
-
+        
 #ifdef TEMPERATURE_SUPPORT
         if (timeout_temperature > 0) {
             timeout_temperature--;
@@ -598,13 +598,13 @@ void int_main_timer_overflow() {
                 buzzer_snd_fl = 0;
                 buzzer_counter = buzzer_mode_pause;
             }
-            SND_ON;
+            HW_snd_on();
         }
         if (buzzer_snd_fl == 0) {
             if (buzzer_counter == 0) {
                 buzzer_repeat_fl = 1;
             }
-            SND_OFF;
+            HW_snd_off();
         }
         buzzer_counter--;
     }
@@ -614,7 +614,7 @@ void int_main_timer_overflow() {
 void int_adc_finish() {
 #if defined(SIMPLE_ADC)
 
-    adc_voltage.current = adc_read_value();
+    adc_voltage.current = HW_adc_read();
 
 #ifdef MIN_MAX_VOLTAGES_SUPPORT
     if (adc_voltage.current < adc_voltage.min) {
@@ -632,7 +632,7 @@ void int_adc_finish() {
     }
 
 #else
-    adc_value = adc_read_value();
+    adc_value = HW_adc_read();
 #if defined(ADC_BUTTONS) || defined(FUEL_TANK_SUPPORT)        
     adc_item_t* h = &adc_items[_adc_ch];
 
@@ -641,13 +641,13 @@ void int_adc_finish() {
     }
 
     // set next channel
-    set_adc_channel(adc_items[_adc_ch].channel);
+    HW_adc_set_channel(adc_items[_adc_ch].channel);
 
     h->handle(h->f);
 
     if (_adc_ch != 0) {
         // start next adc channel (first channel is started from auto trigger)
-        start_adc();
+        HW_adc_start();
     }
 #else
     adc_item.handle(adc_item.f);
@@ -655,6 +655,43 @@ void int_adc_finish() {
 
 #endif
 }
+
+#ifdef ENCODER_SUPPORT
+// A valid CW or CCW move returns 1, invalid returns 0.
+
+void int_change_encoder_level() {
+    if (config.settings.encoder == 0) return;
+
+    static int8_t rot_enc_table[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
+    static uint8_t prevNextCode = 0;
+    static uint8_t store = 0;
+
+    prevNextCode <<= 2;
+    if (HW_encoder_get_data()) prevNextCode |= 0x02;
+    if (HW_encoder_get_clk()) prevNextCode |= 0x01;
+    prevNextCode &= 0x0f;
+
+    // If valid then store as 16 bit data.
+    if (rot_enc_table[prevNextCode]) {
+        store <<= 4;
+        store |= prevNextCode;
+        if (key_repeat_counter == 0) {
+            if (store == 0x2b) {
+                key3_press = 1;
+            }
+            if (store == 0x17) {
+                key1_press = 1;
+            }
+            if (key1_press != 0 || key3_press != 0) {
+                key_pressed = 1;
+#ifdef SOUND_SUPPORT
+                buzzer_mode_index = BUZZER_KEY;
+#endif
+            }
+        }
+    }
+}
+#endif
 
 // interrupt routines ends
 
@@ -777,43 +814,6 @@ uint16_t calc_filtered_value(filtered_value_t *f, uint16_t v) {
         return (uint16_t) ((f->tmp + (uint16_t) (1 << (f->filter - 1))) >> f->filter);
     }
 }
-
-#ifdef ENCODER_SUPPORT
-// A valid CW or CCW move returns 1, invalid returns 0.
-
-void int_change_encoder_level() {
-    if (config.settings.encoder == 0) return;
-
-    static int8_t rot_enc_table[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
-    static uint8_t prevNextCode = 0;
-    static uint8_t store = 0;
-
-    prevNextCode <<= 2;
-    if (ENCODER_DATA) prevNextCode |= 0x02;
-    if (ENCODER_CLK) prevNextCode |= 0x01;
-    prevNextCode &= 0x0f;
-
-    // If valid then store as 16 bit data.
-    if (rot_enc_table[prevNextCode]) {
-        store <<= 4;
-        store |= prevNextCode;
-        if (key_repeat_counter == 0) {
-            if (store == 0x2b) {
-                key3_press = 1;
-            }
-            if (store == 0x17) {
-                key1_press = 1;
-            }
-            if (key1_press != 0 || key3_press != 0) {
-                key_pressed = 1;
-#ifdef SOUND_SUPPORT
-                buzzer_mode_index = BUZZER_KEY;
-#endif
-            }
-        }
-    }
-}
-#endif
 
 #ifdef CONTINUOUS_DATA_SUPPORT
 void cd_init() {

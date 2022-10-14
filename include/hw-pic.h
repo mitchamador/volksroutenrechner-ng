@@ -154,25 +154,11 @@
 // define cpu frequency
 #define _XTAL_FREQ 20000000
 
-typedef __bit flag_t;
-
-#define delay_ms(ms) __delay_ms(ms)
-#define delay_us(us) __delay_us(us)
-
-#define __EEDATA(a0,a1,a2,a3,a4,a5,a6,a7) __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7);
-
-#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
-
-typedef unsigned char eeaddr_t;
-
 // i2c software bit bang
 #define I2C_SOFTWARE
+
 // lcd parallel interface
 #define LCD_LEGACY
-
-// min/max value of adc reading
-#define ADC_MIN     0
-#define ADC_MAX     1023
 
 // PORTA definitions (a/d channels)
 // RA0 as digital power control pin
@@ -204,39 +190,18 @@ typedef unsigned char eeaddr_t;
 #define ONEWIRE_TRIS_MASK       (1 << _TRISA_TRISA5_POSITION)
 
 #if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
-
 #define ADC_CHANNEL_MASK            ((1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
-// AN1
-#define ADC_CHANNEL_POWER_SUPPLY    ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
-// AN3
-#define ADC_CHANNEL_FUEL_TANK       ((0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADCON0_INIT                 ((1 << _ADCON0_ADCS1_POSITION) | (0 << _ADCON0_ADCS0_POSITION))
 // PORTA A/D configuration (AN0/AN1/AN3 as analog input)
 #define ADCON1_INIT                 ((0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_PCFG3_POSITION) | (1 << _ADCON1_PCFG2_POSITION) | (0 << _ADCON1_PCFG1_POSITION) | (0 << _ADCON1_PCFG0_POSITION))
 #elif defined(_16F1936) || defined(_16F1938)
 #define ADC_CHANNEL_MASK            ((1 << _ADCON0_CHS4_POSITION) | (1 << _ADCON0_CHS3_POSITION) | (1 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
-// AN1
-#define ADC_CHANNEL_POWER_SUPPLY    ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
-// AN3
-#define ADC_CHANNEL_FUEL_TANK       ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 #define ADCON0_INIT                 0
 #define ADCON1_INIT                 ((1 << _ADCON1_ADFM_POSITION) | (0 << _ADCON1_ADCS2_POSITION) | (1 << _ADCON1_ADCS1_POSITION) | (0 << _ADCON1_ADCS0_POSITION))
 // PORTA AN1/RA1 (adc power) and AN3/RA3 as analog input (fuel tank)
 #define ANSELA_INIT                 ((1 << _ANSELA_ANSA1_POSITION) | (1 << _ANSELA_ANSA3_POSITION))
 #define ANSELB_INIT                 0
-
 #endif
-
-// start adc
-#if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
-#define start_adc()                 ADCON0bits.GO_DONE = 1;
-#else
-#define start_adc()                 ADCON0bits.GO = 1;
-#endif
-// set adc channel
-#define set_adc_channel(ch)         ADCON0 = (ADCON0 & ~ADC_CHANNEL_MASK) | ch
-// read adc value
-#define adc_read_value()    ((uint16_t) (ADRESH << 8) | ADRESL)
 
 // PORTB definitions
 // RB0, RB1 - SCL/SDA for software i2c
@@ -253,17 +218,6 @@ typedef unsigned char eeaddr_t;
 #define SCL_MASK        _PORTB_RB1_MASK
 #define SCL_TRIS        TRISBbits.TRISB1
 #define SCL_TRIS_MASK   (0 << _TRISB_TRISB1_POSITION)
-
-#define SDA_INPUT       SDA_TRIS = 1
-#define SDA_OUTPUT      SDA_TRIS = 0
-#define SDA_HIGH        SDA = 1
-#define SDA_LOW         SDA = 0
-#define SDA_GET()       (SDA)
-
-#define SCL_INPUT       SCL_TRIS = 1
-#define SCL_OUTPUT      SCL_TRIS = 0
-#define SCL_HIGH        SCL = 1
-#define SCL_LOW         SCL = 0
 
 // key1 and key2 (active ground) (legacy hardware)
 #define KEY1            PORTBbits.RB2
@@ -283,57 +237,10 @@ typedef unsigned char eeaddr_t;
 #define FUEL            PORTBbits.RB7
 #define FUEL_TRIS_MASK  (1 << _TRISB_TRISB7_POSITION)
 
-
 // PORTC definitions
 // RC0 - sound
 #define SND             PORTCbits.RC0
 #define SND_TRIS        (1 << _TRISC_TRISC0_POSITION)
-
-#ifdef LCD_LEGACY
-// LCD definitions
-// rs - RC1
-// rw - RC2
-// en - RC3
-// data - RC4..RC7
-
-#define LCD_DATA(data) PORTC = (PORTC & ~0xF0) | (data & 0xF0);
-
-#define RS_LOW              (PORTCbits.RC1 = 0)
-#define RS_HIGH             (PORTCbits.RC1 = 1)
-#define RW_LOW              (PORTCbits.RC2 = 0)
-#define RW_HIGH             (PORTCbits.RC2 = 1)
-#define EN_LOW              (PORTCbits.RC3 = 0)
-#define EN_HIGH             (PORTCbits.RC3 = 1)
-
-#endif
-
-#define TX_ACTIVE           (TX == 1)
-#define FUEL_ACTIVE         (FUEL == 0)
-
-#define KEY1_PRESSED        (KEY1 == 0)
-#define KEY2_PRESSED        (KEY2 == 0)
-#ifdef KEY3_SUPPORT
-#define KEY3_PRESSED        (KEY3 == 0)
-#endif
-
-#define PWR_ON              (PWR = 1)
-#define PWR_OFF             (PWR = 0)
-
-#define SND_ON              (SND = 1)
-#define SND_OFF             (SND = 0)
-
-// configure DS18B20_PIN pin as output
-#define ONEWIRE_OUTPUT      (ONEWIRE_PIN_DIR = 0)
-// configure DS18B20_PIN pin as input
-#define ONEWIRE_INPUT       (ONEWIRE_PIN_DIR = 1)
-
-#if defined(ONEWIRE_PIN_LAT)
-#define ONEWIRE_CLEAR       (ONEWIRE_PIN_LAT = 0)
-#else
-// RA0 is configured as analog pin, so read-modify-write PORTA (set or clear onewire pin) forces RA0 to 0 (analog inputs read as '0')
-#define ONEWIRE_CLEAR       PORTA = (PORTA & ONEWIRE_PIN_MASK) | PWR_MASK;
-#endif
-#define ONEWIRE_GET         (ONEWIRE_PIN)
 
 // init values for port's data direction
 #define TRISA_INIT ONEWIRE_TRIS_MASK | POWER_SUPPLY_TRIS_MASK | FUEL_TANK_TRIS_MASK
@@ -344,33 +251,6 @@ typedef unsigned char eeaddr_t;
 #define PORTA_INIT PWR_MASK
 #define PORTB_INIT KEY_MASK | SDA_MASK | SCL_MASK
 #define PORTC_INIT 0
-
-// timer1 compare 10ms, 6250 with prescaler 1:8 at 20MHz
-#define MAIN_TIMER_PERIOD               0.01f
-#define MAIN_TIMER_TICKS_PER_PERIOD     6250
-
-#define TAHO_TIMER_PERIOD               MAIN_TIMER_PERIOD
-#define TAHO_TIMER_TICKS_PER_PERIOD     MAIN_TIMER_TICKS_PER_PERIOD
-#define taho_timer                      main_timer
-
-#define SPEED_TIMER_PERIOD              MAIN_TIMER_PERIOD
-#define SPEED_TIMER_TICKS_PER_PERIOD    MAIN_TIMER_TICKS_PER_PERIOD
-#define speed_timer                     main_timer
-
-/* ======================================= */
-
-#if defined(_18F252)  || defined(_18F242)
-#define start_fuel_timer()  (TMR0ON = 1)
-#define stop_fuel_timer()   (TMR0ON = 0)
-#else
-#define start_fuel_timer()  (T0CS = 0)
-#define stop_fuel_timer()   (T0CS = 1)
-#endif
-
-#define start_main_timer()  (TMR1ON = 1)
-
-#define enable_interrupts() ei();
-#define disable_interrupts() di();
 
 #if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
 #define PIN_CHANGE_IF           RBIF
@@ -387,6 +267,118 @@ typedef unsigned char eeaddr_t;
 #else
 #define TIMER_FUEL_IF           T0IF
 #endif
+
+/* ======================================= */
+
+typedef __bit flag_t;
+typedef unsigned char eeaddr_t;
+
+#define __EEDATA(a0,a1,a2,a3,a4,a5,a6,a7) __EEPROM_DATA(a0,a1,a2,a3,a4,a5,a6,a7);
+
+// timer1 compare 10ms, 6250 with prescaler 1:8 at 20MHz
+#define HW_MAIN_TIMER_TICKS_PER_PERIOD     6250
+
+// min/max value of adc reading
+#define HW_ADC_MIN     0
+#define HW_ADC_MAX     1023
+
+#if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
+// AN1
+#define HW_ADC_CHANNEL_POWER_SUPPLY    ((0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+// AN3
+#define HW_ADC_CHANNEL_FUEL_TANK       ((0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#elif defined(_16F1936) || defined(_16F1938)
+// AN1
+#define HW_ADC_CHANNEL_POWER_SUPPLY    ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+// AN3
+#define HW_ADC_CHANNEL_FUEL_TANK       ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+#endif
+
+#define HW_delay_ms(ms)             __delay_ms(ms)
+#define HW_delay_us(us)             __delay_us(us)
+
+#if defined(_18F252)  || defined(_18F242)
+#define HW_start_fuel_timer()       (TMR0ON = 1)
+#define HW_stop_fuel_timer()        (TMR0ON = 0)
+#else
+#define HW_start_fuel_timer()       (T0CS = 0)
+#define HW_stop_fuel_timer()        (T0CS = 1)
+#endif
+
+#define HW_start_main_timer()       (TMR1ON = 1)
+
+#define HW_enable_interrupts()      ei();
+#define HW_disable_interrupts()     di();
+
+// start adc
+#if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
+#define HW_adc_start()              ADCON0bits.GO_DONE = 1;
+#else
+#define HW_adc_start()              ADCON0bits.GO = 1;
+#endif
+// set adc channel
+#define HW_adc_set_channel(ch)      ADCON0 = (ADCON0 & ~ADC_CHANNEL_MASK) | ch
+// read adc value
+#define HW_adc_read()               ((uint16_t) (ADRESH << 8) | ADRESL)
+
+#define HW_tx_active()              (TX == 1)
+#define HW_fuel_active()            (FUEL == 0)
+
+#define HW_key1_pressed()           (KEY1 == 0)
+#define HW_key2_pressed()           (KEY2 == 0)
+#ifdef KEY3_SUPPORT
+#define HW_key2_pressed()           (KEY3 == 0)
+#endif
+
+#define HW_pwr_on()                 (PWR = 1)
+#define HW_pwr_off()                (PWR = 0)
+
+#define HW_snd_on()                 (SND = 1)
+#define HW_snd_off()                (SND = 0)
+
+// configure DS18B20_PIN pin as output
+#define HW_1wire_output()           (ONEWIRE_PIN_DIR = 0)
+// configure DS18B20_PIN pin as input
+#define HW_1wire_input()            (ONEWIRE_PIN_DIR = 1)
+
+#if defined(ONEWIRE_PIN_LAT)
+#define HW_1wire_clear()            (ONEWIRE_PIN_LAT = 0)
+#else
+// RA0 is configured as analog pin, so read-modify-write PORTA (set or clear onewire pin) forces RA0 to 0 (analog inputs read as '0')
+#define HW_1wire_clear()            ONEWIRE_PIN = 0; PWR = 1;
+//#define HW_1wire_clear()            PORTA = (PORTA & ~ONEWIRE_PIN_MASK) | PWR_MASK;
+#endif
+// onewire get bit
+#define HW_1wire_get()              (ONEWIRE_PIN)
+
+#ifdef LCD_LEGACY
+// LCD definitions
+// rs - RC1
+// rw - RC2
+// en - RC3
+// data - RC4..RC7
+
+#define HW_lcd_set_data(data)       PORTC = (PORTC & ~0xF0) | (data & 0xF0);
+
+#define HW_lcd_rs_low()             (PORTCbits.RC1 = 0)
+#define HW_lcd_rs_high()            (PORTCbits.RC1 = 1)
+#define HW_lcd_rw_low()             (PORTCbits.RC2 = 0)
+#define HW_lcd_rw_high()            (PORTCbits.RC2 = 1)
+#define HW_lcd_en_low()             (PORTCbits.RC3 = 0)
+#define HW_lcd_en_high()            (PORTCbits.RC3 = 1)
+
+#endif
+
+#define HW_i2c_soft_sda_input()     SDA_TRIS = 1
+#define HW_i2c_soft_sda_output()    SDA_TRIS = 0
+#define HW_i2c_soft_sda_high()      SDA = 1
+#define HW_i2c_soft_sda_low()       SDA = 0
+#define HW_i2c_soft_sda_get()       (SDA)
+
+#define HW_i2c_soft_scl_input()     SCL_TRIS = 1
+#define HW_i2c_soft_scl_output()    SCL_TRIS = 0
+#define HW_i2c_soft_scl_high()      SCL = 1
+#define HW_i2c_soft_scl_low()       SCL = 0
 
 #else
 #error "device not supported"

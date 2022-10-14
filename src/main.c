@@ -401,7 +401,7 @@ uint8_t print_fuel_duration(uint8_t cursor_pos, align_t align) {
 //        len = strcpy2(buf, (char *) &empty_string, 0);
 //    } else
     {
-        uint16_t res = (uint16_t) (fuel_duration * (1000 / 250) / (TAHO_TIMER_TICKS_PER_PERIOD / 250));
+        uint16_t res = (uint16_t) (fuel_duration * (1000 / 250) / (HW_TAHO_TIMER_TICKS_PER_PERIOD / 250));
         len = print_fract(res, 2);
     }
     return lcd_print_half_width2(cursor_pos, len, POS_NONE, POS_MS, align);
@@ -895,7 +895,7 @@ void acceleration_measurement(uint8_t index) {
                 }
                 
                 // speed
-                lcd_print_half_width2(LCD_CURSOR_POS_10, ultoa2((char*) buf, accel_meas_drive_fl != 0 ? (uint16_t) ((360000UL * SPEED_TIMER_TICKS_PER_PERIOD / config.odo_const) / accel_meas_speed) : 0, 10), POS_NONE, POS_KMH, ALIGN_LEFT);
+                lcd_print_half_width2(LCD_CURSOR_POS_10, ultoa2((char*) buf, accel_meas_drive_fl != 0 ? (uint16_t) ((360000UL * HW_SPEED_TIMER_TICKS_PER_PERIOD / config.odo_const) / accel_meas_speed) : 0, 10), POS_NONE, POS_KMH, ALIGN_LEFT);
                 // time
                 lcd_print_half_width2(LCD_CURSOR_POS_11, print_fract(accel_meas_timer, 2), POS_NONE, POS_SEC, ALIGN_RIGHT);
             }
@@ -1106,7 +1106,9 @@ void screen_main(void) {
                 if (key2_longpress != 0) {
                     key2_longpress = 0;
 
-                    config_screen_temp_sensors();
+                    if (motor_fl == 0 && drive_fl == 0) {
+                        config_screen_temp_sensors();
+                    }
 
                     timeout_timer1 = ADDPAGE_TIMEOUT;
 
@@ -1485,11 +1487,16 @@ void config_screen_temp_sensors() {
     uint8_t _t_num[3] = {0, 0, 0};
     uint8_t current_device = 0;
     
-    // bad timings for pic?
+#if defined(HW_LEGACY)
+    // bad timings for pic (?) - wait for sound off and disable interrupts while 1-wire searching
     while (buzzer_fl != 0) {};
-    
+    HW_disable_interrupts();
     uint8_t num_devices = onewire_search_devices((uint8_t *) tbuf, 3);
-    
+    HW_enable_interrupts();
+#else
+    uint8_t num_devices = onewire_search_devices((uint8_t *) tbuf, 3);
+#endif
+
     ds18b20_start_conversion(); config_temperature_conv_fl = 0; timeout_timer2 = 100;
 
     timeout_timer1_loop(5) {
@@ -1740,15 +1747,15 @@ void _beep(uint8_t tone, uint16_t length)
   uint8_t r;
   for (i = 0; i < length; i++) {
     if ((i & 0x01) == 0) {
-      SND_ON;
+      HW_snd_on();
     } else {
-      SND_OFF;
+      HW_snd_off();
     }
     for (r = 0; r < tone; r++) {
       _delay_us(15);
     }
   }
-  SND_OFF;
+  HW_snd_off();
 }
 
 void beep(uint8_t beep)
@@ -1804,25 +1811,25 @@ void check_eeprom(uint8_t c) {
 // press ok button before start
 // release after pre_setting_t beeps for change setting
 void preinit_settings() {
-    while (KEY_OK_PRESSED) {
+    while (HW_key_ok_pressed()) {
         uint8_t keytime = SETTINGS_DELAY;
-        while (KEY_OK_PRESSED) {
-            _delay_ms(10);
+        while (HW_key_ok_pressed()) {
+            HW_delay_ms(10);
             if (--keytime == 0) {
                 keytime = SETTINGS_DELAY;
                 if (stage_setting < (FORCE_SETTING_MAX - 1)) {
                     stage_setting++;
                     for (uint8_t i = 0; i < stage_setting; i++) {
                         beep(BEEP_OK);
-                        delay_ms(150);
+                        HW_delay_ms(150);
                     }
                 } else {
-                    while (KEY_OK_PRESSED) {};
+                    while (HW_key_ok_pressed()) {};
                     stage_setting = 0;
                 }
             }
         }
-        if (!KEY_OK_PRESSED && stage_setting != 0) {
+        if (!HW_key_ok_pressed() && stage_setting != 0) {
             beep(BEEP_UP);
             beep(BEEP_UP);
             beep(BEEP_UP);
@@ -1954,9 +1961,24 @@ void set_consts() {
 void handle_temp() {
     unsigned char buf[8];
 
-    if (temperature_conv_fl != 0) {
-        temperature_conv_fl = 0;
+    if (temperature_conv_fl == 0) {
+        // start conversion for ds18b20/ds3231
+        temperature_conv_fl = 1;
+        timeout_temperature = 1;
+#if defined(DS18B20_TEMP)
+        ds18b20_start_conversion();
+#endif
+#if defined(DS3231_TEMP)
+#if defined(DS18B20_TEMP)
+        if (config.settings.ds3231_temp)
+#endif
+        {
+          DS3231_temp_start();
+        }
+#endif        
+    } else {
         // read temperature for ds18b20/ds3231
+        temperature_conv_fl = 0;
         timeout_temperature = TIMEOUT_TEMPERATURE;
 #if defined(DS18B20_TEMP)
         unsigned char _temps_ee_addr = EEPROM_DS18B20_ADDRESS;
@@ -1978,21 +2000,6 @@ void handle_temp() {
           DS3231_temp_read(&temps[TEMP_IN]);
         }
 #endif        
-    } else {
-        // start conversion for ds18b20/ds3231
-        temperature_conv_fl = 1;
-        timeout_temperature = 1;
-#if defined(DS18B20_TEMP)
-        ds18b20_start_conversion();
-#endif
-#if defined(DS3231_TEMP)
-#if defined(DS18B20_TEMP)
-        if (config.settings.ds3231_temp)
-#endif
-        {
-          DS3231_temp_start();
-        }
-#endif        
     }
 }
 
@@ -2005,7 +2012,7 @@ uint16_t get_speed(uint16_t kmh) {
 void handle_misc_values() {
     speed = get_speed((uint16_t) kmh);
     drive_min_speed_fl = speed >= config.selected_param.min_speed * 10;
-
+    
     if (trips.tripC_max_speed < speed) {
         trips.tripC_max_speed = speed;
     }
@@ -2080,7 +2087,7 @@ void power_on() {
 void power_off() {
     LCD_Clear();
     // save and shutdown;
-    disable_interrupts();
+    HW_disable_interrupts();
 
     if (save_tripc_time_fl != 0) {
         // save current time for tripC
@@ -2109,7 +2116,7 @@ void power_off() {
 
     save_eeprom();
 
-    PWR_OFF;
+    HW_pwr_off();
     while (1);
 }
 
@@ -2124,9 +2131,9 @@ void main() {
 
     power_on();
     
-    start_main_timer();
+    HW_start_main_timer();
 
-    enable_interrupts();
+    HW_enable_interrupts();
     
 #ifdef TEMPERATURE_SUPPORT
     timeout_temperature = 0;
