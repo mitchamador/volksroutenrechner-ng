@@ -48,10 +48,13 @@ signed char bcd_subtract(unsigned char a, unsigned char b) {
 }
 
 unsigned long strtoul2(char * buf) {
-    //return strtoul(buf, NULL, 10);
     unsigned long val = 0;
     while (*buf) {
-        val = val * 10 + (*buf++ - '0');
+        char c = *buf++;
+        if (c != '.')
+        {
+            val = val * 10 + (c - '0');
+        }
     }
     return val;
 }

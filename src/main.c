@@ -134,6 +134,18 @@ void save_eeprom(void);
 void save_eeprom_trips(void);
 void save_eeprom_config(void);
 
+//#define EDIT_VALUE_LONG_FRACTION
+
+#if defined(EDIT_VALUE_LONG_FRACTION)
+#define LONG_VALUE_EDITOR_DEFAULT_FRACTION , 0
+typedef uint24_t print_fract_t;
+typedef uint24_t edit_value_long_t;
+#else
+#define LONG_VALUE_EDITOR_DEFAULT_FRACTION
+typedef uint16_t print_fract_t;
+typedef uint24_t edit_value_long_t;
+#endif
+
 #define timeout_timer1_loop(timeout) timeout_timer1 = timeout; while (screen_refresh = 0, timeout_timer1 != 0)
 
 void wait_refresh_timeout() {
@@ -225,7 +237,7 @@ uint8_t lcd_print_half_width2(uint8_t cursor_pos, uint8_t len, unsigned char pos
  * @param frac numbers after '.'
  * @return 
  */
-uint8_t print_fract(uint16_t num, uint8_t frac) {
+uint8_t print_fract(print_fract_t num, uint8_t frac) {
     uint8_t len = ultoa2(buf, num, 10);
 
     // add leading zeroes
@@ -233,7 +245,7 @@ uint8_t print_fract(uint16_t num, uint8_t frac) {
         add_leading_symbols(buf, '0', len, frac + 1);
         len = frac + 1;
     }
-
+    
     // shift right and add '.'
     char *dst = &buf[len];
     char *src = dst - 1;
@@ -635,26 +647,36 @@ unsigned char edit_value_char(unsigned char v, edit_value_char_t mode, unsigned 
     return v;
 }
 
-unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
+#if defined(EDIT_VALUE_LONG_FRACTION)
+edit_value_long_t edit_value_long(edit_value_long_t v, edit_value_long_t max_value, uint8_t frac) {
+#else
+edit_value_long_t edit_value_long(edit_value_long_t v, edit_value_long_t max_value) {
+#endif
     // number of symbols to edit
-    unsigned char max_len = ultoa2(buf, max_value, 10);
 #ifdef KEY3_SUPPORT        
-    unsigned char _max_symbol_pos0 = buf[0];
+    uint8_t _max_symbol_pos0 = buf[0];
 #endif    
 #if defined(ENCODER_SUPPORT)
     uint8_t edit_mode = 0, buf_prev;
 #endif
-    if (v > max_value) {
-        v = max_value;
+
+#if defined(EDIT_VALUE_LONG_FRACTION)
+    // edit with fractional part
+    uint8_t max_len = print_fract((print_fract_t) max_value, frac);
+    if (v < max_value) {
+        add_leading_symbols(buf, '0', print_fract((print_fract_t) v, frac), max_len);
     }
-
-    // convert value
-    unsigned char v_len = ultoa2(buf, v, 10);
-
-    add_leading_symbols(buf, '0', v_len, max_len);
-
-    unsigned char cursor_pos = LCD_CURSOR_POS_10 + (LCD_WIDTH - max_len) / 2U;
-    unsigned char pos = 0;
+    buf[max_len] = 0;
+#else
+    uint8_t max_len = ultoa2(buf, max_value, 10);
+    if (v < max_value) {
+        // convert value
+        add_leading_symbols(buf, '0', ultoa2(buf, v, 10), max_len);
+    }
+#endif
+    
+    uint8_t cursor_pos = LCD_CURSOR_POS_10 + (LCD_WIDTH - max_len) / 2U;
+    uint8_t pos = 0;
 
     timeout_timer1_loop(5) {
 
@@ -675,15 +697,21 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
             if (config.settings.encoder != 0) {
                 edit_mode = ~edit_mode;
             } else
-#endif            
-            if (++buf[pos] > '9') {
-                buf[pos] = '0';
+#endif
+
+#if defined(EDIT_VALUE_LONG_FRACTION)
+            if (buf[pos] != '.')
+#endif
+            {
+                if (++buf[pos] > '9') {
+                    buf[pos] = '0';
+                }
             }
 
             timeout_timer1 = 5;
         }
 
-        unsigned long _t = strtoul2(buf);
+        uint32_t _t = strtoul2(buf);
         if (_t > max_value) {
 #if defined(ENCODER_SUPPORT)
             if (config.settings.encoder != 0) {
@@ -713,7 +741,7 @@ unsigned long edit_value_long(unsigned long v, unsigned long max_value) {
 
     screen_refresh = 1;
 
-    return strtoul2(buf);
+    return (edit_value_long_t) strtoul2(buf);
 }
 
 uint16_t edit_value_bits(uint16_t v, char* str) {
@@ -1454,11 +1482,11 @@ void config_screen_fuel_constant() {
 }
 
 void config_screen_vss_constant() {
-    config.odo_const = (uint16_t) edit_value_long(config.odo_const, 29999L);
+    config.odo_const = (uint16_t) edit_value_long(config.odo_const, 29999L LONG_VALUE_EDITOR_DEFAULT_FRACTION);
 }
 
 void config_screen_total_trip() {
-    config.odo = edit_value_long(config.odo, 999999L);
+    config.odo = (edit_value_long_t) edit_value_long((edit_value_long_t) config.odo, 999999L LONG_VALUE_EDITOR_DEFAULT_FRACTION);
 }
 
 void config_screen_settings_bits() {
@@ -1661,7 +1689,7 @@ void config_screen_service_counters() {
         lcd_print_full_width(LCD_CURSOR_POS_10, 0, ALIGN_NONE);
 
         if (c_sub_item == 0) {
-            services.mh.limit = (unsigned short) edit_value_long(services.mh.limit, 1999L);
+            services.mh.limit = (unsigned short) edit_value_long(services.mh.limit, 1999L LONG_VALUE_EDITOR_DEFAULT_FRACTION);
         } else {
             services.srv[c_sub_item - 1].limit = edit_value_char(services.srv[c_sub_item - 1].limit, CHAREDIT_MODE_10000KM, 0, 60);
         }
