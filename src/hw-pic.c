@@ -29,7 +29,7 @@ __interrupt() void HW_isr(void) {
 #endif
         // if overflow occurs during reading (between start of interrupt and TMR1 reading) - set to max value
         if (TIMER_MAIN_IF) {
-            main_timer += MAIN_TIMER_TICKS_PER_PERIOD;
+            main_timer += HW_MAIN_TIMER_TICKS_PER_PERIOD;
         }
 
         int_capture_injector_level_change();
@@ -98,11 +98,11 @@ void HW_Init(void) {
 #if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
     // ccp2 init (compare special event trigger 10ms + start adc)
     CCP2CON = (1 << _CCP2CON_CCP2M3_POSITION) | (0 << _CCP2CON_CCP2M2_POSITION) | (1 << _CCP2CON_CCP2M1_POSITION) | (1 << _CCP2CON_CCP2M0_POSITION);
-    CCPR2 = MAIN_TIMER_TICKS_PER_PERIOD;
+    CCPR2 = HW_MAIN_TIMER_TICKS_PER_PERIOD;
 #elif defined(_16F1936) || defined(_16F1938)
     // ccp5 init (compare special event trigger 10ms + start adc)
     CCP5CON = (1 << _CCP5CON_CCP5M3_POSITION) | (0 << _CCP5CON_CCP5M2_POSITION) | (1 << _CCP5CON_CCP5M1_POSITION) | (1 << _CCP5CON_CCP5M0_POSITION);
-    CCPR5 = MAIN_TIMER_TICKS_PER_PERIOD;
+    CCPR5 = HW_MAIN_TIMER_TICKS_PER_PERIOD;
 #endif    
 
     // adc interrupt
@@ -134,7 +134,7 @@ void HW_Init(void) {
     ANSELA = ANSELA_INIT;
     ANSELB = ANSELB_INIT;
 #endif    
-    ADCON0 = ADCON0_INIT | ADC_CHANNEL_POWER_SUPPLY;
+    ADCON0 = ADCON0_INIT | HW_ADC_CHANNEL_POWER_SUPPLY;
     ADCON1 = ADCON1_INIT;
     ADON = 1;
     

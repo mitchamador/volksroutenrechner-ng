@@ -32,20 +32,40 @@
 // round taho
 #define TAHO_ROUND 10
 // taho const 
-#define TAHO_CONST ((uint32_t) (60 / TAHO_TIMER_PERIOD * TAHO_TIMER_TICKS_PER_PERIOD))
+#define TAHO_CONST ((uint32_t) (60 / HW_TAHO_TIMER_PERIOD * HW_TAHO_TIMER_TICKS_PER_PERIOD))
 
 // speed timer counts between speed pulses when speed is X km/h
 // (1 / ((config.odo_const * X) / 3600)) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD) = ((3600 / X) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD) / config.odo_const
-#define speed_const(x) ((uint32_t) ((3600 / x) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD)))
+#define speed_const(x) ((uint32_t) ((3600 / x) / (HW_SPEED_TIMER_PERIOD / HW_SPEED_TIMER_TICKS_PER_PERIOD)))
+
+typedef union {
+    uint8_t byte;
+    struct {
+        unsigned index : 4;
+        unsigned config_switch : 1;
+        unsigned skip_key_handler : 1;
+        unsigned drive_mode : 1;
+        unsigned skip : 1;
+    };
+} main_page_t;
 
 typedef struct {
     void (*screen)(void);
-    uint8_t index;
+    main_page_t page;
 } screen_item_t;
 
+typedef union {
+    uint8_t byte;
+
+    struct {
+        unsigned title_string_index : 4;
+        unsigned index : 4;
+    };
+} config_page_t;
+
 typedef struct {
     void (*screen)(void);
-    uint8_t title_string_index;
+    config_page_t page;
 } screen_config_item_t;
 
 // ds18b20 temperatures

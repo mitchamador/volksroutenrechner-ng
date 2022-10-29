@@ -4,6 +4,8 @@
 #include "i2c.h"
 #include "utils.h"
 
+//#define LCD_BUFFERED
+
 #define LCD_I2C_ADDRESS 0x4E
 
 #ifndef LCD_LEGACY
@@ -37,15 +39,32 @@
 #define LCD_FUNCTION_SET       0x20
 #define LCD_TYPE               2       // 0 -> 5x7 | 1 -> 5x10 | 2 -> 2 lines
 
-//-----------[ Functions' Prototypes ]--------------
+// width
+#define LCD_WIDTH               16
 
-//---[ LCD Routines ]---
+// define cursor position for half width
+// 00           01
+// 10           11
+
+#if defined(LCD_BUFFERED)
+#define LCD_CURSOR_POS_00       0
+#define LCD_CURSOR_POS_01       (LCD_WIDTH/2)
+#define LCD_CURSOR_POS_10       (LCD_WIDTH)
+#define LCD_CURSOR_POS_11       (LCD_WIDTH + LCD_WIDTH/2)
+#else
+#define LCD_CURSOR_POS_00       0x80
+#define LCD_CURSOR_POS_01       0x88
+#define LCD_CURSOR_POS_10       0xC0
+#define LCD_CURSOR_POS_11       0xC8
+#endif
+// print to buffer only
+#define LCD_CURSOR_POS_NONE     0xFF
 
 // max delays for ~190kHz
 #define LCD_DELAY_CMD 53
 #define LCD_DELAY_CLEAR 2160
 
-#define LCD_Check_Busy() delay_us(LCD_DELAY_CMD)
+#define LCD_Check_Busy() HW_delay_us(LCD_DELAY_CMD)
 
 // delay en strobe delay
 #define LCD_delay_en_strobe()
@@ -53,8 +72,29 @@
 #define LCD_delay_4bits()
 
 void LCD_Init(void);
-void LCD_CMD(char CMD);
 void LCD_Clear(void);
+
+void LCD_CMD(char);
+void LCD_Data(char);
+
+#if defined(LCD_BUFFERED)
+#define LCD_cursor_off() LCD_cursor_set_state(LCD_CURSOR_OFF, 0);
+#define LCD_cursor_blink(pos) { LCD_cursor_set_state(LCD_BLINK_CURSOR_ON, pos); }
+#define LCD_cursor_underline(pos)  { LCD_cursor_set_state(LCD_UNDERLINE_ON, pos); }
+
+void LCD_flush_buffer(void);
+void LCD_cursor_set_position(uint8_t pos);
+void LCD_cursor_set_state(uint8_t mode, uint8_t pos);
+void LCD_Write_Buffer(char *src, uint8_t len);
+#else
+
+#define LCD_cursor_off() LCD_CMD(LCD_CURSOR_OFF);
+#define LCD_cursor_blink(pos) { LCD_CMD(pos); LCD_CMD(LCD_BLINK_CURSOR_ON); }
+#define LCD_cursor_underline(pos)  { LCD_CMD(pos); LCD_CMD(LCD_UNDERLINE_ON); }
+
+#define LCD_flush_buffer()
+#define LCD_cursor_set_position(pos) LCD_CMD(pos);
+#endif
 
 void LCD_Write_String(char*, unsigned char, unsigned char, align_t);
 

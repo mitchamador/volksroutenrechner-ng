@@ -2,6 +2,8 @@
 
 #if defined(__AVR__)
 #include <util/crc16.h>
+#else
+#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
 #endif
 
 unsigned char bcd8_to_bin(unsigned char b) {
@@ -46,10 +48,13 @@ signed char bcd_subtract(unsigned char a, unsigned char b) {
 }
 
 unsigned long strtoul2(char * buf) {
-    //return strtoul(buf, NULL, 10);
     unsigned long val = 0;
     while (*buf) {
-        val = val * 10 + (*buf++ - '0');
+        char c = *buf++;
+        if (c != '.')
+        {
+            val = val * 10 + (c - '0');
+        }
     }
     return val;
 }

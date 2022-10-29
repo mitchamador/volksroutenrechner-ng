@@ -19,27 +19,33 @@
 #endif
 
 // misc constants (in seconds)
-#define MAIN_INTERVAL ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
-#define DEBOUNCE ((uint8_t) (0.04f / MAIN_TIMER_PERIOD))
-#define SHORTKEY ((uint8_t) (0.5f / MAIN_TIMER_PERIOD))
-#define LONGKEY ((uint8_t) (1.0f / MAIN_TIMER_PERIOD))
-#define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / MAIN_TIMER_PERIOD))
+#define MAIN_INTERVAL ((uint8_t) (1.0f / HW_MAIN_TIMER_PERIOD))
+#define DEBOUNCE ((uint8_t) (0.04f / HW_MAIN_TIMER_PERIOD))
+#if defined(_DEBUG_)
+#define SHORTKEY ((uint8_t) (0.4f / HW_MAIN_TIMER_PERIOD))
+#define MULTICLICK ((uint8_t) (0.4f / HW_MAIN_TIMER_PERIOD))
+#else
+#define SHORTKEY ((uint8_t) (0.2f / HW_MAIN_TIMER_PERIOD))
+#define MULTICLICK ((uint8_t) (0.2f / HW_MAIN_TIMER_PERIOD))
+#endif
+#define LONGKEY ((uint8_t) (1.0f / HW_MAIN_TIMER_PERIOD))
+#define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / HW_MAIN_TIMER_PERIOD))
 // timeout constant in 0.01 ms resolution
-#define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / MAIN_TIMER_PERIOD))
+#define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / HW_MAIN_TIMER_PERIOD))
 // time with power supply measurements lower than threshold before shutdown
-#define SHUTDOWN ((uint8_t) (0.25f / MAIN_TIMER_PERIOD))
+#define SHUTDOWN ((uint8_t) (0.25f / HW_MAIN_TIMER_PERIOD))
 
 // min rpm
 #define TAHO_MIN_RPM 100UL
 // min rpm constant (1/(TAHO_MIN_RPM/60sec)/0.01s) 0.01s timer overflow
-#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / TAHO_TIMER_PERIOD))
+#define TAHO_OVERFLOW ((uint8_t) ((1.0f / (TAHO_MIN_RPM / 60.0f) ) / HW_TAHO_TIMER_PERIOD))
 
 // minimum pulse width for acceleration measurement calculation (0.1s)
 #define ACCEL_MEAS_OVERFLOW_CONST 10            /* (0.1f / SPEED_TIMER_PERIOD) */
-#if (65536 / SPEED_TIMER_TICKS_PER_PERIOD) >= ACCEL_MEAS_OVERFLOW_CONST
+#if (65536 / HW_SPEED_TIMER_TICKS_PER_PERIOD) >= ACCEL_MEAS_OVERFLOW_CONST
 #define ACCEL_MEAS_OVERFLOW ACCEL_MEAS_OVERFLOW_CONST
 #else
-#define ACCEL_MEAS_OVERFLOW (65536 / SPEED_TIMER_TICKS_PER_PERIOD)
+#define ACCEL_MEAS_OVERFLOW (65536 / HW_SPEED_TIMER_TICKS_PER_PERIOD)
 #endif
 
 // 0 - 100
@@ -60,15 +66,16 @@
 #define BUZZER_WARN             2
 #define BUZZER_NONE             -1
 
+// 10ms resolution
 #define BUZZER_KEY_COUNTER      1
-#define BUZZER_KEY_SOUND        1
-#define BUZZER_KEY_PAUSE        1
+#define BUZZER_KEY_SOUND        8
+#define BUZZER_KEY_PAUSE        0
 #define BUZZER_LONGKEY_COUNTER  1
-#define BUZZER_LONGKEY_SOUND    4
-#define BUZZER_LONGKEY_PAUSE    1
+#define BUZZER_LONGKEY_SOUND    40
+#define BUZZER_LONGKEY_PAUSE    0
 #define BUZZER_WARN_COUNTER     3
-#define BUZZER_WARN_SOUND       3
-#define BUZZER_WARN_PAUSE       2
+#define BUZZER_WARN_SOUND       30
+#define BUZZER_WARN_PAUSE       20
 
 #define FILTERED_VALUE_FIRST_SAMPLE 0x80
 
@@ -104,7 +111,7 @@ typedef union {
         unsigned mh_rpm : 1; // show motorhours based on rpm (96000 per hour)
         unsigned service_alarm : 1; // alarm for service counters
         unsigned key_sound : 1; // keys sound
-        unsigned show_misc_screen : 1; // show temperature/misc screen
+        unsigned deprecated_show_misc_screen : 1; // show temperature/misc screen
         unsigned par_injection : 1; // pair/parallel injection
     };
 } settings_u;
@@ -118,7 +125,7 @@ typedef union {
         uint8_t main_param : 4;
         uint8_t service_param : 4;
         uint8_t min_speed : 4;
-        uint8_t misc_param : 4;
+        uint8_t main_add_param : 4;
     };
 } param_u;
 
@@ -229,15 +236,23 @@ extern config_t config;
 extern trips_t trips;
 extern services_t services;
 
-__near extern volatile __bit screen_refresh;
+__near extern volatile flag_t screen_refresh;
 
-extern volatile __bit taho_fl, drive_fl, motor_fl, shutdown_fl;
+extern volatile flag_t taho_fl, drive_fl, motor_fl, shutdown_fl;
+extern volatile flag_t buzzer_fl;
 
-extern volatile __bit save_tripc_time_fl;
+extern volatile flag_t save_tripc_time_fl;
 
 // key variables and flags
-extern volatile uint8_t key_repeat_counter;
-extern volatile __bit key1_press, key2_press, key1_longpress, key2_longpress, key_pressed, key_longpressed;
+extern volatile flag_t key1_press, key2_press, key1_longpress, key2_longpress;
+
+#if defined(ENCODER_SUPPORT)
+extern volatile flag_t key2_doubleclick;
+#endif
+
+#if defined(KEY3_SUPPORT)
+extern volatile flag_t key3_press, key3_longpress;
+#endif
 
 extern volatile uint24_t taho;
 extern volatile uint16_t fuel_duration;
@@ -249,12 +264,9 @@ extern volatile uint8_t timeout_timer2;
 
 extern volatile adc_voltage_t adc_voltage;
 
-#if defined(KEY3_SUPPORT)
-extern volatile __bit key3_press, key3_longpress;
-#endif
 
 // acceleration measurement flags and variables
-extern volatile __bit accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl;
+extern volatile flag_t accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl;
 #ifdef EXTENDED_ACCELERATION_MEASUREMENT
 extern volatile uint16_t accel_meas_lower_const;
 #endif
@@ -282,7 +294,7 @@ extern uint8_t fuel1_const;
 #define CD_TIME_THRESHOLD_INIT   ((1 << CD_FILTER_VALUE_MIN) * 6)
 
 extern continuous_data_t cd;
-extern __bit continuous_data_fl;
+extern flag_t continuous_data_fl;
 extern volatile uint16_t cd_kmh, cd_fuel;
 void cd_init(void);
 void cd_increment_filter(void);
@@ -290,7 +302,11 @@ void cd_increment_filter(void);
 
 #if defined(KEY3_SUPPORT) || defined(ADC_BUTTONS)
 #define no_key_pressed() (key1_press == 0 && key2_press == 0 && key3_press == 0)
+#if defined(ENCODER_SUPPORT)
+#define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key2_doubleclick = 0; key3_press = 0; key3_longpress = 0
+#else
 #define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key3_press = 0; key3_longpress = 0
+#endif
 #else
 #define no_key_pressed() (key1_press == 0 && key2_press == 0)
 #define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
@@ -298,8 +314,6 @@ void cd_increment_filter(void);
 
 void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value);
 void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value);
-
-void wait_refresh_timeout(void);
 
 void int_capture_injector_level_change(void);
 void int_taho_timer_overflow(void);

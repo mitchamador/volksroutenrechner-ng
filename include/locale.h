@@ -113,10 +113,6 @@ typedef enum {
 
 #define SETTING_PAIRPAR_INJ             "\0pair/par inj"
 
-#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
-#define SETTING_SHOW_MISC_SCREEN        "\0misc screen"
-#endif
-
 #define SETTING_MH_RPM                  "\0mh rpm"
 
 #ifdef JOURNAL_SUPPORT
@@ -260,11 +256,6 @@ typedef enum {
 
 // "пар. впрыск"
 #define SETTING_PAIRPAR_INJ             "\0\xBE\x61\x70. \xB3\xBE\x70\xC3\x63\xBA"
-
-#if defined(TEMPERATURE_SUPPORT) || defined(MIN_MAX_VOLTAGES_SUPPORT) || defined(CONTINUOUS_DATA_SUPPORT)
-// "доп. экран"
-#define SETTING_SHOW_MISC_SCREEN        "\0\xE3\x6F\xBE. \xC5\xBA\x70\x61\xBD"
-#endif
 
 // "м/ч об/мин"
 #define SETTING_MH_RPM                  "\0\xBC/\xC0 \x6F\xB2/\xBC\xB8\xBD"
@@ -412,13 +403,13 @@ typedef enum {
 #define SETTING_TRIPB_MONTH             "\0"
 #endif
 
-#ifndef SETTING_SHOW_MISC_SCREEN
-#define SETTING_SHOW_MISC_SCREEN        "\0"
+#ifndef SETTING_DEPRECATED_SHOW_MISC_SCREEN
+#define SETTING_DEPRECATED_SHOW_MISC_SCREEN        "\0"
 #endif
 
 #define SETTINGS_BITS_ARRAY             \
             SETTING_PAIRPAR_INJ         \
-            SETTING_SHOW_MISC_SCREEN    \
+            SETTING_DEPRECATED_SHOW_MISC_SCREEN    \
             SETTING_KEY_SOUND           \
             SETTING_SERVICE_ALARM       \
             SETTING_MH_RPM              \

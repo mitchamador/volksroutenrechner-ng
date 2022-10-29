@@ -21,23 +21,23 @@ unsigned char _I2C_Master_Write(unsigned char address, unsigned char start)
 {
     if (start != 0) {
         //SDA_INPUT;                  // ensure SDA & SCL are high
-        SCL_HIGH;
-        delay_us(0.6);
-        SDA_OUTPUT;                   // SDA = output
-        SDA_LOW;                      // pull SDA low
-        delay_us(3.5);
+        HW_i2c_soft_scl_high();
+        HW_delay_us(0.6);
+        HW_i2c_soft_sda_output();     // SDA = output
+        HW_i2c_soft_sda_low();        // pull SDA low
+        HW_delay_us(3.5);
     }
 
-    unsigned char mask = 0x80;    // mask
+    unsigned char mask = 0x80;        // mask
 
     do {
-        bit_out(address & mask);     // output MSB bit
+        bit_out(address & mask);      // output MSB bit
         mask = mask >> 1;
     } while (mask != 0);
 
-    mask = bit_in();              // input ACK bit
-    delay_us(1);
-    SCL_LOW;                      // pull SCL low
+    mask = bit_in();                  // input ACK bit
+    HW_delay_us(1);
+    HW_i2c_soft_scl_low();            // pull SCL low
     return mask;
 
 }
@@ -47,11 +47,11 @@ unsigned char _I2C_Master_Write(unsigned char address, unsigned char start)
 unsigned char I2C_Master_Start(unsigned char address)
 {
     //SDA_INPUT;                  // ensure SDA & SCL are high
-    SCL_HIGH;
-    delay_us(0.6);
-    SDA_OUTPUT;                   // SDA = output
-    SDA_LOW;                      // pull SDA low
-    delay_us(3.5);
+    HW_i2c_soft_scl_high();
+    HW_delay_us(0.6);
+    HW_i2c_soft_sda_output();     // SDA = output
+    HW_i2c_soft_sda_low();        // pull SDA low
+    HW_delay_us(3.5);
 
     return I2C_Master_Write(address);
 }
@@ -66,8 +66,8 @@ unsigned char I2C_Master_Write(unsigned char data)
     } while (mask != 0);
 
     mask = bit_in();              // input ACK bit
-    delay_us(1);
-    SCL_LOW;                      // pull SCL low
+    HW_delay_us(1);
+    HW_i2c_soft_scl_low();        // pull SCL low
     return mask;
 
 }
@@ -76,12 +76,12 @@ unsigned char I2C_Master_Write(unsigned char data)
 
 void I2C_Master_Stop()
 {
-    SDA_OUTPUT;                   // SDA = output
-    SDA_LOW;                      // SDA low
-    delay_us(3.5);
-    SCL_HIGH;                     // pull SCL high
-    delay_us(0.6);
-    SDA_INPUT;                    // allow SDA to be pulled high
+    HW_i2c_soft_sda_output();     // SDA = output
+    HW_i2c_soft_sda_low();        // SDA low
+    HW_delay_us(3.5);
+    HW_i2c_soft_scl_high();       // pull SCL high
+    HW_delay_us(0.6);
+    HW_i2c_soft_sda_input();      // allow SDA to be pulled high
 }
 
 //....................................................................
@@ -89,16 +89,16 @@ void I2C_Master_Stop()
 //....................................................................
 void bit_out(unsigned char data)
 {
-    SCL_LOW;                      // ensure SCL is low
-    SDA_OUTPUT;                   // configure SDA as an output
+    HW_i2c_soft_scl_low();        // ensure SCL is low
+    HW_i2c_soft_sda_output();     // configure SDA as an output
     if (data == 0) {
-        SDA_LOW;
+        HW_i2c_soft_sda_low();
     } else {
-        SDA_HIGH;
+        HW_i2c_soft_sda_high();
     }
-    delay_us(3.5);
-    SCL_HIGH;                     // pull SCL high to clock bit
-    delay_us(2);
+    HW_delay_us(3.5);
+    HW_i2c_soft_scl_high();       // pull SCL high to clock bit
+    HW_delay_us(2);
 }
 
 
@@ -107,12 +107,12 @@ void bit_out(unsigned char data)
 //....................................................................
 unsigned char bit_in()
 {
-    SCL_LOW;                      // ensure SCL is low
-    delay_us(3.5);
-    SDA_INPUT;                    // configure SDA as an input
-    SCL_HIGH;                     // bring SCL high to begin transfer
-    delay_us(2);
-    return SDA_GET();             // input the received bit
+    HW_i2c_soft_scl_low();        // ensure SCL is low
+    HW_delay_us(3.5);
+    HW_i2c_soft_sda_input();      // configure SDA as an input
+    HW_i2c_soft_scl_high();       // bring SCL high to begin transfer
+    HW_delay_us(2);
+    return HW_i2c_soft_sda_get();             // input the received bit
 }
 
 unsigned char I2C_Read_Byte(unsigned char ack)
@@ -126,8 +126,8 @@ unsigned char I2C_Read_Byte(unsigned char ack)
     } while (--i != 0);
 
     bit_out(ack);                 // output ACK/NAK bit
-    delay_us(1);
-    SCL_LOW;                      // pull SCL low
+    HW_delay_us(1);
+    HW_i2c_soft_scl_low();        // pull SCL low
     return ret;
 }
 

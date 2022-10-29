@@ -4,7 +4,7 @@
 
 #if defined(JOURNAL_SUPPORT)
 
-__bit journal_support;
+flag_t journal_support;
 
 journal_header_t journal_header = {
     // journal_type_pos_t
@@ -24,7 +24,16 @@ unsigned char item[sizeof (journal_trip_item_t) >= sizeof (journal_accel_item_t)
 unsigned char* journal_read_item(journal_reader_t* jr, uint8_t journal_type) {
     while (1) {
         // read item from eeprom
-        int8_t _index = (int8_t) (jr->item_num == 0 ? jr->item_current : jr->item_index);
+        int8_t _index;
+        if (jr->item_num == 0) {
+            _index = (int8_t) jr->item_current;
+        } else {
+            _index = (int8_t) (jr->item_current + jr->item_max - jr->item_num);
+            if (jr->item_num <= jr->item_current) {
+                _index -= jr->item_max;
+            }
+        }
+
         uint8_t _size = journal_type == 3 ? sizeof (journal_accel_item_t) : sizeof (journal_trip_item_t);
 
         JOURNAL_read_eeprom_block((unsigned char *) &item, journal_find_eeaddr(journal_type, _index), _size);
@@ -42,7 +51,7 @@ void journal_update_header() {
     JOURNAL_write_eeprom_block((unsigned char *) &journal_header, J_EEPROM_MARK_POS + 8, sizeof (journal_header));
 }
 
-void journal_check_eeprom() {
+flag_t journal_check_eeprom() {
     // check mark
     bool init_fl = true;
     unsigned char buf[8];
@@ -77,6 +86,7 @@ void journal_check_eeprom() {
         // read journal header
         JOURNAL_read_eeprom_block((unsigned char *) &journal_header, J_EEPROM_MARK_POS + 8, sizeof (journal_header));
     }
+    return journal_support;
 }
 
 uint16_t journal_find_eeaddr(uint8_t index, int8_t item_index) {
@@ -84,12 +94,12 @@ uint16_t journal_find_eeaddr(uint8_t index, int8_t item_index) {
     for (uint8_t i = 0; i < index; i++) {
         eeaddr += sizeof (journal_trip_item_t) * journal_header.journal_type_pos[i].max;
     }
-    journal_type_pos_t *pos = &journal_header.journal_type_pos[index];
+    journal_type_pos_t *lcd_cursor_position = &journal_header.journal_type_pos[index];
     if (item_index == -1) {
-        if (++pos->current >= pos->max) {
-            pos->current = 0;
+        if (++lcd_cursor_position->current >= lcd_cursor_position->max) {
+            lcd_cursor_position->current = 0;
         }
-        item_index = (int8_t) pos->current;
+        item_index = (int8_t) lcd_cursor_position->current;
     }
     return eeaddr + (uint16_t) ((index == 3 ? sizeof (journal_accel_item_t) : sizeof (journal_trip_item_t)) * ((uint8_t) item_index));
 }
