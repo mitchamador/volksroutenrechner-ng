@@ -295,7 +295,7 @@ void int_fuel_timer_overflow() {
 void int_main_timer_overflow() {
     static flag_t key_longpressed;
 #if defined(ENCODER_SUPPORT)
-    static uint8_t key2_multiclick_counter, key2_clicks;
+    static uint8_t key2_click_counter, key2_clicks;
     static flag_t key_multiclicked;
 #endif    
     static uint8_t key1_counter = 0, key2_counter = 0;
@@ -331,6 +331,14 @@ void int_main_timer_overflow() {
 
         if (HW_key2_pressed()) // key pressed
         {
+#if defined(ENCODER_SUPPORT)
+            if (config.settings.encoder != 0 && key2_counter == 0) {
+                key2_click_counter = MULTICLICK;
+            }
+            if (key2_click_counter != 0) {
+                key2_click_counter--;
+            }
+#endif
             if (key2_counter <= LONGKEY) {
                 key2_counter++;
             }
@@ -339,17 +347,12 @@ void int_main_timer_overflow() {
                 key2_longpress = 1;
                 key_longpressed = 1;
             }
-#if defined(ENCODER_SUPPORT)
-            if (config.settings.encoder != 0 && key2_multiclick_counter == 0) {
-                key2_multiclick_counter = MULTICLICK;
-            }
-#endif
         } else // key released
         {
 #if defined(ENCODER_SUPPORT)
             if (config.settings.encoder != 0) {
                 if (key2_counter >= LONGKEY) {
-                    key2_multiclick_counter = 0;
+                    key2_click_counter = 0;
                     key2_clicks = 0;
                 } else {
                     if (key2_counter > DEBOUNCE && key2_counter <= SHORTKEY) {
@@ -358,7 +361,7 @@ void int_main_timer_overflow() {
                         buzzer_mode_index = BUZZER_KEY;
 #endif                    
                     }
-                    if (key2_multiclick_counter == 0) {
+                    if (key2_click_counter == 0 || key2_clicks == 2) {
                         if (key2_clicks == 1) {
                             key2_press = 1;
                             key_multiclicked = 1;
@@ -366,9 +369,10 @@ void int_main_timer_overflow() {
                             key2_doubleclick = 1;
                             key_multiclicked = 1;
                         }
+                        key2_click_counter = 0;
                         key2_clicks = 0;
                     } else {
-                        key2_multiclick_counter--;
+                        key2_click_counter--;
                     }
                 }
             }

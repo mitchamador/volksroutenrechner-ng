@@ -26,7 +26,7 @@
 #define MULTICLICK ((uint8_t) (0.4f / HW_MAIN_TIMER_PERIOD))
 #else
 #define SHORTKEY ((uint8_t) (0.2f / HW_MAIN_TIMER_PERIOD))
-#define MULTICLICK ((uint8_t) (0.2f / HW_MAIN_TIMER_PERIOD))
+#define MULTICLICK ((uint8_t) (0.3f / HW_MAIN_TIMER_PERIOD))
 #endif
 #define LONGKEY ((uint8_t) (1.0f / HW_MAIN_TIMER_PERIOD))
 #define KEY_REPEAT_PAUSE ((uint8_t) (0.15f / HW_MAIN_TIMER_PERIOD))
