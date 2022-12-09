@@ -19,6 +19,7 @@ flag_t drive_min_speed_fl;
 
 #ifdef TEMPERATURE_SUPPORT
 flag_t temperature_conv_fl;
+uint8_t main_temp_index;
 
 uint16_t _t;
 uint16_t temps[4] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE};
@@ -846,7 +847,7 @@ void print_selected_param1(uint8_t cursor_pos, align_t align) {
     switch (select_param(&params.main, selected_param_total)) {
 #if defined(TEMPERATURE_SUPPORT)
         case selected_param_temp:
-            print_temp(cursor_pos, (config.settings.show_inner_temp != 0 ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, align);
+            print_temp(cursor_pos, main_temp_index, align);
             break;
 #endif            
         case selected_param_voltage:
@@ -1089,7 +1090,7 @@ void screen_main(void) {
 
         if (drive_min_speed_fl == 0 && motor_fl == 0) {
 #if defined(TEMPERATURE_SUPPORT)
-            print_temp(LCD_CURSOR_POS_10, (config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, ALIGN_LEFT);
+            print_temp(LCD_CURSOR_POS_10, main_temp_index, ALIGN_LEFT);
 #else
             print_trip_odometer(LCD_CURSOR_POS_10, &trips.tripC, ALIGN_LEFT);
 #endif
@@ -1117,7 +1118,7 @@ void screen_main(void) {
         switch (select_param(&params.main_add, main_screen_page1_param_max)) {
             case main_screen_page1_param_avg:
 #if defined(TEMPERATURE_SUPPORT)
-                print_temp(LCD_CURSOR_POS_00, (config.settings.show_inner_temp ? TEMP_IN : TEMP_OUT) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN, ALIGN_LEFT);
+                print_temp(LCD_CURSOR_POS_00, main_temp_index, ALIGN_LEFT);
 #else
                 print_trip_odometer(LCD_CURSOR_POS_00, &trips.tripC, ALIGN_LEFT);
 #endif
@@ -1257,23 +1258,17 @@ void screen_trip() {
 
 #ifdef SERVICE_COUNTERS_SUPPORT
 /**
- * get motor hours (based on rpm or time)
+ * get motor hours
  * @return 
  */
 uint16_t get_mh() {
-    if (config.settings.mh_rpm != 0) {
-        // rpm based motor hours (rpm / 96000)
-        return (uint16_t) (services.mh.rpm / 96000UL);
-    } else {
-        // time based motor hours
-        return (uint16_t) (services.mh.time / 3600UL);
-    }
+    // time based motor hours
+    return (uint16_t) (services.mh.time / 3600UL);
 }
 
 void screen_service_counters() {
     
     srv_t* srv;
-    service_time_t s_time;
     unsigned short v;
     
     select_param(&service_param, 5);
@@ -1295,20 +1290,17 @@ void screen_service_counters() {
     buf[len++] = ' ';
     lcd_print_half_width(LCD_CURSOR_POS_10, len, ALIGN_RIGHT);
     
-    s_time = srv->time;
-
-    print_time_dmy(LCD_CURSOR_POS_11, s_time.day, s_time.month, s_time.year, ALIGN_RIGHT);
+    print_time_dmy(LCD_CURSOR_POS_11, srv->day, srv->month, srv->year, ALIGN_RIGHT);
     
     if (request_screen((char *) &reset_string) != 0) {
         read_ds_time();
         if (service_param == 0 || service_param == 1) {
             services.mh.time = 0;
-            services.mh.rpm = 0;
         }
         srv->counter = 0;
-        srv->time.day = time.day;
-        srv->time.month = time.month;
-        srv->time.year = time.year;
+        srv->day = time.day;
+        srv->month = time.month;
+        srv->year = time.year;
     }
 }
 #endif
@@ -2060,6 +2052,10 @@ void handle_misc_values() {
 #ifdef CONTINUOUS_DATA_SUPPORT
     cd_speed = get_speed((uint16_t) cd_kmh);
     drive_min_cd_speed_fl = cd_speed >= config.selected_param.min_speed * 10;
+#endif
+
+#ifdef TEMPERATURE_SUPPORT
+    main_temp_index = (config.settings.show_inner_temp == 0 ? TEMP_OUT : TEMP_IN) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN;
 #endif    
 }
 

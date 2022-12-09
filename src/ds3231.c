@@ -58,10 +58,11 @@ void DS3231_temp_read(uint16_t* raw_temp_value) {
         I2C_Master_RepeatedStart(0xD1);
         uint8_t msb = I2C_Read_Byte(ACK);
         uint8_t lsb = I2C_Read_Byte(NACK);
-        if (msb != 0xFF) {
-            *raw_temp_value = (((uint16_t) (msb << 4)) | (lsb >> 4));
-        } else {
+        if ((lsb & ~0xC0) != 0) {
             *raw_temp_value = DS18B20_TEMP_NONE;
+        } else {
+            int16_t _raw = msb << 8 | lsb;
+            *raw_temp_value = (uint16_t) (_raw >> 4);
         }
     }
     I2C_Master_Stop();

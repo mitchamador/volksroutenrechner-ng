@@ -113,8 +113,6 @@ typedef enum {
 
 #define SETTING_PAIRPAR_INJ             "\0pair/par inj"
 
-#define SETTING_MH_RPM                  "\0mh rpm"
-
 #ifdef JOURNAL_SUPPORT
 #define SETTING_TRIPB_MONTH             "\0trip B month"
 #endif
@@ -256,9 +254,6 @@ typedef enum {
 
 // "пар. впрыск"
 #define SETTING_PAIRPAR_INJ             "\0\xBE\x61\x70. \xB3\xBE\x70\xC3\x63\xBA"
-
-// "м/ч об/мин"
-#define SETTING_MH_RPM                  "\0\xBC/\xC0 \x6F\xB2/\xBC\xB8\xBD"
 
 // "проб. B мес."
 #ifdef JOURNAL_SUPPORT
@@ -403,16 +398,14 @@ typedef enum {
 #define SETTING_TRIPB_MONTH             "\0"
 #endif
 
-#ifndef SETTING_DEPRECATED_SHOW_MISC_SCREEN
-#define SETTING_DEPRECATED_SHOW_MISC_SCREEN        "\0"
-#endif
+#define SETTING_DUMMY                   "\0"
 
 #define SETTINGS_BITS_ARRAY             \
             SETTING_PAIRPAR_INJ         \
-            SETTING_DEPRECATED_SHOW_MISC_SCREEN    \
+            SETTING_DUMMY               \
             SETTING_KEY_SOUND           \
             SETTING_SERVICE_ALARM       \
-            SETTING_MH_RPM              \
+            SETTING_DUMMY               \
             SETTING_TRIPB_MONTH         \
             SETTING_TRIPC_DAY           \
             SETTING_INOUT_TEMP          \
