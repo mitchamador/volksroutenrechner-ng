@@ -1372,7 +1372,7 @@ void screen_journal_viewer() {
                 timeout_timer1_loop(5) {
 
                     if (jr.item_current != 0xFF) {
-                        handle_keys_next_prev(&jr.item_num, 0, jr.item_current);
+                        handle_keys_next_prev(&jr.item_num, 0, jr.item_max - 1);
 
                         if (jr.item_prev != jr.item_num) {
                             unsigned char *item = journal_read_item(&jr, journal_type);
