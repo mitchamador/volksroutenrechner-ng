@@ -48,7 +48,7 @@ volatile uint8_t adc_key;
 
 // key variables and flags
 volatile uint8_t key_repeat_counter;
-volatile flag_t key1_press, key2_press, key1_longpress, key2_longpress, key_pressed;
+volatile flag_t key1_press, key2_press, key1_longpress, key2_longpress, key_pressed, key_longpressed;
 
 #if defined(KEY3_SUPPORT)
 volatile flag_t key3_press, key3_longpress;
@@ -153,13 +153,6 @@ void int_capture_injector_level_change() {
             fuel_fl = 1;
             motor_fl = 1;
             save_tripc_time_fl = 1;
-
-#ifdef SERVICE_COUNTERS_SUPPORT
-            services.mh.rpm++;
-            if (config.settings.par_injection == 0) {
-                services.mh.rpm++;
-            }
-#endif
 
             // new taho calculation based on captured value of 0.01s timer
             if (taho_measure_fl == 0) {
@@ -293,7 +286,8 @@ void int_fuel_timer_overflow() {
 }
 
 void int_main_timer_overflow() {
-    static flag_t key_longpressed;
+    static uint8_t main_interval_counter = MAIN_INTERVAL;
+
 #if defined(ENCODER_SUPPORT)
     static uint8_t key2_click_counter, key2_clicks;
     static flag_t key_multiclicked;
@@ -302,7 +296,6 @@ void int_main_timer_overflow() {
 #ifdef KEY3_SUPPORT
     static uint8_t key3_counter = 0;
 #endif
-    static uint8_t main_interval_counter = MAIN_INTERVAL;
 
     if (key_repeat_counter == 0) {
 #ifdef ENCODER_SUPPORT

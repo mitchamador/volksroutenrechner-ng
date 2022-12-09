@@ -21,7 +21,7 @@
 // misc constants (in seconds)
 #define MAIN_INTERVAL ((uint8_t) (1.0f / HW_MAIN_TIMER_PERIOD))
 #define DEBOUNCE ((uint8_t) (0.04f / HW_MAIN_TIMER_PERIOD))
-#if defined(_DEBUG_)
+#if defined(__DEBUG) || defined(DEBUG)
 #define SHORTKEY ((uint8_t) (0.4f / HW_MAIN_TIMER_PERIOD))
 #define MULTICLICK ((uint8_t) (0.4f / HW_MAIN_TIMER_PERIOD))
 #else
@@ -98,38 +98,34 @@ typedef union {
 
     struct {
 #ifdef ENCODER_SUPPORT
-        unsigned encoder : 1; // encoder control
-        unsigned dummy : 5;
+        unsigned encoder            : 1; // encoder control
+        unsigned dummy              : 5;
 #else
-        unsigned dummy : 6;
+        unsigned dummy              : 6;
 #endif
         unsigned adc_fuel_normalize : 1; // normalize adc_fuel to adc_voltage
-        unsigned ds3231_temp : 1; // use ds3231 temperature as inner
-        unsigned show_inner_temp : 1; // show inner (outer by default) temperature on first screen
-        unsigned daily_tripc : 1; // use trip C as dayly counter (auto reset on next day)
-        unsigned monthly_tripb : 1; // use trip B as monthly counter (auto reset on next month)
-        unsigned mh_rpm : 1; // show motorhours based on rpm (96000 per hour)
-        unsigned service_alarm : 1; // alarm for service counters
-        unsigned key_sound : 1; // keys sound
-        unsigned deprecated_show_misc_screen : 1; // show temperature/misc screen
-        unsigned par_injection : 1; // pair/parallel injection
+        unsigned ds3231_temp        : 1; // use ds3231 temperature as inner
+        unsigned show_inner_temp    : 1; // show inner (outer by default) temperature on first screen
+        unsigned daily_tripc        : 1; // use trip C as dayly counter (auto reset on next day)
+        unsigned monthly_tripb      : 1; // use trip B as monthly counter (auto reset on next month)
+        unsigned dummy1             : 1; // 
+        unsigned service_alarm      : 1; // alarm for service counters
+        unsigned key_sound          : 1; // keys sound
+        unsigned dummy2             : 1; // 
+        unsigned par_injection      : 1; // pair/parallel injection
     };
 } settings_u;
-
-// little endian
 
 typedef union {
     uint16_t word;
 
     struct {
-        uint8_t main_param : 4;
-        uint8_t service_param : 4;
-        uint8_t min_speed : 4;
-        uint8_t main_add_param : 4;
+        uint8_t main_param          : 4;
+        uint8_t service_param       : 4;
+        uint8_t min_speed           : 4;
+        uint8_t main_add_param      : 4;
     };
 } param_u;
-
-// settings (16 bytes)
 
 typedef struct {
     // main odometer
@@ -151,9 +147,9 @@ typedef struct {
     param_u selected_param;
 
     // dummy bytes
-    uint8_t dummy[2];
+    //uint8_t dummy[2];
 
-} config_t; // 16 bytes total (16 bytes eeprom block)
+} config_t;                     // 14 bytes total (16 bytes eeprom block)
 
 typedef struct {
     uint16_t odo;
@@ -161,42 +157,36 @@ typedef struct {
     uint8_t fuel_tmp1, fuel_tmp2;
     uint16_t fuel;
     uint32_t time;
-} trip_t; // 12 bytes
+} trip_t;                       // 12 bytes
 
 typedef struct {
     uint8_t minute, hour, day, month, year;
-} trip_time_t; // 5 bytes
+} trip_time_t;                  // 5 bytes
 
 typedef struct {
     trip_t tripA, tripB, tripC; // 12 * 3 bytes
-    trip_time_t tripC_time; // 5 bytes
-    uint16_t tripC_max_speed; // 2 bytes
-    uint8_t tripB_month; // 1 byte
-} trips_t; // 44 bytes total (48 bytes eeprom block)
+    trip_time_t tripC_time;     // 5 bytes
+    uint8_t tripB_month;        // 1 byte
+    uint16_t tripC_max_speed;   // 2 bytes
+} trips_t;                      // 44 bytes total (48 bytes eeprom block)
 
 typedef struct {
-    uint8_t day;
-    uint8_t month;
-    uint8_t year;
-} service_time_t; // 3 bytes
+    uint32_t time;
+    uint16_t limit;
+} srv_mh_t;                     // 6 bytes
 
 typedef struct {
     uint16_t counter;
     uint8_t limit;
-    service_time_t time;
-    uint8_t dummy[2]; // fill to 8 bytes size
-} srv_t; // 8 bytes
+    uint8_t day;
+    uint8_t month;
+    uint8_t year;
+} srv_t;                        // 6 bytes
 
 typedef struct {
-    uint32_t time;
-    uint32_t rpm;
-    uint16_t limit;
-} srv_mh_t; // 10 bytes
-
-typedef struct {
-    srv_mh_t mh; // 10 bytes
-    srv_t srv[4]; // 4 * 8 bytes
-} services_t; // 42 bytes total (48 bytes eeprom block)
+    srv_mh_t mh;                // 6 bytes
+    srv_t srv[4];               // 4 * 6 bytes
+} services_t;                   // 30 bytes total (32 bytes eeprom block)
 
 typedef struct {
     uint16_t current;
@@ -213,24 +203,25 @@ typedef struct {
 
 typedef struct {
     uint32_t tmp;
-    uint8_t filter; // filter value (2^filter)
-} filtered_value_t; // 3 bytes
+    uint8_t filter;                      // filter value (2^filter)
+} filtered_value_t;                      // 5 bytes
 
 typedef void (*handle)(filtered_value_t *);
 
 typedef struct {
     void (*handle)(filtered_value_t *f); // handler                  (2 bytes)
-    filtered_value_t *f; // filtered value struct    (5 bytes)
-    uint8_t channel; // adc channel              (1 byte)
+    filtered_value_t *f;                 // filtered value struct    (5 bytes)
+    uint8_t channel;                     // adc channel              (1 byte)
 } adc_item_t;
 
 typedef struct {
-    filtered_value_t f_kmh; // filtered speed (pulses) value
-    filtered_value_t f_fuel; // filtered fuel (timer overflow) value
-    uint16_t time; // current time
-    uint16_t time_threshold; // time threshold for filtered value's readiness/increase filter value
-    uint8_t filter; // filter value for both speed and fuel (2^filter)
-} continuous_data_t; // 15 bytes total (16 bytes eeprom block)
+    filtered_value_t f_kmh;             // filtered speed (pulses) value
+    uint8_t filter;                     // filter value for both speed and fuel (2^filter)
+    filtered_value_t f_fuel;            // filtered fuel (timer overflow) value
+    uint8_t dummy;                      // dummy for word align
+    uint16_t time;                      // current time
+    uint16_t time_threshold;            // time threshold for filtered value's readiness/increase filter value
+} continuous_data_t;                    // 16 bytes total (16 bytes eeprom block)
 
 extern config_t config;
 extern trips_t trips;

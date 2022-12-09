@@ -60,7 +60,11 @@ endif
 OUTPUTNAME=volksroutenrechner-ng
 DEBUGGABLE_SUFFIX=elf
 OUTPUT_SUFFIX=hex
+ifeq ($(DEBUG),1)
+IMAGE_TYPE=debug
+else
 IMAGE_TYPE=production
+endif
 OBJECTDIR=${TARGET}
 DISTDIR=../dist/${TARGET}
 OUTDIR_FIRMWARE=../firmware
@@ -130,13 +134,13 @@ endif
 clobber:
 	$(info $(MAKEFILE_LIST))
 	MCU=pic16f876a $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
-	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+#	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=pic16f1938 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
-	MCU=pic18f242 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+#	MCU=pic18f242 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=pic18f252 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
-	MCU=atmega168p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+#	MCU=atmega168p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=atmega328p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
-	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+#	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 
 $(TARGET): $(OBJS)
 	@${MKDIR} ${DISTDIR}/${IMAGE_TYPE} 
@@ -153,7 +157,7 @@ endif
 ${OBJECTDIR}/${IMAGE_TYPE}/%.o : %.c
 	@${MKDIR} "${OBJECTDIR}/${IMAGE_TYPE}/src"
 ifeq ($(DEBUG),1)
-	${CC} $(CPPFLAGS) -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -MD -Og -D_DEBUG_ -ffunction-sections -fdata-sections -flto -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
+	${CC} $(CPPFLAGS) -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -MD -Og -DDEBUG -ffunction-sections -fdata-sections -flto -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
 else
 	${CC} $(CPPFLAGS) -o $@ -mmcu=$(MCU) -std=gnu11 -fno-fat-lto-objects -MD -Os -ffunction-sections -fdata-sections -flto -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums -mcall-prologues $(MP_EXTRA_CC_PRE) -I../include -I../src -c $<
 endif
@@ -161,9 +165,9 @@ endif
 ${OBJECTDIR}/${IMAGE_TYPE}/%.p1 : %.c
 	@${MKDIR} "${OBJECTDIR}/${IMAGE_TYPE}/src"
 ifeq ($(DEBUG),1)
-	${CC} $(CPPFLAGS) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) $(COMPARISON_BUILD)  -std=c99 -gcoff -o $@ -c $<
+	${CC} $(CPPFLAGS) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -D__DEBUG -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) $(COMPARISON_BUILD)  -std=c99 -gcoff -o $@ -c $<
 else
-	${CC} $(CPPFLAGS) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -D_DEBUG_ -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) $(COMPARISON_BUILD)  -std=c99 -gcoff -o $@ -c $<
+	${CC} $(CPPFLAGS) -mcpu=$(MP_PROCESSOR_OPTION) -c -mdfp="${DFP_DIR}/xc8"  -fno-short-double -fno-short-float -Os -fasmfile -maddrqual=require -xassembler-with-cpp -I"../include" -mwarn=-3 -Wa,-a -DXPRJ_$(TARGET)=$(CND_CONF)  -msummary=-psect,-class,+mem,-hex,-file  -ginhx32 -Wl,--data-init -mkeep-startup -mno-download $(XC8_OPTIONS) $(COMPARISON_BUILD)  -std=c99 -gcoff -o $@ -c $<
 endif
 	@${FIXDEPS} $(patsubst %.p1,%.d,$@) $(SILENT) -rsi ${CC_DIR}../ 
 
