@@ -753,7 +753,7 @@ void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value) {
         if (_v++ == max_value) {
             _v = min_value;
         }
-        timeout_timer1 = 5;
+        timeout_timer1 = IDLE_TIMEOUT;
     }
 #if defined(ENCODER_SUPPORT)
     if (config.settings.encoder != 0 && key2_press != 0) {
@@ -768,7 +768,7 @@ void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value) {
         if (_v-- == min_value) {
             _v = max_value;
         }
-        timeout_timer1 = 5;
+        timeout_timer1 = IDLE_TIMEOUT;
     }
     *v = _v;
 }
@@ -780,7 +780,7 @@ void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
         if (_v++ == max_value) {
             _v = min_value;
         }
-        timeout_timer1 = 5;
+        timeout_timer1 = IDLE_TIMEOUT;
     }
 
 #if defined(KEY3_SUPPORT)
@@ -789,7 +789,7 @@ void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
         if (_v-- == min_value) {
             _v = max_value;
         }
-        timeout_timer1 = 5;
+        timeout_timer1 = IDLE_TIMEOUT;
     }
 #endif
     *v = _v;

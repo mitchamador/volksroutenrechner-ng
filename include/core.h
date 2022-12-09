@@ -34,6 +34,8 @@
 #define INIT_TIMEOUT(t) ((uint8_t) (t * 10.0f * 0.1f / HW_MAIN_TIMER_PERIOD))
 // time with power supply measurements lower than threshold before shutdown
 #define SHUTDOWN ((uint8_t) (0.25f / HW_MAIN_TIMER_PERIOD))
+// timeout when no key pressed
+#define IDLE_TIMEOUT 8
 
 // min rpm
 #define TAHO_MIN_RPM 100UL
