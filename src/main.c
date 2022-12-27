@@ -1012,9 +1012,10 @@ typedef enum {
     main_screen_page1_param_max
 } main_screen_add_page_param;
 
-#define ADDPAGE_TIMEOUT         30
-#define ADDPAGE_TIMEOUT_IDLE    20
-#define ADDPAGE_TIMEOUT_DRIVE   8
+// timeouts for additional page (default >= idle (optional) >= drive (optional))
+#define ADDPAGE_TIMEOUT         60
+//#define ADDPAGE_TIMEOUT_IDLE    30
+#define ADDPAGE_TIMEOUT_DRIVE   10
 
 void screen_main(void) {
     
@@ -1036,7 +1037,7 @@ void screen_main(void) {
     //  param1          fuel_km
     
     //  main_screen_page != 0 (auto timeout when idling (ADDPAGE_TIMEOUT_IDLE) or driving (ADDPAGE_TIMEOUT_DRIVE))
-    //  key2 press to switch params (main_add_param)
+    //  key1/key3 press to switch params (main_add_param)
     //
     //  main_screen_page1_param_avg
     //  temp/odo        voltage
@@ -1055,21 +1056,15 @@ void screen_main(void) {
         main_screen_page = ~main_screen_page;
     }
 
-    uint8_t _d_timeout = ADDPAGE_TIMEOUT - timeout_timer1;
     if (timeout_timer1 == 0
-        || (drive_min_speed_fl != 0 && (_d_timeout >= ADDPAGE_TIMEOUT_DRIVE))
-        || (motor_fl != 0 && (_d_timeout >= ADDPAGE_TIMEOUT_IDLE))) {
-        main_screen_page = 0;
-    }
-
-#if defined(KEY3_SUPPORT)
-    if (key1_press != 0 || key3_press != 0) {
-        key3_press = 0;
-#else
-    if (key1_press != 0) {
+#if defined(ADDPAGE_TIMEOUT_IDLE) && (ADDPAGE_TIMEOUT > ADDPAGE_TIMEOUT_IDLE)
+            || (motor_fl != 0 && (timeout_timer1 <= (ADDPAGE_TIMEOUT - ADDPAGE_TIMEOUT_IDLE)))
 #endif
-        key1_press = 0;
-        main_screen_page = 0;                
+#if defined(ADDPAGE_TIMEOUT_DRIVE) && (ADDPAGE_TIMEOUT > ADDPAGE_TIMEOUT_DRIVE)
+            || (drive_min_speed_fl != 0 && (timeout_timer1 <= (ADDPAGE_TIMEOUT - ADDPAGE_TIMEOUT_DRIVE)))
+#endif
+        ) {
+        main_screen_page = 0;
     }
 
     if (main_screen_page == 0) {
@@ -1110,12 +1105,28 @@ void screen_main(void) {
         }
 #endif        
     } else {
-        current_item_main->page.skip_key_handler = 1;
         // additional page
-        if (key2_press != 0) {
+        current_item_main->page.skip_key_handler = 1;
+
+#if defined(TEMPERATURE_SUPPORT)
+        // force faster temperature update
+        if (temperature_conv_fl == 0 && timeout_temperature <= (TIMEOUT_TEMPERATURE - FORCED_TIMEOUT_TEMPERATURE + 1)) {
+            timeout_temperature = 0;
+        }
+#endif
+
+        handle_keys_next_prev(&params.main_add, 0, main_screen_page1_param_max - 1);
+
+        // override default timeout when key pressed
+        if (key1_press != 0 || key2_press != 0
+#if defined(KEY3_SUPPORT)
+                || key3_press != 0
+#endif
+                ) {
             timeout_timer1 = ADDPAGE_TIMEOUT;
         }
-        switch (select_param(&params.main_add, main_screen_page1_param_max)) {
+
+        switch (params.main_add) {
             case main_screen_page1_param_avg:
 #if defined(TEMPERATURE_SUPPORT)
                 print_temp(LCD_CURSOR_POS_00, main_temp_index, ALIGN_LEFT);
@@ -1141,7 +1152,6 @@ void screen_main(void) {
 
                     timeout_timer1 = ADDPAGE_TIMEOUT;
 
-                    clear_keys_state();
                     screen_refresh = 1;
                 } else
 #endif
@@ -1151,11 +1161,6 @@ void screen_main(void) {
 
                     print_temp(LCD_CURSOR_POS_10, TEMP_IN | PRINT_TEMP_PARAM_HEADER | PRINT_TEMP_PARAM_FRACT, ALIGN_RIGHT);
                     print_temp(LCD_CURSOR_POS_11, TEMP_ENGINE | PRINT_TEMP_PARAM_HEADER | PRINT_TEMP_PARAM_NO_PLUS_SIGN, ALIGN_RIGHT);
-
-                    // force faster temperature update
-                    if (temperature_conv_fl == 0 && timeout_temperature > FORCED_TIMEOUT_TEMPERATURE) {
-                        timeout_temperature = FORCED_TIMEOUT_TEMPERATURE;
-                    }
                 }
                 break;
 #endif
@@ -1203,7 +1208,7 @@ void screen_main(void) {
                 break;
 #endif
         }
-
+        clear_keys_state();
     }
 }
 
@@ -1733,19 +1738,17 @@ unsigned char check_service_counters() {
     return warn;
 }
 
-void print_warning_service_counters(unsigned char warn) {
-    unsigned char i;
+void print_warning_service_counters(uint8_t warn) {
+    uint8_t i;
     for (i = 0; i < 5; i++) {
         if ((warn & 0x01) != 0) {
 #ifdef SOUND_SUPPORT
             buzzer_mode_index = BUZZER_WARN;
 #endif
             lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char*) &warning_string, 0), ALIGN_CENTER);
-
             lcd_print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char*) &service_counters_array, i + 1), ALIGN_CENTER);
             
             wait_timeout(3);
-
             clear_keys_state();
         }
         warn >>= 1;
@@ -1978,8 +1981,15 @@ void set_consts() {
 
 #if defined(TEMPERATURE_SUPPORT)
 
+// max sequential crc errors before set temp to DS18B20_TEMP_NONE
+#define MAX_CRC_ERROR   5
+
 void handle_temp() {
     unsigned char buf[8];
+
+#if defined(DS18B20_TEMP) && defined(MAX_CRC_ERROR)
+    static uint8_t t_error[3] = {0, 0, 0};
+#endif
 
     if (temperature_conv_fl == 0) {
         // start conversion for ds18b20/ds3231
@@ -2005,9 +2015,20 @@ void handle_temp() {
         for (unsigned char i = 0; i < 3; i++) {
             HW_read_eeprom_block((unsigned char *) &buf, _temps_ee_addr, 8);
             if (ds18b20_read_temp_matchrom((unsigned char *) &buf, &_t) == 0) {
+#if defined(MAX_CRC_ERROR)
+                if (t_error[i] >= MAX_CRC_ERROR) {
+                    temps[i] = DS18B20_TEMP_NONE;
+                } else {
+                    t_error[i]++;
+                }
+#else
                 temps[i] = DS18B20_TEMP_NONE;
+#endif
             } else {
                 temps[i] = _t;
+#if defined(MAX_CRC_ERROR)
+                t_error[i] = 0;
+#endif
             }
             _temps_ee_addr += 8;
         }
@@ -2158,14 +2179,15 @@ void main() {
     HW_start_main_timer();
 
     HW_enable_interrupts();
-    
+
 #ifdef TEMPERATURE_SUPPORT
-    timeout_temperature = 0;
+    // wait 1 sec before first conversion's request
+    timeout_temperature = 1;
 #endif        
 
 #ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
     if (config.settings.service_alarm) {
-        unsigned char warn = check_service_counters();
+        uint8_t warn = check_service_counters();
         print_warning_service_counters(warn);
     }
 #endif
@@ -2175,6 +2197,9 @@ void main() {
     // wait first adc conversion
     while (adc_voltage.current == 0 && screen_refresh == 0)
         ;
+    
+    // force handle_misc_values
+    screen_refresh = 1;
     
     while (1) {
         if (screen_refresh != 0) {           
