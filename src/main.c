@@ -828,17 +828,22 @@ unsigned char select_param(unsigned char* param, unsigned char total) {
     return *param;
 }
 
+// extended params for main screen
+//#define EXT_PARAMS
+
 typedef enum {
 #if defined(TEMPERATURE_SUPPORT)
     selected_param_temp,
 #endif
     selected_param_voltage,
-    selected_param_trip_time,
-    selected_param_trip_odometer,
-    selected_param_trip_average_fuel,
-    selected_param_trip_average_speed,
-    selected_param_trip_total_fuel,
-    selected_param_max_speed,
+    selected_param_tripC_time,
+    selected_param_tripC_odometer,
+#if defined(EXT_PARAMS)
+    selected_param_tripC_average_fuel,
+    selected_param_tripC_average_speed,
+    selected_param_tripC_total_fuel,
+    selected_param_tripC_max_speed,
+#endif
     selected_param_fuel_duration,
     selected_param_total
 } selected_param_t;
@@ -853,24 +858,26 @@ void print_selected_param1(uint8_t cursor_pos, align_t align) {
         case selected_param_voltage:
             print_voltage(cursor_pos, (uint16_t *) &adc_voltage.current, POS_NONE, align);
             break;
-        case selected_param_trip_time:
+        case selected_param_tripC_time:
             print_trip_time(cursor_pos, &trips.tripC, align);
             break;
-        case selected_param_trip_odometer:
+        case selected_param_tripC_odometer:
             print_trip_odometer(cursor_pos, &trips.tripC, align);
             break;
-        case selected_param_trip_average_fuel:
+#if defined(EXT_PARAMS)
+        case selected_param_tripC_average_fuel:
             print_trip_average_fuel(cursor_pos, &trips.tripC, align);
             break;
-        case selected_param_trip_average_speed:
+        case selected_param_tripC_average_speed:
             print_trip_average_speed(cursor_pos, &trips.tripC, align);
             break;
-        case selected_param_trip_total_fuel:
+        case selected_param_tripC_total_fuel:
             print_trip_total_fuel(cursor_pos, &trips.tripC, align);
             break;
-        case selected_param_max_speed:
+        case selected_param_tripC_max_speed:
             print_speed(cursor_pos, trips.tripC_max_speed, POS_MAX, 1, align);
             break;
+#endif
         case selected_param_fuel_duration:
             print_fuel_duration(cursor_pos, align);
             break;
@@ -1225,29 +1232,31 @@ void clear_trip(bool force, trip_t* trip) {
 
 void screen_trip() {
     trip_t *trip;
-    uint8_t trips_pos;
+    uint8_t trips_pos, max_trip_params;
     
     uint8_t item_index = current_item_main->page.index;
 
     if (item_index == SCREEN_INDEX_TRIP_C) {
         trip = &trips.tripC;
         trips_pos = config.settings.daily_tripc ? TRIPS_POS_DAY : TRIPS_POS_CURR;
+        max_trip_params = 3;
     } else if (item_index == SCREEN_INDEX_TRIP_A) {
         trip = &trips.tripA;
         trips_pos = TRIPS_POS_A;
+        max_trip_params = 2;
     } else /*if (item_index == SCREEN_INDEX_TRIP_B) */{
         trip = &trips.tripB;
         trips_pos = TRIPS_POS_B;
+        max_trip_params = 2;
     };
 
     uint8_t len = strcpy2(buf, (char *) &trip_string, 0);
     len += strcpy2(&buf[len], (char *) trips_array, trips_pos);
-
     lcd_print_half_width(LCD_CURSOR_POS_00, len, ALIGN_LEFT);
 
     print_trip_odometer(LCD_CURSOR_POS_01, trip, ALIGN_RIGHT);
     
-    switch (select_param(&params.tmp, 2)) {
+    switch (select_param(&params.tmp, max_trip_params)) {
         case 0:
             print_trip_average_fuel(LCD_CURSOR_POS_10, trip, ALIGN_LEFT);
             print_trip_average_speed(LCD_CURSOR_POS_11, trip, ALIGN_RIGHT);
@@ -1255,6 +1264,10 @@ void screen_trip() {
         case 1:
             print_trip_time(LCD_CURSOR_POS_10, trip, ALIGN_LEFT);
             print_trip_total_fuel(LCD_CURSOR_POS_11, trip, ALIGN_RIGHT);
+            break;
+        case 2:
+            print_speed(LCD_CURSOR_POS_10, trips.tripC_max_speed, POS_MAX, 1, ALIGN_LEFT);
+            lcd_print_half_width(LCD_CURSOR_POS_11, 0, ALIGN_RIGHT); // empty
             break;
     }
 
