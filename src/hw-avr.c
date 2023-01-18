@@ -5,19 +5,31 @@
 #include <avr/eeprom.h>
 #include <util/twi.h>
 
+uint8_t skip_timer_speed_fuel_overflow;
+
 /* pin change interrupt vector (speed, fuel)*/
 ISR(PCINT0_vect) {
 
     /* Capture main timer value */
     main_timer = TCNT1;
 
-    // if overflow occurs during reading (between start of interrupt and TMR1 reading) - set to max value
+    // check if timer overflow occurs during main_timer reading
 #if defined(_DEBUG_)
     if ((TIFR1 & (1 << OCF1A)) != 0) {
 #else
     if ((TIFR1 & (1 << ICF1)) != 0) {
 #endif
-        main_timer += HW_MAIN_TIMER_TICKS_PER_PERIOD;
+        // check if main timer interrupts occurs before or while reading TMR1
+        if (main_timer <= TCNT1) {
+            // run overflow routines before fuel/speed changing processing
+            int_taho_timer_overflow();
+            int_speed_timer_overflow();
+            skip_timer_speed_fuel_overflow = 1;
+#if defined(_DEBUG_)
+        } else {
+            skip_timer_speed_fuel_overflow = 0;
+#endif
+        }
     }
 
     int_capture_injector_level_change();
@@ -43,8 +55,12 @@ ISR(TIMER1_COMPA_vect) {
 #else
 ISR(TIMER1_CAPT_vect) {
 #endif
-    int_taho_timer_overflow();
-    int_speed_timer_overflow();
+    if (skip_timer_speed_fuel_overflow == 0) {
+        int_taho_timer_overflow();
+        int_speed_timer_overflow();
+    } else {
+        skip_timer_speed_fuel_overflow = 0;
+    }
 
     int_main_timer_overflow();
 }
