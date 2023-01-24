@@ -113,7 +113,7 @@ typedef union {
         unsigned dummy1             : 1; // 
         unsigned service_alarm      : 1; // alarm for service counters
         unsigned key_sound          : 1; // keys sound
-        unsigned dummy2             : 1; // 
+        unsigned instant_fuel_avg   : 1; // averaging (filtering) instant fuel
         unsigned par_injection      : 1; // pair/parallel injection
     };
 } settings_u;

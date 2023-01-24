@@ -103,6 +103,10 @@ void cd_init(void);
 void cd_increment_filter(void);
 #endif
 
+#if defined(INSTANT_FUEL_AVERAGE_SUPPORT)
+filtered_value_t f_fuel = {0, 1};
+#endif
+
 #if !defined(SIMPLE_ADC)
 
 uint16_t adc_value;
@@ -114,7 +118,6 @@ void adc_handler_buttons(filtered_value_t *f);
 void adc_handler_fuel_tank(filtered_value_t *f);
 
 #if defined(ADC_BUTTONS) || defined(FUEL_TANK_SUPPORT)
-
 uint8_t _adc_ch;
 
 #ifdef ADC_BUTTONS
@@ -472,8 +475,18 @@ void int_main_timer_overflow() {
 #endif
         }
 
-        // copy temp interval variables to main
-        fuel = fuel_tmp;
+        // copy temp interval variables to main (with filtering if enabled and supported)
+#if defined(INSTANT_FUEL_AVERAGE_SUPPORT)
+        if (config.settings.instant_fuel_avg != 0) {
+            fuel = calc_filtered_value(&f_fuel, fuel_tmp);
+        } else
+#endif
+        {
+            fuel = fuel_tmp;
+        }
+        if (motor_fl == 0) {
+            fuel = 0;
+        }
         fuel_tmp = 0;
 
         if (kmh_tmp != 0) {

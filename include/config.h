@@ -75,6 +75,8 @@
 //#define NO_MIN_MAX_VOLTAGES
 // no fuel tank support
 #define NO_FUEL_TANK
+// no instant fuel averaging
+#define NO_INSTANT_FUEL_AVERAGE
 #endif /* _16F876A */
 
 #if defined(_16F1936)
@@ -229,6 +231,11 @@
 // voltages min/max 
 #ifndef NO_MIN_MAX_VOLTAGES
 #define MIN_MAX_VOLTAGES_SUPPORT
+#endif
+
+// instant fuel averaging
+#ifndef NO_INSTANT_FUEL_AVERAGE
+#define INSTANT_FUEL_AVERAGE_SUPPORT
 #endif
 
 #if defined(ENCODER_SUPPORT) && !defined(KEY3_SUPPORT)
