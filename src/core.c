@@ -13,6 +13,10 @@ config_t config;
 trips_t trips;
 services_t services;
 
+__bank2 print_trip_t ptrip;
+
+__bank2 live_data_t data;
+
 volatile uint24_t taho, taho_timer_ticks;
 volatile uint16_t taho_timer_prev;
 volatile uint8_t taho_timer_ofl;
@@ -91,14 +95,15 @@ volatile adc_voltage_t adc_voltage = {0};
 #endif
 
 uint8_t fuel1_const;
+uint8_t fuel2_const;
+uint16_t odo_con4;
 
 uint16_t calc_filtered_value(filtered_value_t *, uint16_t);
 
 #ifdef CONTINUOUS_DATA_SUPPORT
 continuous_data_t cd;
-flag_t continuous_data_fl, drive_min_cd_speed_fl;
+flag_t continuous_data_fl;
 volatile uint16_t cd_kmh, cd_fuel;
-uint16_t cd_speed;
 void cd_init(void);
 void cd_increment_filter(void);
 #endif
@@ -870,19 +875,95 @@ void fill_trip_time(trip_time_t *trip_time) {
     trip_time->year = time.year;
 }
 
-uint16_t get_trip_average_speed(trip_t* t) {
-    uint16_t average_speed = 0;
-    if (t->time > 0) {
-        average_speed = (uint16_t) ((uint32_t) ((t->odo * 36000UL) + (t->odo_temp * 36000UL / config.odo_const)) / t->time);
-    }
-    return average_speed;
+uint16_t round_div(uint16_t dividend, uint16_t divisor) {
+    return (dividend + (divisor / 2)) / divisor;
 }
 
-uint16_t get_trip_odometer(trip_t* t) {
-    //     //bug(?) in xc8 or proteus for 16f1938
-    //     return (uint16_t) (t->odo * 10UL + (uint16_t) (t->odo_temp * 10UL / config.odo_const));
-
+void fill_print_trip(print_trip_t* pt, trip_t* t) {
     uint16_t int_part = t->odo * 10;
     uint16_t frac_part = (uint16_t) (t->odo_temp * 10UL / config.odo_const);
-    return int_part + frac_part;
+    pt->odo = int_part + frac_part;
+
+    pt->fuel = round_div(t->fuel, 10U);
+    pt->time = (uint16_t) (t->time / 60U);
+
+    if (t->time > 0) {
+        pt->average_speed = round_div((uint16_t) ((uint32_t) ((t->odo * 360000UL) + (t->odo_temp * 360000UL / config.odo_const)) / t->time), 10);
+    } else {
+        pt->average_speed = 0;
+    }
+
+    if (pt->fuel < AVERAGE_MIN_FUEL || pt->odo < AVERAGE_MIN_DIST) {
+        pt->average_fuel = 0;
+    } else {
+        pt->average_fuel = round_div((uint16_t) (t->fuel * 1000UL / pt->odo), 10);
+    }
+}
+uint16_t get_voltage_value(uint16_t *adc_voltage) {
+    return (uint16_t) (*adc_voltage << 5) / (uint8_t) (VOLTAGE_ADJUST_CONST_MAX - (config.vcc_const - VOLTAGE_ADJUST_CONST_MIN));
+}
+
+uint16_t get_speed(uint16_t kmh) {
+    return (uint16_t) ((36000UL * (uint32_t) kmh) / (uint32_t) config.odo_const);
+}
+
+uint16_t get_instant_fuel(uint16_t fuel, uint16_t kmh, uint8_t drive_fl) {
+    uint16_t t;
+    if (drive_fl == 0) {
+        // l/h
+        t = round_div((uint16_t) ((uint32_t) fuel * (uint32_t) fuel2_const / (uint32_t) config.fuel_const), 10);
+    } else {
+        // l/100km
+        t = round_div((uint16_t) ((((uint32_t) fuel * (uint32_t) odo_con4) / (uint32_t) kmh) / ((uint16_t) config.fuel_const)), 10);
+    }
+    return t;
+}
+
+void fill_live_data() {
+    data.speed = get_speed((uint16_t) kmh);
+    if (trips.tripC_max_speed < data.speed) {
+        trips.tripC_max_speed = data.speed;
+    }
+
+    data.fuel_instant = get_instant_fuel(fuel, kmh, data.speed >= config.selected_param.min_speed * 10);
+
+    if (taho_fl == 0) {
+        data.taho_rpm = 0;
+    } else {
+        data.taho_rpm = (unsigned short) (((config.settings.par_injection != 0 ? (TAHO_CONST) : (TAHO_CONST*2)) / taho));
+#ifdef TAHO_ROUND
+        data.taho_rpm = round_div(data.taho_rpm, TAHO_ROUND) * TAHO_ROUND;        
+#endif
+    }
+
+    data.fuel_duration_ms = (uint16_t) (fuel_duration * (1000 / 250) / (HW_TAHO_TIMER_TICKS_PER_PERIOD / 250));
+
+    if (drive_fl != 0 && data.speed == 0) {
+        drive_fl = 0;
+    }
+
+#ifdef CONTINUOUS_DATA_SUPPORT
+    data.cd_speed = get_speed((uint16_t) cd_kmh);
+    data.cd_fuel_instant = get_instant_fuel(cd_fuel, cd_kmh, data.cd_speed >= config.selected_param.min_speed * 10);
+#endif
+
+}
+
+void set_consts() {
+    // default const
+    fuel1_const = 65;
+    fuel2_const = 28 * 2;                                                     // immediate fuel consumption const (l/h)
+    odo_con4 = (uint16_t) ((uint32_t) (config.odo_const * 202UL) / 130UL);    // immediate fuel consumption const (l/100km)
+    // const for dual injection
+    if (config.settings.par_injection != 0) {
+        fuel1_const <<= 1; // * 2
+        fuel2_const >>= 1; // / 2
+        odo_con4 >>= 1;    // / 2
+    }
+#ifndef MIN_SPEED_CONFIG
+    config.selected_param.min_speed = MIN_SPEED_DEFAULT;
+#endif
+#ifndef EXTENDED_ACCELERATION_MEASUREMENT
+    accel_meas_upper_const = (unsigned short) (speed_const(100) / config.odo_const);
+#endif
 }

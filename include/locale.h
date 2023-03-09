@@ -121,7 +121,9 @@ typedef enum {
 #define SETTING_TRIPB_MONTH             "\0trip B month"
 #endif
 
+#ifndef SIMPLE_TRIPC_TIME_CHECK
 #define SETTING_TRIPC_DAY               "\0trip C day"
+#endif
 
 #ifdef TEMPERATURE_SUPPORT
 #define SETTING_INOUT_TEMP              "\0in/out temp"
@@ -269,8 +271,10 @@ typedef enum {
 #define SETTING_TRIPB_MONTH             "\0\xBE\x70\x6F\xB2. B \xBC\x65\x63."
 #endif
 
+#ifndef SIMPLE_TRIPC_TIME_CHECK
 // "проб. C дн."
 #define SETTING_TRIPC_DAY               "\0\xBE\x70\x6F\xB2. C \xE3\xBD."
+#endif
 
 #ifdef TEMPERATURE_SUPPORT
 // "вн/нар темп."
@@ -397,6 +401,10 @@ typedef enum {
 
 #ifndef SETTING_DS3231_TEMP
 #define SETTING_DS3231_TEMP             "\0"
+#endif
+
+#ifndef SETTING_TRIPC_DAY
+#define SETTING_TRIPC_DAY               "\0"
 #endif
 
 #ifndef SETTING_INOUT_TEMP

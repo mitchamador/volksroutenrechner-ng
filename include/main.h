@@ -3,40 +3,6 @@
 
 #include "core.h"
 
-// temperature timeout
-#define TIMEOUT_TEMPERATURE (30 - 1)
-#define FORCED_TIMEOUT_TEMPERATURE (5 - 1)
-
-// const for voltage adjust
-#define VOLTAGE_ADJUST_CONST_MIN 140
-#define VOLTAGE_ADJUST_CONST_MAX 230
-
-// default min speed for drive mode (km/h)
-#define MIN_SPEED_DEFAULT 5
-
-//show average speed (or fuel consumption) after distance AVERAGE_MIN_DIST * 0.1 km
-#define AVERAGE_MIN_DIST 3
-
-// show average fuel consumption after total consumption of AVERAGE_MIN_FUEL * 0,01 litres
-#define AVERAGE_MIN_FUEL 5
-
-// max value of trip A odometer
-#define MAX_ODO_TRIPA 2000
-
-// max value of trip B odometer
-#define MAX_ODO_TRIPB 6000
-
-// max pause for continuing trip C
-#define TRIPC_PAUSE_MINUTES 120
-
-// round taho
-#define TAHO_ROUND 10
-// taho const 
-#define TAHO_CONST ((uint32_t) (60 / HW_TAHO_TIMER_PERIOD * HW_TAHO_TIMER_TICKS_PER_PERIOD))
-
-// speed timer counts between speed pulses when speed is X km/h
-// (1 / ((config.odo_const * X) / 3600)) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD) = ((3600 / X) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD) / config.odo_const
-#define speed_const(x) ((uint32_t) ((3600 / x) / (HW_SPEED_TIMER_PERIOD / HW_SPEED_TIMER_TICKS_PER_PERIOD)))
 
 typedef union {
     uint8_t byte;

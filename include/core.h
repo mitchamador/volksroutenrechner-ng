@@ -6,6 +6,42 @@
 #include "hw.h"
 #include "ds3231.h"
 
+// temperature timeout
+#define TIMEOUT_TEMPERATURE (30 - 1)
+#define FORCED_TIMEOUT_TEMPERATURE (5 - 1)
+
+// const for voltage adjust
+#define VOLTAGE_ADJUST_CONST_MIN 140
+#define VOLTAGE_ADJUST_CONST_MAX 230
+#define VOLTAGE_ADJUST_CONST_MAX 230
+
+// default min speed for drive mode (km/h)
+#define MIN_SPEED_DEFAULT 5
+
+//show average speed (or fuel consumption) after distance AVERAGE_MIN_DIST * 0.1 km
+#define AVERAGE_MIN_DIST 3
+
+// show average fuel consumption after total consumption of AVERAGE_MIN_FUEL * 0,01 litres
+#define AVERAGE_MIN_FUEL 5
+
+// max value of trip A odometer
+#define MAX_ODO_TRIPA 2000
+
+// max value of trip B odometer
+#define MAX_ODO_TRIPB 6000
+
+// max pause for continuing trip C
+#define TRIPC_PAUSE_MINUTES 120
+
+// round taho
+#define TAHO_ROUND 10
+// taho const 
+#define TAHO_CONST ((uint32_t) (60 / HW_TAHO_TIMER_PERIOD * HW_TAHO_TIMER_TICKS_PER_PERIOD))
+
+// speed timer counts between speed pulses when speed is X km/h
+// (1 / ((config.odo_const * X) / 3600)) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD) = ((3600 / X) / (SPEED_TIMER_PERIOD / SPEED_TIMER_TICKS_PER_PERIOD) / config.odo_const
+#define speed_const(x) ((uint32_t) ((3600 / x) / (HW_SPEED_TIMER_PERIOD / HW_SPEED_TIMER_TICKS_PER_PERIOD)))
+
 // power supply threshold 
 // with default divider resistor's (8,2k (to Vcc) + 3,6k (to GND)) values
 // THRESHOLD_VOLTAGE * (3,6 / (3,6 + 8,2)) * (1024 / 5) = THRESHOLD_VOLTAGE_ADC_VALUE
@@ -108,7 +144,11 @@ typedef union {
         unsigned adc_fuel_normalize : 1; // normalize adc_fuel to adc_voltage
         unsigned ds3231_temp        : 1; // use ds3231 temperature as inner
         unsigned show_inner_temp    : 1; // show inner (outer by default) temperature on first screen
+#ifndef SIMPLE_TRIPC_TIME_CHECK
         unsigned daily_tripc        : 1; // use trip C as dayly counter (auto reset on next day)
+#else
+        unsigned dummy_daily_tripc  : 1;
+#endif
         unsigned monthly_tripb      : 1; // use trip B as monthly counter (auto reset on next month)
         unsigned dummy1             : 1; // 
         unsigned service_alarm      : 1; // alarm for service counters
@@ -154,12 +194,34 @@ typedef struct {
 } config_t;                     // 14 bytes total (16 bytes eeprom block)
 
 typedef struct {
+    uint16_t speed;
+    uint16_t taho_rpm;
+    uint16_t fuel_duration_ms;
+    uint16_t fuel_instant;
+
+#ifdef CONTINUOUS_DATA_SUPPORT
+    uint16_t cd_speed;
+    uint16_t cd_fuel_instant;
+#endif
+
+} live_data_t;
+
+typedef struct {
     uint16_t odo;
     uint16_t odo_temp;
     uint8_t fuel_tmp1, fuel_tmp2;
     uint16_t fuel;
     uint32_t time;
 } trip_t;                       // 12 bytes
+
+typedef struct {
+    uint16_t odo;
+    uint16_t average_speed;
+    uint16_t average_fuel;
+    uint16_t fuel;
+    uint16_t time;
+    uint16_t dummy;
+} print_trip_t;                 // 12 bytes
 
 typedef struct {
     uint8_t minute, hour, day, month, year;
@@ -229,6 +291,10 @@ extern config_t config;
 extern trips_t trips;
 extern services_t services;
 
+extern __bank2 print_trip_t ptrip;
+
+extern __bank2 live_data_t data;
+
 __near extern volatile flag_t screen_refresh;
 
 extern volatile flag_t taho_fl, drive_fl, motor_fl, shutdown_fl;
@@ -277,8 +343,6 @@ extern volatile int8_t buzzer_mode_index;
 extern volatile uint8_t timeout_temperature;
 #endif
 
-extern uint8_t fuel1_const;
-
 #ifdef CONTINUOUS_DATA_SUPPORT
 
 // continuous data parameters
@@ -326,9 +390,17 @@ extern volatile uint16_t speed_timer;
 #endif
 
 void read_ds_time(void);
+
 void fill_trip_time(trip_time_t *);
 
-uint16_t get_trip_odometer(trip_t* t);
-uint16_t get_trip_average_speed(trip_t* t);
+void fill_print_trip(print_trip_t* pt, trip_t* t);
+
+uint16_t get_voltage_value(uint16_t *adc_voltage);
+
+void fill_live_data(void);
+
+void set_consts(void);
+
+uint16_t round_div(uint16_t dividend, uint16_t divisor);
 
 #endif	/* CORE_H */
