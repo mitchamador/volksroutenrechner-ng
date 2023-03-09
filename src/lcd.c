@@ -146,7 +146,7 @@ void LCD_Write_Buffer(char *src, uint8_t len) {
     while (--len != 0) {
         uint8_t ch = *src++;
 #ifdef LCD_LEGACY
-        HW_rs_high;
+        HW_lcd_rs_high();
         LCD_Write_4Bit(ch);
         LCD_delay_4bits();
         LCD_Write_4Bit((unsigned char) (ch << 4));
