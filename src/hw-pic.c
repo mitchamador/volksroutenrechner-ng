@@ -4,6 +4,8 @@
 
 __interrupt() void HW_isr(void) {
 
+    static __bit skip_timer_speed_fuel_overflow;
+    
     /* pin change interrupt */
     if (PIN_CHANGE_IF) {
 #if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
@@ -19,7 +21,7 @@ __interrupt() void HW_isr(void) {
         *((uint8_t*) (&main_timer) + 0) = TMR1L;
         *((uint8_t*) (&main_timer) + 1) = TMR1H;
 #else
-        // read 16bit TMR1 value (read TMR1H, TMR1L; if TMR1L == 0x00, re-read TMR1H)
+        // read 16bit TMR1 value (read TMR1H, TMR1L; check if TMR1H changes during reading TMR1L, if yes re-read TMR1)
         *((uint8_t*)(&main_timer) + 1) = TMR1H;
         *((uint8_t*)(&main_timer) + 0) = TMR1L;
         if (*((uint8_t*)(&main_timer) + 1) != TMR1H) {
@@ -27,9 +29,19 @@ __interrupt() void HW_isr(void) {
           *((uint8_t*)(&main_timer) + 0) = TMR1L;
         }
 #endif
-        // if overflow occurs during reading (between start of interrupt and TMR1 reading) - set to max value
+
         if (TIMER_MAIN_IF) {
-            main_timer += HW_MAIN_TIMER_TICKS_PER_PERIOD;
+            // check if main timer interrupts occurs before or while reading TMR1
+            if (*((uint8_t*) (&main_timer) + 1) == TMR1H) {
+                // run overflow routines before fuel/speed changing processing
+                int_taho_timer_overflow();
+                int_speed_timer_overflow();
+                skip_timer_speed_fuel_overflow = 1;
+#if defined(__DEBUG)
+            } else {
+                skip_timer_speed_fuel_overflow = 0;
+#endif
+            }
         }
 
         int_capture_injector_level_change();
@@ -47,8 +59,12 @@ __interrupt() void HW_isr(void) {
     if (TIMER_MAIN_IF) {
         TIMER_MAIN_IF = 0;
         
-        int_taho_timer_overflow();
-        int_speed_timer_overflow();
+        if (skip_timer_speed_fuel_overflow == 0) {
+            int_taho_timer_overflow();
+            int_speed_timer_overflow();
+        } else {
+            skip_timer_speed_fuel_overflow = 0;
+        }
         
         int_main_timer_overflow();
     }

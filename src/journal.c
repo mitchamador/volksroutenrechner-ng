@@ -128,10 +128,10 @@ void journal_save_trip(trip_t *trip) {
         return;
     }
 
-    uint16_t odo = get_trip_odometer(trip);
+    fill_print_trip(&ptrip, trip);
 
     // skip if zero distance
-    if (odo != 0) {
+    if (ptrip.odo != 0) {
         trip_item.status = JOURNAL_ITEM_OK;
         memcpy(&trip_item.trip, trip, sizeof (trip_t));
         // save trip item

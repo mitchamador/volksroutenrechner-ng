@@ -3,11 +3,11 @@
 #if defined(__AVR__)
 #include <util/crc16.h>
 #else
-#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
+#define pgm_read_byte(addr) (*(const uint8_t *)(addr))
 #endif
 
-unsigned char bcd8_to_bin(unsigned char b) {
-    unsigned char _t = b & 0x0F;
+uint8_t bcd8_to_bin(uint8_t b) {
+    uint8_t _t = b & 0x0F;
     b = (b & 0xF0) >> 1;
     _t += b;
     b = b >> 2;
@@ -16,39 +16,39 @@ unsigned char bcd8_to_bin(unsigned char b) {
     //return ((b >> 4) & 0x0F) * 10 + (b & 0x0F);
 }
 
-unsigned char bin8_to_bcd(unsigned char b) {
+uint8_t bin8_to_bcd(uint8_t b) {
     // use lwmod and lwdiv instead of byte functions (gives some size optimizations as lwmod and lwdiv already used)
     unsigned short _b = b;
-    return (unsigned char) ((_b / 10) << 4) + (_b % 10);
+    return (uint8_t) ((_b / 10) << 4) + (_b % 10);
 }
 
-void bcd8_to_str(char* buf, unsigned char b) {
+void bcd8_to_str(char* buf, uint8_t b) {
     buf[1] = (b & 0x0F) + '0';
     buf[0] = ((b >> 4) & 0x0F) + '0';
 }
 
-unsigned char bcd8_inc(unsigned char bcd, unsigned char min, unsigned char max) {
-    unsigned char _tmp = bcd8_to_bin(bcd);
+uint8_t bcd8_inc(uint8_t bcd, uint8_t min, uint8_t max) {
+    uint8_t _tmp = bcd8_to_bin(bcd);
     if (_tmp++ >= max) {
         _tmp = min;
     }
     return bin8_to_bcd(_tmp);
 }
 
-unsigned char bcd8_dec(unsigned char bcd, unsigned char min, unsigned char max) {
-    unsigned char _tmp = bcd8_to_bin(bcd);
+uint8_t bcd8_dec(uint8_t bcd, uint8_t min, uint8_t max) {
+    uint8_t _tmp = bcd8_to_bin(bcd);
     if (_tmp-- <= min) {
         _tmp = max;
     }
     return bin8_to_bcd(_tmp);
 }
 
-signed char bcd_subtract(unsigned char a, unsigned char b) {
-    return (signed char) bcd8_to_bin(a) - (signed char) bcd8_to_bin(b);
+int8_t bcd_subtract(uint8_t a, uint8_t b) {
+    return (int8_t) bcd8_to_bin(a) - (int8_t) bcd8_to_bin(b);
 }
 
-unsigned long strtoul2(char * buf) {
-    unsigned long val = 0;
+uint24_t strtoul2(char * buf) {
+    uint24_t val = 0;
     while (*buf) {
         char c = *buf++;
         if (c != '.')
@@ -59,10 +59,33 @@ unsigned long strtoul2(char * buf) {
     return val;
 }
 
-unsigned char ultoa2(char * buf, unsigned long val, unsigned char b) {
-    unsigned char _len = 0;
+uint8_t ultoa2_10(char * buf, uint24_t val) {
+    uint8_t _len = 0;
 
-    unsigned long v;
+    uint24_t v;
+    char c;
+
+    v = val;
+    do {
+        v /= 10;
+        buf++;
+        _len++;
+    } while (v != 0);
+    *buf-- = 0;
+    do {
+        c = (uint8_t) (val % 10);
+        val /= 10;
+        c += '0';
+        *buf-- = c;
+    } while (val != 0);
+    
+    return _len;
+}
+
+uint8_t ultoa2(char * buf, uint24_t val, uint8_t b) {
+    uint8_t _len = 0;
+
+    uint24_t v;
     char c;
 
     v = val;
@@ -73,7 +96,7 @@ unsigned char ultoa2(char * buf, unsigned long val, unsigned char b) {
     } while (v != 0);
     *buf-- = 0;
     do {
-        c = (unsigned char) (val % b);
+        c = (uint8_t) (val % b);
         val /= b;
         if (c >= 10)
             c += 'A' - '0' - 10;
@@ -84,19 +107,22 @@ unsigned char ultoa2(char * buf, unsigned long val, unsigned char b) {
     return _len;
 }
 
-void add_leading_symbols(char* buf, char s, unsigned char len, unsigned char max_len) {
-    // right align symbols
-    while (len > 0) {
-        buf[--max_len] = buf[--len];
-    }
-    // add leading symbols
-    while (max_len > 0) {
-        buf[--max_len] = s;
+void add_leading_symbols(char* buf, char s, uint8_t len, uint8_t max_len) {
+    while (max_len != 0) {
+        char c;
+        if (len > 0) {
+            // right align symbols
+            c = buf[--len];
+        } else {
+            // add leading symbols
+            c = s;
+        }
+        buf[--max_len] = c;
     }
 }
 
-unsigned char strcpy2(char* buf, char* str, unsigned char pos) {
-    unsigned char divider = pos == 0 ? 0x00 : pgm_read_byte(str);
+uint8_t strcpy2(char* buf, char* str, uint8_t pos) {
+    uint8_t divider = pos == 0 ? 0x00 : pgm_read_byte(str);
 
     while (pos > 0) {
         if (pgm_read_byte(str++) == divider) {
@@ -108,8 +134,8 @@ unsigned char strcpy2(char* buf, char* str, unsigned char pos) {
 }
 
 // long long ptr to hex string (for printing ds18b20 serial number)
-void llptrtohex(unsigned char *sn, unsigned char *p) {
-    unsigned char i = 16, t;
+void llptrtohex(uint8_t *sn, uint8_t *p) {
+    uint8_t i = 16, t;
 
     while (--i != 0) {
         t = *sn;
@@ -139,8 +165,8 @@ void * _memset(void * p1, char c, char n)
 }
 #endif
 
-void buf_write_string(char* buf, unsigned char len, unsigned char max, align_t align) {
-    unsigned char p_lower = max - len, p_upper = max;
+void buf_write_string(char* buf, uint8_t len, uint8_t max, align_t align) {
+    uint8_t p_lower = max - len, p_upper = max;
     if (align == ALIGN_LEFT) {
         p_lower = 0;
     } else if (align == ALIGN_CENTER) {

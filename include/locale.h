@@ -113,11 +113,17 @@ typedef enum {
 
 #define SETTING_PAIRPAR_INJ             "\0pair/par inj"
 
+#ifdef INSTANT_FUEL_AVERAGE_SUPPORT
+#define SETTING_INSTANT_FUEL_AVERAGE    "\0inst. avg"
+#endif
+
 #ifdef JOURNAL_SUPPORT
 #define SETTING_TRIPB_MONTH             "\0trip B month"
 #endif
 
+#ifndef SIMPLE_TRIPC_TIME_CHECK
 #define SETTING_TRIPC_DAY               "\0trip C day"
+#endif
 
 #ifdef TEMPERATURE_SUPPORT
 #define SETTING_INOUT_TEMP              "\0in/out temp"
@@ -255,13 +261,20 @@ typedef enum {
 // "пар. впрыск"
 #define SETTING_PAIRPAR_INJ             "\0\xBE\x61\x70. \xB3\xBE\x70\xC3\x63\xBA"
 
+// "мгн. усредн."
+#ifdef INSTANT_FUEL_AVERAGE_SUPPORT
+#define SETTING_INSTANT_FUEL_AVERAGE    "\0\xBC\xB4\xBD. \x79\x63\x70\x65\xE3\xBD."
+#endif
+
 // "проб. B мес."
 #ifdef JOURNAL_SUPPORT
 #define SETTING_TRIPB_MONTH             "\0\xBE\x70\x6F\xB2. B \xBC\x65\x63."
 #endif
 
+#ifndef SIMPLE_TRIPC_TIME_CHECK
 // "проб. C дн."
 #define SETTING_TRIPC_DAY               "\0\xBE\x70\x6F\xB2. C \xE3\xBD."
+#endif
 
 #ifdef TEMPERATURE_SUPPORT
 // "вн/нар темп."
@@ -390,6 +403,10 @@ typedef enum {
 #define SETTING_DS3231_TEMP             "\0"
 #endif
 
+#ifndef SETTING_TRIPC_DAY
+#define SETTING_TRIPC_DAY               "\0"
+#endif
+
 #ifndef SETTING_INOUT_TEMP
 #define SETTING_INOUT_TEMP              "\0"
 #endif
@@ -398,11 +415,15 @@ typedef enum {
 #define SETTING_TRIPB_MONTH             "\0"
 #endif
 
+#ifndef SETTING_INSTANT_FUEL_AVERAGE
+#define SETTING_INSTANT_FUEL_AVERAGE    "\0"
+#endif
+
 #define SETTING_DUMMY                   "\0"
 
 #define SETTINGS_BITS_ARRAY             \
             SETTING_PAIRPAR_INJ         \
-            SETTING_DUMMY               \
+            SETTING_INSTANT_FUEL_AVERAGE\
             SETTING_KEY_SOUND           \
             SETTING_SERVICE_ALARM       \
             SETTING_DUMMY               \
