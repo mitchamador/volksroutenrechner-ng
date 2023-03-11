@@ -1297,6 +1297,8 @@ uint8_t journal_print_item_time(char *buf, trip_time_t *trip_time) {
     return len;
 }
 
+#define JOURNAL_IDLE_TIMEOUT 30
+
 void screen_journal_viewer() {
     uint8_t len;
 
@@ -1309,7 +1311,7 @@ void screen_journal_viewer() {
 
         uint8_t journal_type = 0;
 
-        timeout_timer1_loop(IDLE_TIMEOUT) {
+        timeout_timer1_loop(JOURNAL_IDLE_TIMEOUT) {
 
             handle_keys_next_prev(&journal_type, 0, 3);
 
@@ -1330,7 +1332,7 @@ void screen_journal_viewer() {
 
                 uint8_t item_page = 0;
 
-                timeout_timer1_loop(IDLE_TIMEOUT) {
+                timeout_timer1_loop(JOURNAL_IDLE_TIMEOUT) {
 
                     if (jr.item_current != 0xFF) {
                         handle_keys_next_prev(&jr.item_num, 0, jr.item_max - 1);
@@ -1340,7 +1342,7 @@ void screen_journal_viewer() {
 
                             jr.item_prev = jr.item_num;
 
-                            if (*item != JOURNAL_ITEM_OK && jr.item_num == 0) {
+                            if ((*item != JOURNAL_ITEM_V1 && *item != JOURNAL_ITEM_V2) && jr.item_num == 0) {
                                 jr.item_current = 0xFF;
                             } else {
                                 item_page = 0;
@@ -1376,20 +1378,25 @@ void screen_journal_viewer() {
                                 // trip_item
                                 trip_time = &trip_item->start_time;
 
-                                print_trip_t ptrip;
-                                fill_print_trip(&ptrip, &trip_item->trip);
+                                print_trip_t *pt;
+                                if (trip_item->status == JOURNAL_ITEM_V1) {
+                                    fill_print_trip(&ptrip, &trip_item->trip);
+                                    pt = &ptrip;
+                                } else {
+                                    pt = &trip_item->ptrip;
+                                }
 
                                 switch(item_page) {
                                     case 0:
-                                        print_trip_odometer(LCD_CURSOR_POS_10, &ptrip, ALIGN_LEFT);
-                                        print_trip_average_fuel(LCD_CURSOR_POS_11, &ptrip, ALIGN_RIGHT);
+                                        print_trip_odometer(LCD_CURSOR_POS_10, pt, ALIGN_LEFT);
+                                        print_trip_average_fuel(LCD_CURSOR_POS_11, pt, ALIGN_RIGHT);
                                         break;
                                     case 1:
-                                        print_trip_average_speed(LCD_CURSOR_POS_10, &ptrip, ALIGN_LEFT);
-                                        print_trip_time(LCD_CURSOR_POS_11, &ptrip, ALIGN_RIGHT);
+                                        print_trip_average_speed(LCD_CURSOR_POS_10, pt, ALIGN_LEFT);
+                                        print_trip_time(LCD_CURSOR_POS_11, pt, ALIGN_RIGHT);
                                         break;
                                     case 2:
-                                        print_trip_total_fuel(LCD_CURSOR_POS_10, &ptrip, ALIGN_LEFT);
+                                        print_trip_total_fuel(LCD_CURSOR_POS_10, pt, ALIGN_LEFT);
                                         lcd_print_half_width(LCD_CURSOR_POS_11, 0, ALIGN_RIGHT);
                                         break;
                                 }
@@ -1404,7 +1411,7 @@ void screen_journal_viewer() {
                                 if (journal_type != 3 && ++item_page > 2) {
                                     item_page = 0;
                                 }
-                                timeout_timer1 = IDLE_TIMEOUT;
+                                timeout_timer1 = JOURNAL_IDLE_TIMEOUT;
                                 screen_refresh = 1;
                             }
                         }
@@ -1423,7 +1430,7 @@ void screen_journal_viewer() {
                     wait_refresh_timeout();
                 }
                 screen_refresh = 1;
-                timeout_timer1 = IDLE_TIMEOUT;
+                timeout_timer1 = JOURNAL_IDLE_TIMEOUT;
             }
             wait_refresh_timeout();
         }
