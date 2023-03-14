@@ -765,13 +765,13 @@ void adc_handler_fuel_tank(filtered_value_t *f) {
 
 #endif
 
-void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value) {
+void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value, uint8_t timeout) {
     uint8_t _v = *v;
     if (key1_press != 0) {
         if (_v++ == max_value) {
             _v = min_value;
         }
-        timeout_timer1 = IDLE_TIMEOUT;
+        timeout_timer1 = timeout;
     }
 #if defined(ENCODER_SUPPORT)
     if (config.settings.encoder != 0 && key2_press != 0) {
@@ -786,19 +786,19 @@ void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value) {
         if (_v-- == min_value) {
             _v = max_value;
         }
-        timeout_timer1 = IDLE_TIMEOUT;
+        timeout_timer1 = timeout;
     }
     *v = _v;
 }
 
-void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
+void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value, uint8_t timeout) {
     uint8_t _v = *v;
     // change cursor to next position
     if (key1_press != 0) {
         if (_v++ == max_value) {
             _v = min_value;
         }
-        timeout_timer1 = IDLE_TIMEOUT;
+        timeout_timer1 = timeout;
     }
 
 #if defined(KEY3_SUPPORT)
@@ -807,7 +807,7 @@ void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value) {
         if (_v-- == min_value) {
             _v = max_value;
         }
-        timeout_timer1 = IDLE_TIMEOUT;
+        timeout_timer1 = timeout;
     }
 #endif
     *v = _v;

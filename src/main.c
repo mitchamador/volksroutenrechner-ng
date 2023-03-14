@@ -473,7 +473,7 @@ void screen_time(void) {
 #endif
         LCD_Clear();
         
-        timeout_timer1 = IDLE_TIMEOUT;
+        timeout_timer1 = DEFAULT_TIMEOUT;
         while (screen_refresh = 0, timeout_timer1 != 0) {
             //screen_refresh = 0;
 
@@ -484,7 +484,7 @@ void screen_time(void) {
             if (config.settings.encoder == 0 || edit_mode == 0)
 #endif
             {
-                handle_keys_next_prev(&c, 0, sizeof(time_editor_items_array) / sizeof(time_editor_items_array[0]) - 1);
+                handle_keys_next_prev(&c, 0, sizeof(time_editor_items_array) / sizeof(time_editor_items_array[0]) - 1, DEFAULT_TIMEOUT);
                 time_editor_item = (time_editor_item_t *) &time_editor_items_array[c];
             }
 #if defined(ENCODER_SUPPORT)
@@ -524,7 +524,7 @@ void screen_time(void) {
 
                 }
 #endif                
-                timeout_timer1 = IDLE_TIMEOUT;
+                timeout_timer1 = DEFAULT_TIMEOUT;
             }
 
 
@@ -563,8 +563,8 @@ typedef enum {
 
 
 uint8_t edit_value_char(uint8_t v, edit_value_char_t mode, uint8_t min_value, uint8_t max_value) {
-    timeout_timer1_loop(IDLE_TIMEOUT) {
-        handle_keys_up_down(&v, min_value, max_value);
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
+        handle_keys_up_down(&v, min_value, max_value, DEFAULT_TIMEOUT);
 
         uint8_t len = ultoa2_10(buf, (uint24_t) (mode == CHAREDIT_MODE_10000KM ? (v * 1000L) : v));
 
@@ -616,16 +616,16 @@ uint24_t edit_value_long(uint24_t v, uint24_t max_value) {
     uint8_t cursor_pos = LCD_CURSOR_POS_10 + (LCD_WIDTH - max_len) / 2U;
     uint8_t pos = 0;
 
-    timeout_timer1_loop(IDLE_TIMEOUT) {
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
 
 #if defined(ENCODER_SUPPORT)
         if (config.settings.encoder != 0 && edit_mode != 0) {
             buf_prev = buf[pos];
-            handle_keys_next_prev(&buf[pos], '0', '9');
+            handle_keys_next_prev(&buf[pos], '0', '9', DEFAULT_TIMEOUT);
         } else
 #endif
         {
-            handle_keys_next_prev(&pos, 0, max_len - 1);
+            handle_keys_next_prev(&pos, 0, max_len - 1, DEFAULT_TIMEOUT);
         }
 
         // edit number in cursor position
@@ -646,7 +646,7 @@ uint24_t edit_value_long(uint24_t v, uint24_t max_value) {
                 }
             }
 
-            timeout_timer1 = IDLE_TIMEOUT;
+            timeout_timer1 = DEFAULT_TIMEOUT;
         }
 
         uint24_t _t = strtoul2(buf);
@@ -686,15 +686,15 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
 
     uint8_t pos = 0;
 
-    timeout_timer1_loop(IDLE_TIMEOUT) {
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
 
-        handle_keys_next_prev(&pos, 0, 16 - 1);
+        handle_keys_next_prev(&pos, 0, 16 - 1, DEFAULT_TIMEOUT);
 
         uint16_t mask = (1 << (15 - pos));
         // edit number in cursor position
         if (key2_press != 0) {
             v ^= mask;
-            timeout_timer1 = IDLE_TIMEOUT;
+            timeout_timer1 = DEFAULT_TIMEOUT;
         }
 
         LCD_cursor_off();
@@ -916,9 +916,9 @@ void select_acceleration_measurement() {
 
     uint8_t v = 0, max_value = sizeof (accel_meas_limits) / sizeof (accel_meas_limits[0]) - 1, index = 0xFF;
 
-    timeout_timer1_loop(IDLE_TIMEOUT) {
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
 
-        handle_keys_next_prev(&v, 0, max_value);
+        handle_keys_next_prev(&v, 0, max_value, DEFAULT_TIMEOUT);
 
         if (key2_press != 0) {
             timeout_timer1 = 0;
@@ -1060,14 +1060,9 @@ void screen_main(void) {
         }
 #endif
 
-        handle_keys_next_prev(&params.main_add, 0, main_screen_page1_param_max - 1);
+        handle_keys_next_prev(&params.main_add, 0, main_screen_page1_param_max - 1, ADDPAGE_TIMEOUT);
 
-        // override default timeout when key pressed
-        if (key1_press != 0 || key2_press != 0
-#if defined(KEY3_SUPPORT)
-                || key3_press != 0
-#endif
-                ) {
+        if (key2_press != 0) {
             timeout_timer1 = ADDPAGE_TIMEOUT;
         }
 
@@ -1313,7 +1308,7 @@ void screen_journal_viewer() {
 
         timeout_timer1_loop(JOURNAL_IDLE_TIMEOUT) {
 
-            handle_keys_next_prev(&journal_type, 0, 3);
+            handle_keys_next_prev(&journal_type, 0, 3, JOURNAL_IDLE_TIMEOUT);
 
             lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
 
@@ -1335,7 +1330,7 @@ void screen_journal_viewer() {
                 timeout_timer1_loop(JOURNAL_IDLE_TIMEOUT) {
 
                     if (jr.item_current != 0xFF) {
-                        handle_keys_next_prev(&jr.item_num, 0, jr.item_max - 1);
+                        handle_keys_next_prev(&jr.item_num, 0, jr.item_max - 1, JOURNAL_IDLE_TIMEOUT);
 
                         if (jr.item_prev != jr.item_num) {
                             unsigned char *item = journal_read_item(&jr, journal_type);
@@ -1489,7 +1484,7 @@ void config_screen_temp_sensors() {
 
     ds18b20_start_conversion(); config_temperature_conv_fl = 0; timeout_timer2 = 100;
 
-    timeout_timer1_loop(IDLE_TIMEOUT) {
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
         
         if (num_devices != 0) {
 
@@ -1502,13 +1497,13 @@ void config_screen_temp_sensors() {
                 }
             }
 
-            handle_keys_next_prev(&current_device, 0, num_devices - 1);
+            handle_keys_next_prev(&current_device, 0, num_devices - 1, DEFAULT_TIMEOUT);
 
             if (key2_press != 0) {
                 if (_t_num[current_device]++ == 3) {
                     _t_num[current_device] = 0;
                 }
-                timeout_timer1 = IDLE_TIMEOUT;
+                timeout_timer1 = DEFAULT_TIMEOUT;
             }
 
             _memset(buf, ' ', 16);
@@ -1584,7 +1579,7 @@ void config_screen_temp_sensors() {
 
     uint8_t t_num = 0;
 
-    timeout_timer1_loop(IDLE_TIMEOUT) {
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
 
 #if defined(DS18B20_CONFIG_SHOW_TEMP)
         if (config_temperature_conv_fl == 0 && timeout_timer2 == 0) {
@@ -1600,7 +1595,7 @@ void config_screen_temp_sensors() {
             if (t_num >= 4) {
                 t_num = 0;
             }
-            timeout_timer1 = IDLE_TIMEOUT;
+            timeout_timer1 = DEFAULT_TIMEOUT;
         }
 
 #if defined(DS18B20_CONFIG_SHOW_TEMP)        
@@ -1640,7 +1635,7 @@ void config_screen_temp_sensors() {
 void config_screen_service_counters() {
     static uint8_t c_sub_item = 0;
 
-    handle_keys_next_prev(&c_sub_item, 0, MAX_SUB_ITEM);
+    handle_keys_next_prev(&c_sub_item, 0, MAX_SUB_ITEM, DEFAULT_TIMEOUT);
     
     uint8_t len = print_index_number(c_sub_item + 1);
     len += strcpy2(&buf[len], (char *) &service_counters_array, c_sub_item + 1);
@@ -1659,14 +1654,14 @@ void config_screen_service_counters() {
             services.srv[c_sub_item - 1].limit = edit_value_char(services.srv[c_sub_item - 1].limit, CHAREDIT_MODE_10000KM, 0, 60);
         }
 
-        timeout_timer1 = IDLE_TIMEOUT;
+        timeout_timer1 = DEFAULT_TIMEOUT;
     }
     
 }
 #endif
 
 void config_screen_ua_const() {
-    handle_keys_up_down(&config.vcc_const, VOLTAGE_ADJUST_CONST_MIN, VOLTAGE_ADJUST_CONST_MAX);
+    handle_keys_up_down(&config.vcc_const, VOLTAGE_ADJUST_CONST_MIN, VOLTAGE_ADJUST_CONST_MAX, DEFAULT_TIMEOUT);
 
     print_voltage(LCD_CURSOR_POS_10 + LCD_WIDTH / 4, (uint16_t *) &adc_voltage.current, POS_NONE, ALIGN_RIGHT);
 }
@@ -2224,7 +2219,7 @@ void main() {
 
                 // skip next/prev key for additional page of main screen
                 if (config_mode != 0 || current_item_main->page.skip_key_handler == 0) {
-                    handle_keys_next_prev(&c_item, 0, max_item);
+                    handle_keys_next_prev(&c_item, 0, max_item, DEFAULT_TIMEOUT);
                 }
 
                 if (c_item != c_item_prev) {
@@ -2244,7 +2239,7 @@ void main() {
                     if (key2_press != 0) {
                         key2_press = 0;
                         LCD_Clear();
-                        timeout_timer1_loop(IDLE_TIMEOUT) {
+                        timeout_timer1_loop(DEFAULT_TIMEOUT) {
                             lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, current_item_config->page.title_string_index), ALIGN_LEFT);
                             current_item_config->screen();
                             LCD_cursor_off();
