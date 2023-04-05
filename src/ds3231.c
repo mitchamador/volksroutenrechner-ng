@@ -1,4 +1,5 @@
 #include "ds3231.h"
+#include "utils.h"
 #include "ds18b20.h"
 #include "version.h"
 
@@ -9,22 +10,35 @@ __bank2 ds_time time;
 ds_time time;
 #endif
 
+void DS3231_write_reg(unsigned char reg, unsigned char data) {
+    if (I2C_Master_Start(0xD0) == ACK) {
+        I2C_Master_Write(reg);
+        I2C_Master_Write(data);
+    }
+    I2C_Master_Stop();
+}
+
 void DS3231_time_read(ds_time* time) {
-    unsigned char seconds = 0x80;
+    time->flags.is_valid = 0;
+
     if (I2C_Master_Start(0xD0) == ACK) {
         I2C_Master_Write(0x00); // start reading from 0x00 - seconds
         I2C_Master_RepeatedStart(0xD1);
-        seconds = I2C_Read_Byte(ACK);
+        time->flags.is_valid = (I2C_Read_Byte(ACK) & 0x80) == 0; // CH for DS1307
         time->minute = I2C_Read_Byte(ACK);
         time->hour = I2C_Read_Byte(ACK);
         time->day_of_week = I2C_Read_Byte(ACK);
         time->day = I2C_Read_Byte(ACK);
         time->month = I2C_Read_Byte(ACK);
         time->year = I2C_Read_Byte(NACK);
-        time->flags.is_valid = 1;
     }
     I2C_Master_Stop();
-    if ((seconds & 0x80) != 0) {
+
+    if (time->flags.is_valid == 0
+#if !defined(_16F876A)
+        || time->year == 0
+#endif
+     ) {
         // fallback time
         time->minute = VERSION_MINUTE_BCD;
         time->hour = VERSION_HOUR_BCD;
@@ -32,15 +46,18 @@ void DS3231_time_read(ds_time* time) {
         time->day = VERSION_DAY_OF_MONTH_BCD;
         time->month = VERSION_MONTH_BCD;
         time->year = VERSION_YEAR_BCD;
-        time->flags.is_valid = 0;
+
         DS3231_time_write(time);
+#if !defined(_16F876A)
+        DS3231_write_reg(DS3231_REG_STATUS, 0); // clears OSF for DS3231
+#endif
     }
 }
 
 void DS3231_time_write(ds_time* time) {
 	if (I2C_Master_Start(0xD0) == ACK) {
-        I2C_Master_Write(0x00);
-        I2C_Master_Write(0x00); // seconds
+        I2C_Master_Write(0x00); // start writing from 0x00 - seconds (also clears CH for DS1307)
+        I2C_Master_Write(0);
         I2C_Master_Write(time->minute);
         I2C_Master_Write(time->hour);
         I2C_Master_Write(time->day_of_week);
@@ -68,11 +85,4 @@ void DS3231_temp_read(uint16_t* raw_temp_value) {
     I2C_Master_Stop();
 }
 
-void DS3231_temp_start() {
-    if (I2C_Master_Start(0xD0) == ACK) {
-        I2C_Master_Write(DS3231_REG_CTRL);                          // 0x0E - control register
-        I2C_Master_Write(DS3231_CTRL_DEFAULT | DS3231_CTRL_CONV);   // start conversion
-    }
-    I2C_Master_Stop();
-}
 #endif

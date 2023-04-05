@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define DS3231_REG_CTRL     0x0E
+#define DS3231_REG_STATUS   0x0F
 #define DS3231_REG_TEMP     0x11
 
 #define DS3231_CTRL_INTCN   (1 << 2)
@@ -36,10 +37,12 @@ __bank2 extern ds_time time;
 extern ds_time time;
 #endif
 
+void DS3231_write_reg(uint8_t reg, uint8_t data);
 void DS3231_time_read(ds_time*);
 void DS3231_time_write(ds_time*);
 void DS3231_temp_read(uint16_t*);
-void DS3231_temp_start(void);
+
+#define DS3231_temp_start() DS3231_write_reg(DS3231_REG_CTRL, DS3231_CTRL_DEFAULT | DS3231_CTRL_CONV)
 
 #endif	/* DS1307_H */
 
