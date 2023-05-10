@@ -764,9 +764,6 @@ uint8_t select_param(uint8_t* param, uint8_t total) {
     return *param;
 }
 
-// extended params for main screen
-//#define EXT_PARAMS
-
 typedef enum {
 #if defined(TEMPERATURE_SUPPORT)
     selected_param_temp,
@@ -774,13 +771,8 @@ typedef enum {
     selected_param_voltage,
     selected_param_tripC_time,
     selected_param_tripC_odometer,
-#if defined(EXT_PARAMS)
-    selected_param_tripC_average_fuel,
-    selected_param_tripC_average_speed,
-    selected_param_tripC_total_fuel,
-    selected_param_tripC_max_speed,
-#endif
     selected_param_fuel_duration,
+    selected_param_main_odo,
     selected_param_total
 } selected_param_t;
 
@@ -800,20 +792,9 @@ void print_selected_param1(uint8_t cursor_pos, align_t align) {
         case selected_param_tripC_odometer:
             print_trip_odometer(cursor_pos, &ptrip, align);
             break;
-#if defined(EXT_PARAMS)
-        case selected_param_tripC_average_fuel:
-            print_trip_average_fuel(cursor_pos, &ptrip, align);
+        case selected_param_main_odo:
+            print_main_odo(cursor_pos, align);
             break;
-        case selected_param_tripC_average_speed:
-            print_trip_average_speed(cursor_pos, &ptrip, align);
-            break;
-        case selected_param_tripC_total_fuel:
-            print_trip_total_fuel(cursor_pos, &ptrip, align);
-            break;
-        case selected_param_tripC_max_speed:
-            print_speed(cursor_pos, trips.tripC_max_speed, 1, POS_MAX, align);
-            break;
-#endif
         case selected_param_fuel_duration:
             print_fuel_duration(cursor_pos, align);
             break;
