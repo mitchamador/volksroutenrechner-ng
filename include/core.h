@@ -71,7 +71,7 @@
 // time with power supply measurements lower than threshold before shutdown
 #define SHUTDOWN ((uint8_t) (0.25f / HW_MAIN_TIMER_PERIOD))
 // timeout when no key pressed
-#define IDLE_TIMEOUT 8
+#define DEFAULT_TIMEOUT 10
 
 // min rpm
 #define TAHO_MIN_RPM 100UL
@@ -369,8 +369,8 @@ void cd_increment_filter(void);
 #define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0
 #endif
 
-void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value);
-void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value);
+void handle_keys_next_prev(uint8_t *v, uint8_t min_value, uint8_t max_value, uint8_t timeout);
+void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value, uint8_t timeout);
 
 void int_capture_injector_level_change(void);
 void int_taho_timer_overflow(void);

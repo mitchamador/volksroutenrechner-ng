@@ -17,7 +17,10 @@ typedef struct {
 typedef struct {
     uint8_t status; // 1 byte
     trip_time_t start_time; // 5 byte
-    trip_t trip; // 12 bytes
+    union { // 12 bytes
+        trip_t trip; 
+        print_trip_t ptrip;
+    };
 } journal_trip_item_t; // 18 bytes total
 
 typedef struct {
@@ -90,7 +93,8 @@ typedef struct {
 #define J_EEPROM_MARK_POS J_EEPROM_START
 #define J_EEPROM_DATA J_EEPROM_START + 32
 
-#define JOURNAL_ITEM_OK 0xA5
+#define JOURNAL_ITEM_V1 0xA5
+#define JOURNAL_ITEM_V2 0xAA
 
 extern flag_t journal_support;
 

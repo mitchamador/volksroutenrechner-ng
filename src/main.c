@@ -32,7 +32,7 @@ uint16_t temps[4] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS
 typedef struct {
     uint8_t main;
     uint8_t main_add;
-    uint8_t tmp;
+    uint8_t tmp;        // cleared on screen item change, used also as additional page index
 } params_t;
 
 params_t params = {0, 0, 0};
@@ -473,7 +473,7 @@ void screen_time(void) {
 #endif
         LCD_Clear();
         
-        timeout_timer1 = IDLE_TIMEOUT;
+        timeout_timer1 = DEFAULT_TIMEOUT;
         while (screen_refresh = 0, timeout_timer1 != 0) {
             //screen_refresh = 0;
 
@@ -484,7 +484,7 @@ void screen_time(void) {
             if (config.settings.encoder == 0 || edit_mode == 0)
 #endif
             {
-                handle_keys_next_prev(&c, 0, sizeof(time_editor_items_array) / sizeof(time_editor_items_array[0]) - 1);
+                handle_keys_next_prev(&c, 0, sizeof(time_editor_items_array) / sizeof(time_editor_items_array[0]) - 1, DEFAULT_TIMEOUT);
                 time_editor_item = (time_editor_item_t *) &time_editor_items_array[c];
             }
 #if defined(ENCODER_SUPPORT)
@@ -524,7 +524,7 @@ void screen_time(void) {
 
                 }
 #endif                
-                timeout_timer1 = IDLE_TIMEOUT;
+                timeout_timer1 = DEFAULT_TIMEOUT;
             }
 
 
@@ -563,8 +563,8 @@ typedef enum {
 
 
 uint8_t edit_value_char(uint8_t v, edit_value_char_t mode, uint8_t min_value, uint8_t max_value) {
-    timeout_timer1_loop(IDLE_TIMEOUT) {
-        handle_keys_up_down(&v, min_value, max_value);
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
+        handle_keys_up_down(&v, min_value, max_value, DEFAULT_TIMEOUT);
 
         uint8_t len = ultoa2_10(buf, (uint24_t) (mode == CHAREDIT_MODE_10000KM ? (v * 1000L) : v));
 
@@ -616,16 +616,16 @@ uint24_t edit_value_long(uint24_t v, uint24_t max_value) {
     uint8_t cursor_pos = LCD_CURSOR_POS_10 + (LCD_WIDTH - max_len) / 2U;
     uint8_t pos = 0;
 
-    timeout_timer1_loop(IDLE_TIMEOUT) {
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
 
 #if defined(ENCODER_SUPPORT)
         if (config.settings.encoder != 0 && edit_mode != 0) {
             buf_prev = buf[pos];
-            handle_keys_next_prev(&buf[pos], '0', '9');
+            handle_keys_next_prev(&buf[pos], '0', '9', DEFAULT_TIMEOUT);
         } else
 #endif
         {
-            handle_keys_next_prev(&pos, 0, max_len - 1);
+            handle_keys_next_prev(&pos, 0, max_len - 1, DEFAULT_TIMEOUT);
         }
 
         // edit number in cursor position
@@ -646,7 +646,7 @@ uint24_t edit_value_long(uint24_t v, uint24_t max_value) {
                 }
             }
 
-            timeout_timer1 = IDLE_TIMEOUT;
+            timeout_timer1 = DEFAULT_TIMEOUT;
         }
 
         uint24_t _t = strtoul2(buf);
@@ -686,15 +686,15 @@ uint16_t edit_value_bits(uint16_t v, char* str) {
 
     uint8_t pos = 0;
 
-    timeout_timer1_loop(IDLE_TIMEOUT) {
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
 
-        handle_keys_next_prev(&pos, 0, 16 - 1);
+        handle_keys_next_prev(&pos, 0, 16 - 1, DEFAULT_TIMEOUT);
 
         uint16_t mask = (1 << (15 - pos));
         // edit number in cursor position
         if (key2_press != 0) {
             v ^= mask;
-            timeout_timer1 = IDLE_TIMEOUT;
+            timeout_timer1 = DEFAULT_TIMEOUT;
         }
 
         LCD_cursor_off();
@@ -897,9 +897,9 @@ void select_acceleration_measurement() {
 
     uint8_t v = 0, max_value = sizeof (accel_meas_limits) / sizeof (accel_meas_limits[0]) - 1, index = 0xFF;
 
-    timeout_timer1_loop(IDLE_TIMEOUT) {
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
 
-        handle_keys_next_prev(&v, 0, max_value);
+        handle_keys_next_prev(&v, 0, max_value, DEFAULT_TIMEOUT);
 
         if (key2_press != 0) {
             timeout_timer1 = 0;
@@ -941,10 +941,10 @@ typedef enum {
 //#define ADDPAGE_TIMEOUT_IDLE    30
 #define ADDPAGE_TIMEOUT_DRIVE   10
 
+#define main_screen_page params.tmp
+
 void screen_main(void) {
     
-    static uint8_t main_screen_page;
-
     //  long press key1 (or doubleclick key2 when encoder control) to switch page (main_screen_page)
 
     //  main_screen_page == 0
@@ -1041,14 +1041,9 @@ void screen_main(void) {
         }
 #endif
 
-        handle_keys_next_prev(&params.main_add, 0, main_screen_page1_param_max - 1);
+        handle_keys_next_prev(&params.main_add, 0, main_screen_page1_param_max - 1, ADDPAGE_TIMEOUT);
 
-        // override default timeout when key pressed
-        if (key1_press != 0 || key2_press != 0
-#if defined(KEY3_SUPPORT)
-                || key3_press != 0
-#endif
-                ) {
+        if (key2_press != 0) {
             timeout_timer1 = ADDPAGE_TIMEOUT;
         }
 
@@ -1278,22 +1273,60 @@ uint8_t journal_print_item_time(char *buf, trip_time_t *trip_time) {
     return len;
 }
 
+#define JOURNAL_IDLE_TIMEOUT 30
+
+typedef enum {
+    screen_journal_viewer_page_title=0,
+    screen_journal_viewer_page_type,
+    screen_journal_viewer_page_item
+} screen_journal_viewer_page_t;
+
+#define screen_journal_viewer_page params.tmp
+
 void screen_journal_viewer() {
+    static uint8_t journal_type = 0;
+    static uint8_t item_page = 0;
+    static journal_reader_t jr;
+
+    static journal_accel_item_t *accel_item;
+    static journal_trip_item_t *trip_item;
+
     uint8_t len;
 
-    lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
-
-    lcd_print_full_width(LCD_CURSOR_POS_10, 0, ALIGN_NONE);
-
     if (key2_press != 0) {
-        key2_press = 0;
+        if (screen_journal_viewer_page < screen_journal_viewer_page_item) {
+            screen_journal_viewer_page++;
+            key2_press = 0;
+        }
+        timeout_timer1 = JOURNAL_IDLE_TIMEOUT;
+    }
 
-        uint8_t journal_type = 0;
+    if (timeout_timer1 == 0 || key2_longpress != 0) {
+        key2_longpress = 0;
+        if (screen_journal_viewer_page != 0) {
+            screen_journal_viewer_page--;
+        }
+        if (screen_journal_viewer_page == 0) {
+            timeout_timer1 = 0;
+        } else {
+            timeout_timer1 = JOURNAL_IDLE_TIMEOUT;
+        }
+    }
 
-        timeout_timer1_loop(IDLE_TIMEOUT) {
+    if (screen_journal_viewer_page == 0) {
+        current_item_main->page.skip_key_handler = 0;
+    } else {
+        current_item_main->page.skip_key_handler = 1;
+    }
 
-            handle_keys_next_prev(&journal_type, 0, 3);
-
+    switch(screen_journal_viewer_page) {
+        case screen_journal_viewer_page_title:
+            lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
+            lcd_print_full_width(LCD_CURSOR_POS_10, 0, ALIGN_NONE);
+            break;
+        case screen_journal_viewer_page_type:
+            handle_keys_next_prev(&journal_type, 0, 3, JOURNAL_IDLE_TIMEOUT);
+            
             lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &journal_viewer_string, 0), ALIGN_LEFT);
 
             len = print_index_number(journal_type + 1);
@@ -1301,114 +1334,109 @@ void screen_journal_viewer() {
 
             lcd_print_full_width(LCD_CURSOR_POS_10, len, ALIGN_LEFT);
 
-            if (key2_press != 0) {
-                key2_press = 0;
+            jr.item_current = journal_header.journal_type_pos[journal_type].current;
+            jr.item_max = journal_header.journal_type_pos[journal_type].max;
+            jr.item_num = 0;
+            jr.item_prev = 0xFF;
 
-                journal_reader_t jr = {journal_header.journal_type_pos[journal_type].current, journal_header.journal_type_pos[journal_type].max, 0, 0xFF};
+            item_page = 0;
 
-                journal_accel_item_t *accel_item;
-                journal_trip_item_t *trip_item;
+            break;
+        case screen_journal_viewer_page_item:
+            if (jr.item_current != 0xFF) {
+                handle_keys_next_prev(&jr.item_num, 0, jr.item_max - 1, JOURNAL_IDLE_TIMEOUT);
 
-                uint8_t item_page = 0;
+                if (jr.item_prev != jr.item_num) {
+                    unsigned char *item = journal_read_item(&jr, journal_type);
 
-                timeout_timer1_loop(IDLE_TIMEOUT) {
+                    jr.item_prev = jr.item_num;
 
-                    if (jr.item_current != 0xFF) {
-                        handle_keys_next_prev(&jr.item_num, 0, jr.item_max - 1);
-
-                        if (jr.item_prev != jr.item_num) {
-                            unsigned char *item = journal_read_item(&jr, journal_type);
-
-                            jr.item_prev = jr.item_num;
-
-                            if (*item != JOURNAL_ITEM_OK && jr.item_num == 0) {
-                                jr.item_current = 0xFF;
-                            } else {
-                                item_page = 0;
-                                if (journal_type == 3) {
-                                    accel_item = (journal_accel_item_t *) item;
-                                } else {
-                                    trip_item = (journal_trip_item_t *) item;
-                                }
-                            }
-                        }
-
-                        if (jr.item_current != 0xFF) {
-
-                            trip_time_t *trip_time;
-
-                            // show journal item data
-                            if (journal_type == 3) {
-                                // accel_item
-                                trip_time = &accel_item->start_time;
-
-                                // upper-lower
-                                len = ultoa2_10(buf, accel_item->lower);
-                                buf[len++] = '-';
-                                len += ultoa2_10(&buf[len], accel_item->upper);
-
-                                lcd_print_half_width(LCD_CURSOR_POS_10, len, ALIGN_LEFT);
-
-                                // time
-                                len = print_fract(accel_item->time, 2);
-                                lcd_print_half_width2(LCD_CURSOR_POS_11, len, POS_NONE, POS_SEC, ALIGN_RIGHT);
-
-                            } else {
-                                // trip_item
-                                trip_time = &trip_item->start_time;
-
-                                print_trip_t ptrip;
-                                fill_print_trip(&ptrip, &trip_item->trip);
-
-                                switch(item_page) {
-                                    case 0:
-                                        print_trip_odometer(LCD_CURSOR_POS_10, &ptrip, ALIGN_LEFT);
-                                        print_trip_average_fuel(LCD_CURSOR_POS_11, &ptrip, ALIGN_RIGHT);
-                                        break;
-                                    case 1:
-                                        print_trip_average_speed(LCD_CURSOR_POS_10, &ptrip, ALIGN_LEFT);
-                                        print_trip_time(LCD_CURSOR_POS_11, &ptrip, ALIGN_RIGHT);
-                                        break;
-                                    case 2:
-                                        print_trip_total_fuel(LCD_CURSOR_POS_10, &ptrip, ALIGN_LEFT);
-                                        lcd_print_half_width(LCD_CURSOR_POS_11, 0, ALIGN_RIGHT);
-                                        break;
-                                }
-                            }
-
-                            len = print_index_number(jr.item_num + 1);
-                            len += journal_print_item_time((char *) &buf[len], trip_time);
-
-                            lcd_print_full_width(LCD_CURSOR_POS_00, len, ALIGN_LEFT);
-
-                            if (key2_press != 0) {
-                                if (journal_type != 3 && ++item_page > 2) {
-                                    item_page = 0;
-                                }
-                                timeout_timer1 = IDLE_TIMEOUT;
-                                screen_refresh = 1;
-                            }
+                    if ((*item != JOURNAL_ITEM_V1 && *item != JOURNAL_ITEM_V2) && jr.item_num == 0) {
+                        jr.item_current = 0xFF;
+                    } else {
+                        item_page = 0;
+                        if (journal_type == 3) {
+                            accel_item = (journal_accel_item_t *) item;
+                        } else {
+                            trip_item = (journal_trip_item_t *) item;
                         }
                     }
-
-                    if (jr.item_current == 0xFF) {
-                        // no items for current journal
-                        lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) journal_viewer_items_array, journal_type + 1), ALIGN_LEFT);
-                        lcd_print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char *) &journal_viewer_no_items_string, 0), ALIGN_LEFT);
-
-                        if (key2_press != 0) {
-                            timeout_timer1 = 0;
-                            screen_refresh = 1;
-                        }
-                    }
-                    wait_refresh_timeout();
                 }
-                screen_refresh = 1;
-                timeout_timer1 = IDLE_TIMEOUT;
+
+                if (jr.item_current != 0xFF) {
+
+                    trip_time_t *trip_time;
+
+                    // show journal item data
+                    if (journal_type == 3) {
+                        // accel_item
+                        trip_time = &accel_item->start_time;
+
+                        // upper-lower
+                        len = ultoa2_10(buf, accel_item->lower);
+                        buf[len++] = '-';
+                        len += ultoa2_10(&buf[len], accel_item->upper);
+
+                        lcd_print_half_width(LCD_CURSOR_POS_10, len, ALIGN_LEFT);
+
+                        // time
+                        len = print_fract(accel_item->time, 2);
+                        lcd_print_half_width2(LCD_CURSOR_POS_11, len, POS_NONE, POS_SEC, ALIGN_RIGHT);
+
+                    } else {
+                        // trip_item
+                        trip_time = &trip_item->start_time;
+
+                        print_trip_t *pt;
+                        if (trip_item->status == JOURNAL_ITEM_V1) {
+                            fill_print_trip(&ptrip, &trip_item->trip);
+                            pt = &ptrip;
+                        } else {
+                            pt = &trip_item->ptrip;
+                        }
+
+                        switch(item_page) {
+                            case 0:
+                                print_trip_odometer(LCD_CURSOR_POS_10, pt, ALIGN_LEFT);
+                                print_trip_average_fuel(LCD_CURSOR_POS_11, pt, ALIGN_RIGHT);
+                                break;
+                            case 1:
+                                print_trip_average_speed(LCD_CURSOR_POS_10, pt, ALIGN_LEFT);
+                                print_trip_time(LCD_CURSOR_POS_11, pt, ALIGN_RIGHT);
+                                break;
+                            case 2:
+                                print_trip_total_fuel(LCD_CURSOR_POS_10, pt, ALIGN_LEFT);
+                                lcd_print_half_width(LCD_CURSOR_POS_11, 0, ALIGN_RIGHT);
+                                break;
+                        }
+                    }
+
+                    len = print_index_number(jr.item_num + 1);
+                    len += journal_print_item_time((char *) &buf[len], trip_time);
+
+                    lcd_print_full_width(LCD_CURSOR_POS_00, len, ALIGN_LEFT);
+
+                    if (key2_press != 0) {
+                        if (journal_type != 3 && ++item_page > 2) {
+                            item_page = 0;
+                        }
+                        timeout_timer1 = JOURNAL_IDLE_TIMEOUT;
+                        screen_refresh = 1;
+                    }
+                }
             }
-            wait_refresh_timeout();
-        }
-        screen_refresh = 1;
+
+            if (jr.item_current == 0xFF) {
+                // no items for current journal
+                lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) journal_viewer_items_array, journal_type + 1), ALIGN_LEFT);
+                lcd_print_full_width(LCD_CURSOR_POS_10, strcpy2(buf, (char *) &journal_viewer_no_items_string, 0), ALIGN_LEFT);
+
+                if (key2_press != 0) {
+                    timeout_timer1 = 0;
+                    screen_refresh = 1;
+                }
+            }
+            break;
     }
 }
 
@@ -1463,7 +1491,7 @@ void config_screen_temp_sensors() {
 
     ds18b20_start_conversion(); config_temperature_conv_fl = 0; timeout_timer2 = 100;
 
-    timeout_timer1_loop(IDLE_TIMEOUT) {
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
         
         if (num_devices != 0) {
 
@@ -1476,13 +1504,13 @@ void config_screen_temp_sensors() {
                 }
             }
 
-            handle_keys_next_prev(&current_device, 0, num_devices - 1);
+            handle_keys_next_prev(&current_device, 0, num_devices - 1, DEFAULT_TIMEOUT);
 
             if (key2_press != 0) {
                 if (_t_num[current_device]++ == 3) {
                     _t_num[current_device] = 0;
                 }
-                timeout_timer1 = IDLE_TIMEOUT;
+                timeout_timer1 = DEFAULT_TIMEOUT;
             }
 
             _memset(buf, ' ', 16);
@@ -1558,7 +1586,7 @@ void config_screen_temp_sensors() {
 
     uint8_t t_num = 0;
 
-    timeout_timer1_loop(IDLE_TIMEOUT) {
+    timeout_timer1_loop(DEFAULT_TIMEOUT) {
 
 #if defined(DS18B20_CONFIG_SHOW_TEMP)
         if (config_temperature_conv_fl == 0 && timeout_timer2 == 0) {
@@ -1574,7 +1602,7 @@ void config_screen_temp_sensors() {
             if (t_num >= 4) {
                 t_num = 0;
             }
-            timeout_timer1 = IDLE_TIMEOUT;
+            timeout_timer1 = DEFAULT_TIMEOUT;
         }
 
 #if defined(DS18B20_CONFIG_SHOW_TEMP)        
@@ -1614,7 +1642,7 @@ void config_screen_temp_sensors() {
 void config_screen_service_counters() {
     static uint8_t c_sub_item = 0;
 
-    handle_keys_next_prev(&c_sub_item, 0, MAX_SUB_ITEM);
+    handle_keys_next_prev(&c_sub_item, 0, MAX_SUB_ITEM, DEFAULT_TIMEOUT);
     
     uint8_t len = print_index_number(c_sub_item + 1);
     len += strcpy2(&buf[len], (char *) &service_counters_array, c_sub_item + 1);
@@ -1633,14 +1661,14 @@ void config_screen_service_counters() {
             services.srv[c_sub_item - 1].limit = edit_value_char(services.srv[c_sub_item - 1].limit, CHAREDIT_MODE_10000KM, 0, 60);
         }
 
-        timeout_timer1 = IDLE_TIMEOUT;
+        timeout_timer1 = DEFAULT_TIMEOUT;
     }
     
 }
 #endif
 
 void config_screen_ua_const() {
-    handle_keys_up_down(&config.vcc_const, VOLTAGE_ADJUST_CONST_MIN, VOLTAGE_ADJUST_CONST_MAX);
+    handle_keys_up_down(&config.vcc_const, VOLTAGE_ADJUST_CONST_MIN, VOLTAGE_ADJUST_CONST_MAX, DEFAULT_TIMEOUT);
 
     print_voltage(LCD_CURSOR_POS_10 + LCD_WIDTH / 4, (uint16_t *) &adc_voltage.current, POS_NONE, ALIGN_RIGHT);
 }
@@ -2144,10 +2172,9 @@ void main() {
         if (config_mode == 0) {
             max_item = sizeof (items_main) / sizeof (items_main[0]) - 1;
 
-            do {
-                current_item_main = &items_main[c_item];
+            current_item_main = &items_main[c_item];
 
-                if (current_item_main->page.skip != 0 || (drive_min_speed_fl != 0 && current_item_main->page.drive_mode == 0)) {
+            while (current_item_main->page.skip != 0 || (drive_min_speed_fl != 0 && current_item_main->page.drive_mode == 0)) {
 #ifdef KEY3_SUPPORT
                     if (c_item < c_item_prev) {
                         if (c_item-- == 0) {
@@ -2160,8 +2187,8 @@ void main() {
                             c_item = 0;
                         }
                     }
-                }
-            } while (current_item_main->page.skip != 0 || (drive_min_speed_fl != 0 && current_item_main->page.drive_mode == 0));
+                current_item_main = &items_main[c_item];
+            }
         } else {
             max_item = sizeof (items_config) / sizeof (items_config[0]) - 1;
             current_item_config = &items_config[c_item];
@@ -2196,9 +2223,9 @@ void main() {
                 // show next/prev screen
                 c_item_prev = c_item;
 
-                // skip next/prev key for additional page of main screen
+                // skip next/prev key if skip_key_handler is set
                 if (config_mode != 0 || current_item_main->page.skip_key_handler == 0) {
-                    handle_keys_next_prev(&c_item, 0, max_item);
+                    handle_keys_next_prev(&c_item, 0, max_item, DEFAULT_TIMEOUT);
                 }
 
                 if (c_item != c_item_prev) {
@@ -2218,7 +2245,7 @@ void main() {
                     if (key2_press != 0) {
                         key2_press = 0;
                         LCD_Clear();
-                        timeout_timer1_loop(IDLE_TIMEOUT) {
+                        timeout_timer1_loop(DEFAULT_TIMEOUT) {
                             lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, current_item_config->page.title_string_index), ALIGN_LEFT);
                             current_item_config->screen();
                             LCD_cursor_off();

@@ -39,7 +39,7 @@ unsigned char* journal_read_item(journal_reader_t* jr, uint8_t journal_type) {
         JOURNAL_read_eeprom_block((unsigned char *) &item, journal_find_eeaddr(journal_type, _index), _size);
 
         // check, if item is valid. if not, read first item
-        if (item[0] == JOURNAL_ITEM_OK || jr->item_num == 0) {
+        if (item[0] == JOURNAL_ITEM_V1 || item[0] == JOURNAL_ITEM_V2 || jr->item_num == 0) {
             break;
         }
         jr->item_num = 0;
@@ -132,8 +132,8 @@ void journal_save_trip(trip_t *trip) {
 
     // skip if zero distance
     if (ptrip.odo != 0) {
-        trip_item.status = JOURNAL_ITEM_OK;
-        memcpy(&trip_item.trip, trip, sizeof (trip_t));
+        trip_item.status = JOURNAL_ITEM_V2;
+        memcpy(&trip_item.ptrip, &ptrip, sizeof (print_trip_t));
         // save trip item
         JOURNAL_write_eeprom_block((unsigned char *) &trip_item, journal_find_eeaddr(index, -1), sizeof (journal_trip_item_t));
     }
@@ -152,7 +152,7 @@ void journal_save_accel(uint8_t index) {
 
     journal_accel_item_t accel_item;
 
-    accel_item.status = JOURNAL_ITEM_OK;
+    accel_item.status = JOURNAL_ITEM_V2;
     accel_item.time = accel_meas_timer;
 
 #ifdef EXTENDED_ACCELERATION_MEASUREMENT
