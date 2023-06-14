@@ -12,31 +12,6 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 
-// DDRx: 0 - input, 1 - output
-// init values for port's data direction
-#define DDRB_INIT                   _BV(DDB2) | _BV(DDB3) | _BV(DDB4)
-#define DDRC_INIT                   0
-#define DDRD_INIT                   _BV(DDD0) | _BV(DDD1) | _BV(DDD2) | _BV(DDD3) | _BV(DDD5) | _BV(DDD6)
-
-// init values for port's data
-#define PORTB_INIT                  0/*_BV(PORTB0) | _BV(PORTB1)*/ // no pull-up
-#ifdef ADC_BUTTONS
-#define PORTC_INIT                  0
-#else
-#define PORTC_INIT                  0/*_BV(PORTC0) | _BV(PORTC1) | _BV(PORTC2)*/ // no pull-up
-#endif
-#define PORTD_INIT                  _BV(PORTD5)
-
-// encoder support
-#if !defined(ENCODER_SUPPORT)
-#define ENCODER_ENABLED             0
-#else
-#define ENCODER_ENABLED             1
-#endif
-#define PCINT_ENCODER               (ENCODER_ENABLED << PCINT9) | (ENCODER_ENABLED << PCINT10)
-
-/* ===========================================================================*/
-
 typedef uint8_t flag_t;
 typedef uint16_t eeaddr_t;
 typedef uint32_t uint24_t;
@@ -120,13 +95,56 @@ typedef uint32_t uint24_t;
 // configure DS18B20_PIN pin as input
 #define HW_1wire_input()            (DDRD &= ~_BV(DDD7))
 
-#if defined(ENCODER_SUPPORT)
+// encoder support
+#if !defined(ENCODER_SUPPORT)
+#define ENCODER_ENABLED             0
+#else
+#define ENCODER_ENABLED             1
 // encoder data (PC1/PCINT9) and clk (PC2/PCINT10)
 #define HW_encoder_get_data()       ((PINC & _BV(PINC1)) != 0 ? 1 : 0)
 #define HW_encoder_get_clk()        ((PINC & _BV(PINC2)) != 0 ? 1 : 0)
 #endif
+#define PCINT_ENCODER               (ENCODER_ENABLED << PCINT9) | (ENCODER_ENABLED << PCINT10)
 
-#ifdef LCD_LEGACY
+#if defined(LCD_SSD1322_1602)
+
+#define OLED_DC_PIN PORTD2
+#define OLED_DC_DDR DDD2
+
+#if defined(SPI_UART)
+#define OLED_CS_PIN PORTD0
+#define OLED_CS_DDR DDD0
+#else
+#define OLED_CS_PIN PORTB2
+#define OLED_CS_DDR DDB2
+#endif
+
+#define HW_lcd_spi_gpio_init()
+
+#define HW_lcd_spi_dc_low()         PORTD &= ~_BV(OLED_DC_PIN);
+#define HW_lcd_spi_dc_high()        PORTD |= _BV(OLED_DC_PIN);
+
+#if defined(SPI_UART)
+#define HW_lcd_spi_cs_low()         PORTD &= ~_BV(OLED_CS_PIN);
+#define HW_lcd_spi_cs_high()        PORTD |= _BV(OLED_CS_PIN);
+#else
+#define HW_lcd_spi_cs_low()         PORTB &= ~_BV(OLED_CS_PIN);
+#define HW_lcd_spi_cs_high()        PORTB |= _BV(OLED_CS_PIN);
+#endif
+
+#if defined(SPI_UART)
+#define PORTB_LCD_INIT              0
+#define DDRB_LCD_INIT               0
+#define PORTD_LCD_INIT              _BV(OLED_CS_PIN)
+#define DDRD_LCD_INIT               _BV(OLED_CS_DDR) | _BV(OLED_DC_DDR)   
+#else
+#define PORTB_LCD_INIT              _BV(OLED_CS_PIN)
+#define DDRB_LCD_INIT               _BV(OLED_CS_DDR)
+#define PORTD_LCD_INIT              0
+#define DDRD_LCD_INIT               _BV(OLED_DC_DDR)   
+#endif
+
+#elif defined(LCD_LEGACY)
 
 // 4-bit 1602 LCD definitions
 // rs - PB2
@@ -143,7 +161,34 @@ typedef uint32_t uint24_t;
 #define HW_lcd_en_low()             (PORTB &= ~_BV(PORTB4))
 #define HW_lcd_en_high()            (PORTB |=  _BV(PORTB4))
 
+#define PORTB_LCD_INIT              _BV(PORTB4)
+#define DDRB_LCD_INIT               _BV(DDB2) | _BV(DDB3) | _BV(DDB4)
+#define PORTD_LCD_INIT              0
+#define DDRD_LCD_INIT               _BV(DDD0) | _BV(DDD1) | _BV(DDD2) | _BV(DDD3)  
+
+#else
+
+#define HW_lcd_rs_low()
+#define HW_lcd_rs_high()
+
+#define PORTB_LCD_INIT     0
+#define DDRB_LCD_INIT      0
+#define PORTD_LCD_INIT     0
+#define DDRD_LCD_INIT      0   
+
 #endif
+
+// DDRx: 0 - input, 1 - output
+// init values for port's data direction
+#define DDRB_INIT                   DDRB_LCD_INIT
+#define DDRC_INIT                   0
+#define DDRD_INIT                   DDRD_LCD_INIT | _BV(DDD5) | _BV(DDD6)
+
+// init values for port's data 
+#define PORTB_INIT                  PORTB_LCD_INIT /* | _BV(PORTB0) | _BV(PORTB1) */
+// digital buttons needs external pullups
+#define PORTC_INIT                  0
+#define PORTD_INIT                  PORTD_LCD_INIT | _BV(PORTD5)
 
 #else
 #error "device not supported"

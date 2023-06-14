@@ -262,4 +262,56 @@ unsigned char I2C_Master_Write(unsigned char data) {
 
 #endif
 
+#if defined(SPI_UART)
+#define SPI_DDR         DDRD
+#define MOSI            DDD1
+#define SCK             DDD4
+#else
+#define SPI_DDR         DDRB
+#define MOSI            DDB3
+#define SCK             DDB5
+#endif
+
+void SPI_init() {
+  // set MOSI and SCK to output
+  SPI_DDR |= (1 << MOSI) | (1 << SCK);
+
+#if defined(SPI_UART)
+  // set master spi mode
+  UCSR0C = (1 << UMSEL01) | (1 << UMSEL00);
+  // enable transmitter only
+  UCSR0B = (1 << TXEN0);
+  UCSR0A = 0;
+  // set data rate (SPI_CLOCK_DIV2)
+  UBRR0 = 0;
+#else
+  // enable SPI, set as master, and clock to fosc/2
+  SPCR = (1 << SPE) | (1 << MSTR) | (0 << SPR1) | (0 << SPR0);
+  SPSR = (1 << SPI2X);
+#endif
+
+}
+
+void SPI_transfer(uint8_t _data) {
+#if defined(SPI_UART)
+  while (!(UCSR0A & (1 << UDRE0)));
+  UDR0 = _data;
+#else
+  SPDR = _data;
+  while (!(SPSR & (1 << SPIF)));
+#endif
+}
+
+void SPI_transfer_block(uint8_t* pBuf, uint16_t count) {
+  while (count--) {
+#if defined(SPI_UART)
+    while (!(UCSR0A & (1 << UDRE0)));
+    UDR0 = *pBuf++;
+#else
+    SPDR = *pBuf++;
+    while (!(SPSR & (1 << SPIF)));
+#endif
+  }
+}
+
 #endif

@@ -138,6 +138,8 @@ void wait_refresh_timeout() {
 
     clear_keys_state();
 
+    if (timeout_timer1 == 0) return;
+
     LCD_flush_buffer();
 
     while (timeout_timer1 != 0 && screen_refresh == 0);
@@ -1394,6 +1396,14 @@ void screen_journal_viewer() {
                             pt = &trip_item->ptrip;
                         }
 
+                        if (key2_press != 0) {
+                            if (journal_type != 3 && ++item_page > 2) {
+                                item_page = 0;
+                            }
+                            timeout_timer1 = JOURNAL_IDLE_TIMEOUT;
+                            screen_refresh = 1;
+                        }
+                        
                         switch(item_page) {
                             case 0:
                                 print_trip_odometer(LCD_CURSOR_POS_10, pt, ALIGN_LEFT);
@@ -1415,13 +1425,6 @@ void screen_journal_viewer() {
 
                     lcd_print_full_width(LCD_CURSOR_POS_00, len, ALIGN_LEFT);
 
-                    if (key2_press != 0) {
-                        if (journal_type != 3 && ++item_page > 2) {
-                            item_page = 0;
-                        }
-                        timeout_timer1 = JOURNAL_IDLE_TIMEOUT;
-                        screen_refresh = 1;
-                    }
                 }
             }
 
@@ -2257,11 +2260,14 @@ void main() {
                     current_item_main->screen();
                     LCD_cursor_off();
                 }
-                LCD_flush_buffer();
             }
         }
 
         clear_keys_state();
+
+        if (screen_refresh == 0 && mode_change_fl == 0 && item_change_fl == 0) {
+            LCD_flush_buffer();
+        }
         
         while (screen_refresh == 0 && mode_change_fl == 0 && item_change_fl == 0);
     }

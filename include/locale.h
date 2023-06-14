@@ -57,10 +57,31 @@ typedef enum {
 
 #define ACCEL_MEAS_ARRAY                "\0 0-100\0 0-60\0 60-100\0 80-120"
 
+#if defined(LCD_SSD1322_1602)
+#define SYMBOLS_ARRAY {                           \
+        /* POS_KMH=1   */ 0xFF, 0x00, 0x01,       \
+        /* POS_OMIN=2  */ 0xFF, 0x02, 0x03,       \
+        /* POS_LKM=3   */ 0xFF, 0x04, 0x05,       \
+        /* POS_LH=4    */ 0xFF, 0x06, 0x07,       \
+        /* POS_HOUR=5  */ 0xFF, 0x08,             \
+        /* POS_LITR=6  */ 0xFF, 0x09,             \
+        /* POS_VOLT=7  */ 0xFF, 0x0A,             \
+        /* POS_KM=8    */ 0xFF, 0x0B, 0x0C,       \
+        /* POS_SEC=9   */ 0xFF, 0x0D,             \
+        /* POS_CELS=10 */ 0xFF, 0x0E,             \
+        /* POS_MIN=11  */ 0xFF, '>',              \
+        /* POS_MAX=12  */ 0xFF, '<',              \
+        /* POS_MS=13   */ 0xFF, 0x0F, 0x10,       \
+        /* POS_NONE=14 */ 0xFF,                   \
+        0xFF,                                     \
+}
+#endif
+
 #if !defined(LOCALE_RUSSIAN)
 
 // english locale
 
+#if !defined(SYMBOLS_ARRAY)
 #define SYMBOLS_ARRAY {                           \
         /* POS_KMH=1   */ 0xFF, 0x00, 0x01,       \
         /* POS_OMIN=2  */ 0xFF, 0x02, 0x03,       \
@@ -78,6 +99,7 @@ typedef enum {
         /* POS_NONE=14 */ 0xFF,                   \
         0xFF,                                     \
 }
+#endif
 
 #define TRIPS_ARRAY                     "\0cur\0day\0A\0B"
 
@@ -193,6 +215,7 @@ typedef enum {
 
 // 1602 russian locale
 
+#if !defined(SYMBOLS_ARRAY)
 #define SYMBOLS_ARRAY     {                       \
         /* POS_KMH=1   */ 0xFF, 0x00, 0x01,       \
         /* POS_OMIN=2  */ 0xFF, 0x02, 0x03,       \
@@ -210,6 +233,7 @@ typedef enum {
         /* POS_NONE=14 */ 0xFF,                   \
         0xFF,                                     \
 }
+#endif
 
 // " тек дн А Б"
 #define TRIPS_ARRAY                     "\0\xBF\x65\xBA\0\xE3\xBD\0A\0B"

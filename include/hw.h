@@ -35,6 +35,7 @@ void HW_read_eeprom_block(unsigned char* p, eeaddr_t ee_addr, unsigned char leng
 void HW_write_eeprom_block(unsigned char* p, eeaddr_t ee_addr, unsigned char length);
 
 #include "i2c.h"
+#include "spi.h"
 
 #endif	/* HW_H */
 

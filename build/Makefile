@@ -69,7 +69,7 @@ OBJECTDIR=${TARGET}
 DISTDIR=../dist/${TARGET}
 OUTDIR_FIRMWARE=../firmware
 
-SRCS = src/core.c src/hw-pic.c src/hw-avr.c src/main.c src/ds18b20.c src/ds3231.c src/i2c.c src/lcd.c src/utils.c src/onewire.c src/i2c-eeprom.c src/journal.c
+SRCS = src/core.c src/hw-pic.c src/hw-avr.c src/main.c src/ds18b20.c src/ds3231.c src/i2c.c src/lcd.c src/utils.c src/onewire.c src/i2c-eeprom.c src/journal.c src/lcd_ssd1322.c
 ifneq (,$(filter pic16f% pic18f%,$(MCU)))
   OBJS = $(SRCS:%.c=${OBJECTDIR}/${IMAGE_TYPE}/%.p1)
   DEPS := $(OBJS:.p1=.d)

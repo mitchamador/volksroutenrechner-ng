@@ -7,9 +7,23 @@
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 
-#if defined(ARDUINO)
+#if defined(__AVR_ATmega168P__)
+// 1602 lcd 4bit
+#define LCD_LEGACY
+// no encoder support
+#define NO_ENCODER
+// disable service counters' configuration and checking
+#define NO_SERVICE_COUNTERS_CHECKS
+// no fuel tank support
+#define NO_FUEL_TANK
+#elif defined(ARDUINO)
+#if defined(LCD_SSD1322_1602)
+// ssd1322 1602 lcd
+#define SPI_UART
+#else
 // 1602 lcd i2c
 #define LCD_1602_I2C
+#endif
 // adc buttons connected to PC0/ADC0
 #define ADC_BUTTONS
 // save default eeprom in progmem
@@ -26,8 +40,10 @@
 // no fuel tank support
 #define NO_FUEL_TANK
 #elif defined(__AVR_ATmega328P__)
+#if !defined(LCD_SSD1322_1602)
 // 1602 lcd 4bit
 #define LCD_LEGACY
+#endif
 #endif
 
 #elif defined(_16F876A) || defined(_16F1936) || defined (_16F1938) || defined(_18F252)  || defined(_18F242)
@@ -39,8 +55,6 @@
 #if defined(_16F876A)
 // simple adc handler
 #define SIMPLE_ADC
-// skip oled lcd reset sequence (though works ok without it after power up with EH1602 REV.J)
-//#define NO_LCD_OLED_RESET
 // simple checking time difference (decrease memory usage)
 #define SIMPLE_TRIPC_TIME_CHECK
 // auto calculate day of week
@@ -140,7 +154,7 @@
 // no fuel tank support
 #define NO_FUEL_TANK
 // no instant fuel averaging
-//#define NO_INSTANT_FUEL_AVERAGE
+#define NO_INSTANT_FUEL_AVERAGE
 
 #endif /* _18F242 */
 
