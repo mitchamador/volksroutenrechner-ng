@@ -138,7 +138,7 @@
 // use temp sensor from ds3231
 #define NO_KEY3
 // voltage min/max
-//#define NO_MIN_MAX_VOLTAGES
+#define NO_MIN_MAX_VOLTAGES
 // no fuel tank support
 #define NO_FUEL_TANK
 // no instant fuel averaging
