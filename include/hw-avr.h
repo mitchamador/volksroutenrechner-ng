@@ -13,21 +13,17 @@
 #include <avr/pgmspace.h>
 
 // DDRx: 0 - input, 1 - output
-
-// Voltage Reference: AVCC pin, right aligned
-#define ADC_VREF_TYPE               ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR))
-
 // init values for port's data direction
 #define DDRB_INIT                   _BV(DDB2) | _BV(DDB3) | _BV(DDB4)
 #define DDRC_INIT                   0
 #define DDRD_INIT                   _BV(DDD0) | _BV(DDD1) | _BV(DDD2) | _BV(DDD3) | _BV(DDD5) | _BV(DDD6)
 
-// init values for port's data 
-#define PORTB_INIT                  _BV(PORTB0) | _BV(PORTB1)
+// init values for port's data
+#define PORTB_INIT                  0/*_BV(PORTB0) | _BV(PORTB1)*/ // no pull-up
 #ifdef ADC_BUTTONS
 #define PORTC_INIT                  0
 #else
-#define PORTC_INIT                  _BV(PORTC0) | _BV(PORTC1) | _BV(PORTC2)
+#define PORTC_INIT                  0/*_BV(PORTC0) | _BV(PORTC1) | _BV(PORTC2)*/ // no pull-up
 #endif
 #define PORTD_INIT                  _BV(PORTD5)
 
@@ -61,6 +57,9 @@ typedef uint32_t uint24_t;
 // min/max value of adc reading
 #define HW_ADC_MIN     0
 #define HW_ADC_MAX     1023
+
+// Voltage Reference: AVCC pin, right aligned
+#define ADC_VREF_TYPE               ((0<<REFS1) | (1<<REFS0) | (0<<ADLAR))
 
 // mux for power supply pin (PC3/ADC3)
 #define HW_ADC_CHANNEL_POWER_SUPPLY ((0 << MUX3) | (0 << MUX2) | (1 << MUX1) | (1 << MUX0))
