@@ -7,16 +7,7 @@
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 
-#if defined(__AVR_ATmega168P__)
-// 1602 lcd 4bit
-#define LCD_LEGACY
-// no encoder support
-#define NO_ENCODER
-// disable service counters' configuration and checking
-#define NO_SERVICE_COUNTERS_CHECKS
-// no fuel tank support
-#define NO_FUEL_TANK
-#elif defined(ARDUINO)
+#if defined(ARDUINO)
 // 1602 lcd i2c
 #define LCD_1602_I2C
 // adc buttons connected to PC0/ADC0
@@ -25,11 +16,18 @@
 #define PROGMEM_EEPROM
 // use internal eeprom for trip journal
 #define JOURNAL_EEPROM_INTERNAL
-#else
+#elif defined(__AVR_ATmega168P__)
 // 1602 lcd 4bit
 #define LCD_LEGACY
-// use internal eeprom for trip journal
-#define JOURNAL_EEPROM_INTERNAL
+// no encoder support
+#define NO_ENCODER
+// disable service counters' configuration and checking
+#define NO_SERVICE_COUNTERS_CHECKS
+// no fuel tank support
+#define NO_FUEL_TANK
+#elif defined(__AVR_ATmega328P__)
+// 1602 lcd 4bit
+#define LCD_LEGACY
 #endif
 
 #elif defined(_16F876A) || defined(_16F1936) || defined (_16F1938) || defined(_18F252)  || defined(_18F242)
