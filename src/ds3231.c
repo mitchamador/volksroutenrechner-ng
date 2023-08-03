@@ -1,4 +1,5 @@
 #include "ds3231.h"
+#include "core.h"
 #include "utils.h"
 #include "ds18b20.h"
 #include "version.h"
@@ -34,18 +35,23 @@ void DS3231_time_read(ds_time* time) {
     }
     I2C_Master_Stop();
 
-    if (time->flags.is_valid == 0
-#if !defined(_16F876A)
-        || time->year == 0
-#endif
-     ) {
+    if (time->flags.is_valid == 0 || time->year == 0) {
         // fallback time
+#if defined(FALLBACK_TIME_VERSION)
         time->minute = VERSION_MINUTE_BCD;
         time->hour = VERSION_HOUR_BCD;
         time->day_of_week = VERSION_DAY_OF_WEEK_BCD;
         time->day = VERSION_DAY_OF_MONTH_BCD;
         time->month = VERSION_MONTH_BCD;
         time->year = VERSION_YEAR_BCD;
+#else
+        time->minute = trips.tripC_time.minute;
+        time->hour = trips.tripC_time.hour;
+        time->day = trips.tripC_time.day;
+        time->month = trips.tripC_time.month;
+        time->year = trips.tripC_time.year;
+        time->day_of_week = trips.tripC_time_dow;
+#endif
 
         DS3231_time_write(time);
 #if !defined(_16F876A)

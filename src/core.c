@@ -98,6 +98,8 @@ uint8_t fuel1_const;
 uint8_t fuel2_const;
 uint16_t odo_con4;
 
+uint8_t drive_min_speed;
+
 uint16_t calc_filtered_value(filtered_value_t *, uint16_t);
 
 #ifdef CONTINUOUS_DATA_SUPPORT
@@ -920,12 +922,13 @@ uint16_t get_instant_fuel(uint16_t fuel, uint16_t kmh, uint8_t drive_fl) {
 }
 
 void fill_live_data() {
+    
     data.speed = get_speed((uint16_t) kmh);
-    if (trips.tripC_max_speed < data.speed) {
+    if (data.speed >= drive_min_speed && trips.tripC_max_speed < data.speed) {
         trips.tripC_max_speed = data.speed;
     }
 
-    data.fuel_instant = get_instant_fuel(fuel, kmh, data.speed >= config.selected_param.min_speed * 10);
+    data.fuel_instant = get_instant_fuel(fuel, kmh, data.speed >= drive_min_speed);
 
     if (taho_fl == 0) {
         data.taho_rpm = 0;
@@ -944,7 +947,7 @@ void fill_live_data() {
 
 #ifdef CONTINUOUS_DATA_SUPPORT
     data.cd_speed = get_speed((uint16_t) cd_kmh);
-    data.cd_fuel_instant = get_instant_fuel(cd_fuel, cd_kmh, data.cd_speed >= config.selected_param.min_speed * 10);
+    data.cd_fuel_instant = get_instant_fuel(cd_fuel, cd_kmh, data.cd_speed >= drive_min_speed);
 #endif
 
 }
@@ -966,4 +969,5 @@ void set_consts() {
 #ifndef EXTENDED_ACCELERATION_MEASUREMENT
     accel_meas_upper_const = (unsigned short) (speed_const(100) / config.odo_const);
 #endif
+    drive_min_speed = config.selected_param.min_speed * 10;
 }

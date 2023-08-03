@@ -232,7 +232,8 @@ typedef struct {
     trip_time_t tripC_time;     // 5 bytes
     uint8_t tripB_month;        // 1 byte
     uint16_t tripC_max_speed;   // 2 bytes
-} trips_t;                      // 44 bytes total (48 bytes eeprom block)
+    uint8_t tripC_time_dow;     // 1 byte
+} trips_t;                      // 45 bytes total (48 bytes eeprom block)
 
 typedef struct {
     uint32_t time;
@@ -332,6 +333,8 @@ extern volatile uint16_t accel_meas_lower_const;
 extern volatile uint16_t accel_meas_upper_const, accel_meas_timer, accel_meas_speed;
 
 extern volatile uint16_t kmh, fuel;
+
+extern uint8_t drive_min_speed;
 
 extern volatile uint8_t timeout_ds_read;
 

@@ -521,7 +521,6 @@ void screen_time(void) {
                     while (dow >= 7)
                         dow -= 7;
                     time.day_of_week = dow + 1;
-
                 }
 #endif                
                 timeout_timer1 = DEFAULT_TIMEOUT;
@@ -1998,9 +1997,9 @@ void set_params() {
 #endif
 }
 
-void handle_misc_values() {
+void fill_misc_values() {
 
-    if (data.speed >= config.selected_param.min_speed * 10) {
+    if (data.speed >= drive_min_speed) {
         fuel_instant_pos = POS_LKM;
         drive_min_speed_fl = 1;
     } else {
@@ -2009,7 +2008,7 @@ void handle_misc_values() {
     }
 
 #ifdef CONTINUOUS_DATA_SUPPORT
-    if (data.cd_speed >= config.selected_param.min_speed * 10) {
+    if (data.cd_speed >= drive_min_speed) {
         cd_fuel_instant_pos = POS_LKM;
     } else {
         cd_fuel_instant_pos = POS_LH;
@@ -2088,6 +2087,7 @@ void power_off() {
         // save current time for tripC
         read_ds_time();
         fill_trip_time(&trips.tripC_time);
+        trips.tripC_time_dow = time.day_of_week;
     }
 
     // save tripB month
@@ -2155,7 +2155,7 @@ void main() {
         if (screen_refresh != 0) {           
             screen_refresh = 0;
             fill_live_data();
-            handle_misc_values();
+            fill_misc_values();
         }
 
         // check power
