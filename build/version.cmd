@@ -4,7 +4,7 @@
 fi
 
 dayofweek=$(date +%w)
-dayofweek=$((dayofweek += 1))
+if [ $dayofweek == 0 ]; then dayofweek=7; fi
 
 echo \#ifndef VERSION_H >../include/version.h
 echo \#define VERSION_H >>../include/version.h
@@ -34,7 +34,7 @@ echo #ifndef VERSION_H >..\include\version.h
 echo #define	VERSION_H >>..\include\version.h
 echo. >>..\include\version.h
 set _time=%TIME: =0%
-set /a "dayofweek=%dayofweek%+1"
+if %dayofweek%==0 (set /a "dayofweek=7")
 echo #define VERSION "%_time:~0,5% %date%" >>..\include\version.h
 echo. >>..\include\version.h
 echo #define VERSION_MINUTE_BCD 0x%_time:~3,2% >>..\include\version.h

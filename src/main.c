@@ -518,9 +518,9 @@ void screen_time(void) {
                     dow += mArr[tMonth - 1];
                     if (((tYear % 4) == 0) && (tMonth < 3))
                         dow -= 1;
-                    while (dow >= 7)
+                    while (dow > 7)
                         dow -= 7;
-                    time.day_of_week = dow + 1;
+                    time.day_of_week = dow;
                 }
 #endif                
                 timeout_timer1 = DEFAULT_TIMEOUT;
