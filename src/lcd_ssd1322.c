@@ -3,6 +3,10 @@
 #include "core.h"
 #include "lcd_ssd1322.h"
 
+#include "fonts/jetbrains_mono_16x32.h"
+#include "fonts/source_code_pro_semibold.h"
+#include "fonts/noto_mono_16x32.h"
+
 BMFont *bmFont;
 
 void LCD_Init() {
@@ -25,6 +29,8 @@ void LCD_Init() {
 
   SSD1322_clear_all();
 
+  //bmFont = &font_JetBrains_Mono;
+  //bmFont = &font_Source_Code_Pro_Semibold;
   bmFont = &font_Noto_Mono;
 
 }
@@ -230,30 +236,28 @@ void SSD1322_draw_bitmap(int16_t x, int16_t y, int16_t w, int16_t h, uint8_t fla
 
         if (xDiv == 2) {
           if ((srcx & 0x01) == 0) {
-            c = (c & 0xF0) >> 4;
-          } else {
-            c = c & 0x0F;
+            c >>= 4;
           }
+          c &= 0x0F;
         } else if (xDiv == 4) {
 #if 1
           switch (srcx & 0x03) {
             case 0:
-              c = (c & 0xC0) >> 6;
+              c = c >> 6;
               break;
             case 1:
-              c = (c & 0x30) >> 4;
+              c = c >> 4;
               break;
             case 2:
-              c = (c & 0x0C) >> 2;
+              c = c >> 2;
               break;
-            case 3:
-              c = (c & 0x03);
           }
-          c = ((c << 2) & 0x0C) + c; // convert 2 bit colors from 0x00,0x01,0x02,0x03 to 0x00,0x05,0x0A,0xFF
+          c &= 0x03;
 #else
-          c = c >> ((3 - (srcx & 0x03)) * 2);
-          c = ((c << 2) & 0x0C) + (c & 0x03); // convert 2 bit colors from 0x00,0x01,0x02,0x03 to 0x00,0x05,0x0A,0xFF
+          c = (c >> ((3 - (srcx & 0x03)) * 2))/* & 0x03*/;
 #endif
+          // convert 2 bit colors from 0x00,0x01,0x02,0x03 to 0x00,0x05,0x0A,0xFF
+          c |= c << 2; 
         }
 
         if (BMFONT_FLAG(LOW_BRIGHTNESS, flags)) {
