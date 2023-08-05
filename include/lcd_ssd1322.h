@@ -82,7 +82,7 @@ static const uint8_t SSD1322_init_commands[] PROGMEM = {
   0xA0,
   0xfd,
   0xC1, 0x01, /*set contrast current */
-  0x80,
+  0xff,
   0xC7, 0x01, /*master contrast current control*/
   0x0f,
 
