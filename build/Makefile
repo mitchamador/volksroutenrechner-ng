@@ -134,13 +134,13 @@ endif
 clobber:
 	$(info $(MAKEFILE_LIST))
 	MCU=pic16f876a $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
-#	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=pic16f1936 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=pic16f1938 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
-#	MCU=pic18f242 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=pic18f242 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=pic18f252 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
-#	MCU=atmega168p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=atmega168p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 	MCU=atmega328p $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
-#	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
+	MCU=atmega328p ARDUINO=1 $(MAKE) -f $(firstword $(MAKEFILE_LIST)) clean
 
 $(TARGET): $(OBJS)
 	@${MKDIR} ${DISTDIR}/${IMAGE_TYPE} 

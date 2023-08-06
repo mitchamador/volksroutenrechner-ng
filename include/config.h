@@ -42,8 +42,11 @@
 #define HW_LEGACY
 // no encoder on pic mcu
 #define NO_ENCODER
+// no key3 on pic mcu
+#define NO_KEY3
 
 #if defined(_16F876A)
+
 // simple adc handler
 #define SIMPLE_ADC
 // simple checking time difference (decrease memory usage)
@@ -72,17 +75,17 @@
 //#define DS18B20_CONFIG_SHOW_TEMP
 // extended ds18b20 configuration
 #define NO_DS18B20_CONFIG_EXT
-// support for prev key for legacy hw
-#define NO_KEY3
 // voltage min/max
 //#define NO_MIN_MAX_VOLTAGES
 // no fuel tank support
 #define NO_FUEL_TANK
 // no instant fuel averaging
 #define NO_INSTANT_FUEL_AVERAGE
+
 #endif /* _16F876A */
 
 #if defined(_16F1936)
+
 // simple adc handler
 #define SIMPLE_ADC
 // speed 0-100 measurement only
@@ -105,17 +108,17 @@
 #define NO_DS18B20_CONFIG_EXT
 // show temp for sensors' configuration
 #define DS18B20_CONFIG_SHOW_TEMP
-// use temp sensor from ds3231
-#define NO_KEY3
 // voltage min/max
 //#define NO_MIN_MAX_VOLTAGES
 // no fuel tank support
 #define NO_FUEL_TANK
 // no instant fuel averaging
 //#define NO_INSTANT_FUEL_AVERAGE
+
 #endif /* _16F1936 */
 
 #if defined(_18F242)
+
 // simple adc handler
 #define SIMPLE_ADC
 // speed 0-100 measurement only
@@ -138,8 +141,6 @@
 #define NO_DS18B20_CONFIG_EXT
 // show temp for sensors' configuration
 #define DS18B20_CONFIG_SHOW_TEMP
-// use temp sensor from ds3231
-#define NO_KEY3
 // voltage min/max
 #define NO_MIN_MAX_VOLTAGES
 // no fuel tank support
@@ -148,11 +149,6 @@
 #define NO_INSTANT_FUEL_AVERAGE
 
 #endif /* _18F242 */
-
-#if defined(_16F1938) || defined(_18F252)
-// support for prev key for legacy hw
-#define NO_KEY3
-#endif /* _16F1938 */
 
 #else
 #error("configuration not supported")
