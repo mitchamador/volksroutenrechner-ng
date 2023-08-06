@@ -7,16 +7,7 @@
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 
-#if defined(__AVR_ATmega168P__)
-// 1602 lcd 4bit
-#define LCD_LEGACY
-// no encoder support
-#define NO_ENCODER
-// disable service counters' configuration and checking
-#define NO_SERVICE_COUNTERS_CHECKS
-// no fuel tank support
-#define NO_FUEL_TANK
-#elif defined(ARDUINO)
+#if defined(ARDUINO)
 #if defined(LCD_SSD1322_1602)
 // ssd1322 1602 lcd
 #define SPI_UART
