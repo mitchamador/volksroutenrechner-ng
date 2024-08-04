@@ -19,10 +19,10 @@
 #define MIN_SPEED_DEFAULT 5
 
 //show average speed (or fuel consumption) after distance AVERAGE_MIN_DIST * 0.1 km
-#define AVERAGE_MIN_DIST 3
+#define AVERAGE_MIN_DIST 5
 
-// show average fuel consumption after total consumption of AVERAGE_MIN_FUEL * 0,01 litres
-#define AVERAGE_MIN_FUEL 5
+// show average fuel consumption after total consumption of AVERAGE_MIN_FUEL * 0,1 litres
+#define AVERAGE_MIN_FUEL 1
 
 // max value of trip A odometer
 #define MAX_ODO_TRIPA 2000
@@ -142,10 +142,10 @@ typedef union {
         unsigned dummy              : 6;
 #endif
         unsigned adc_fuel_normalize : 1; // normalize adc_fuel to adc_voltage
-        unsigned ds3231_temp        : 1; // use ds3231 temperature as inner
+        unsigned ds3231_temp        : 1; // use ds3231 temperature as inner sensor
         unsigned show_inner_temp    : 1; // show inner (outer by default) temperature on first screen
 #ifndef SIMPLE_TRIPC_TIME_CHECK
-        unsigned daily_tripc        : 1; // use trip C as dayly counter (auto reset on next day)
+        unsigned daily_tripc        : 1; // use trip C as daily counter (auto reset on next day)
 #else
         unsigned dummy_daily_tripc  : 1;
 #endif
