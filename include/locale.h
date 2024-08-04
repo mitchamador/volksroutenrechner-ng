@@ -2,10 +2,7 @@
 #define	LOCALE_H
 
 #include "version.h"
-
-#ifndef __AVR
-#define PROGMEM
-#endif
+#include "utils.h"
 
 typedef enum {
     POS_KMH=1,        

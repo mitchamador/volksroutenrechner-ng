@@ -6,7 +6,12 @@
 
 #if defined(__AVR)
 #include <string.h>
+#include <util/crc16.h>
+#else
+#define pgm_read_byte(addr) (*(const uint8_t *)(addr))
+#define PROGMEM
 #endif
+
 
 typedef enum {
     ALIGN_NONE = 0,

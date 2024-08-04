@@ -1,11 +1,5 @@
 #include "utils.h"
 
-#if defined(__AVR__)
-#include <util/crc16.h>
-#else
-#define pgm_read_byte(addr) (*(const uint8_t *)(addr))
-#endif
-
 uint8_t bcd8_to_bin(uint8_t b) {
     uint8_t _t = b & 0x0F;
     b = (b & 0xF0) >> 1;
