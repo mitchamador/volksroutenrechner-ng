@@ -67,16 +67,12 @@ typedef uint32_t uint24_t;
 // PB1/PCINT1
 #define HW_fuel_active()            ((PINB & _BV(PINB1)) == 0)
 
-#ifndef ADC_BUTTONS
 // digital button read
 // PC0 - OK, PC1 - NEXT, PC2 - prev
 #define HW_key1_pressed()           ((PINC & _BV(PINC1)) == 0)
+// analog/digital button OK
 #define HW_key2_pressed()           ((PINC & _BV(PINC0)) == 0)
 #define HW_key3_pressed()           ((PINC & _BV(PINC2)) == 0)
-#endif
-
-// analog/digital button OK
-#define HW_key_ok_pressed()         ((PINC & _BV(PINC0)) == 0)
 
 // power pin settings
 #define HW_pwr_on()                 (PORTD |=  _BV(PORTD5))
@@ -144,7 +140,7 @@ typedef uint32_t uint24_t;
 #define DDRD_LCD_INIT               _BV(OLED_DC_DDR)   
 #endif
 
-#elif defined(LCD_LEGACY)
+#elif defined(LCD_1602)
 
 // 4-bit 1602 LCD definitions
 // rs - PB2
@@ -167,9 +163,6 @@ typedef uint32_t uint24_t;
 #define DDRD_LCD_INIT               _BV(DDD0) | _BV(DDD1) | _BV(DDD2) | _BV(DDD3)  
 
 #else
-
-#define HW_lcd_rs_low()
-#define HW_lcd_rs_high()
 
 #define PORTB_LCD_INIT     0
 #define DDRB_LCD_INIT      0

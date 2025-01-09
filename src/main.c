@@ -480,26 +480,26 @@ void screen_time(void) {
             //screen_refresh = 0;
 
 #if defined(ENCODER_SUPPORT)
-            if (config.settings.encoder != 0 && key2_press != 0) {
+            if (use_encoder() != 0 && key2_press != 0) {
                 edit_mode = ~edit_mode;
             }
-            if (config.settings.encoder == 0 || edit_mode == 0)
+            if (use_encoder() == 0 || edit_mode == 0)
 #endif
             {
                 handle_keys_next_prev(&c, 0, sizeof(time_editor_items_array) / sizeof(time_editor_items_array[0]) - 1, DEFAULT_TIMEOUT);
                 time_editor_item = (time_editor_item_t *) &time_editor_items_array[c];
             }
 #if defined(ENCODER_SUPPORT)
-            if ((config.settings.encoder != 0 && (key1_press != 0 || key3_press != 0) && edit_mode != 0) || (config.settings.encoder == 0 && key2_press != 0)) {           
+            if ((use_encoder() != 0 && (key1_press != 0 || key3_press != 0) && edit_mode != 0) || (use_encoder() == 0 && key2_press != 0)) {           
 #else
             if (key2_press != 0) {
 #endif
 
                 save_time = 1;
 #if defined(ENCODER_SUPPORT)
-                if (config.settings.encoder != 0 && key3_press != 0) {
+                if (use_encoder() != 0 && key3_press != 0) {
                     *time_editor_item->p = bcd8_dec(*time_editor_item->p, time_editor_item->min, time_editor_item->max);
-                } else if ((config.settings.encoder != 0 && key1_press != 0) || (config.settings.encoder == 0 && key2_press != 0))
+                } else if ((use_encoder() != 0 && key1_press != 0) || (use_encoder() == 0 && key2_press != 0))
 #endif
                 {
                     *time_editor_item->p = bcd8_inc(*time_editor_item->p, time_editor_item->min, time_editor_item->max);
@@ -533,7 +533,7 @@ void screen_time(void) {
             print_time(&time);
 
 #if defined(ENCODER_SUPPORT)
-            if (config.settings.encoder != 0 && edit_mode == 0) {
+            if (use_encoder() != 0 && edit_mode == 0) {
                 LCD_cursor_underline(time_editor_item->pos);
             } else {
                 LCD_cursor_blink(time_editor_item->pos);
@@ -620,9 +620,9 @@ uint24_t edit_value_long(uint24_t v, uint24_t max_value) {
     timeout_timer1_loop(DEFAULT_TIMEOUT) {
 
 #if defined(ENCODER_SUPPORT)
-        if (config.settings.encoder != 0 && edit_mode != 0) {
+        if (use_encoder() != 0 && edit_mode != 0) {
             buf_prev = buf[pos];
-            handle_keys_next_prev(&buf[pos], '0', '9', DEFAULT_TIMEOUT);
+            handle_keys_next_prev((uint8_t *) &buf[pos], '0', '9', DEFAULT_TIMEOUT);
         } else
 #endif
         {
@@ -633,7 +633,7 @@ uint24_t edit_value_long(uint24_t v, uint24_t max_value) {
         if (key2_press != 0) {
             key2_press = 0;
 #if defined(ENCODER_SUPPORT)
-            if (config.settings.encoder != 0) {
+            if (use_encoder() != 0) {
                 edit_mode = ~edit_mode;
             } else
 #endif
@@ -653,7 +653,7 @@ uint24_t edit_value_long(uint24_t v, uint24_t max_value) {
         uint24_t _t = strtoul2(buf);
         if (_t > max_value) {
 #if defined(ENCODER_SUPPORT)
-            if (config.settings.encoder != 0) {
+            if (use_encoder() != 0) {
                 buf[pos] = buf_prev;
             } else
 #endif
@@ -666,7 +666,7 @@ uint24_t edit_value_long(uint24_t v, uint24_t max_value) {
         lcd_print_half_width(cursor_pos, max_len, ALIGN_LEFT);
         
 #if defined(ENCODER_SUPPORT)
-        if (config.settings.encoder != 0 && edit_mode == 0) {
+        if (use_encoder() != 0 && edit_mode == 0) {
             LCD_cursor_underline(cursor_pos + pos);
         } else {
             LCD_cursor_blink(cursor_pos + pos);
@@ -973,7 +973,7 @@ void screen_main(void) {
     //  cd_speed        cd_fuel
 
 #if defined(ENCODER_SUPPORT)
-    if ((config.settings.encoder != 0 && key2_doubleclick != 0) || (config.settings.encoder == 0 && key1_longpress != 0)) {
+    if ((use_encoder() != 0 && key2_doubleclick != 0) || (use_encoder() == 0 && key1_longpress != 0)) {
 #else
     if (key1_longpress != 0) {
 #endif
@@ -1728,116 +1728,6 @@ void print_warning_service_counters(uint8_t warn) {
 }
 #endif
 
-#if defined(PROGMEM_EEPROM) || defined(ENCODER_SUPPORT)
-
-typedef enum {
-    BEEP_OK=1,
-    BEEP_UP,
-    BEEP_DOWN
-} beep_t;
-
-void _beep(uint8_t tone, uint16_t length)
-{
-  uint16_t i;
-  uint8_t r;
-  for (i = 0; i < length; i++) {
-    if ((i & 0x01) == 0) {
-      HW_snd_on();
-    } else {
-      HW_snd_off();
-    }
-    for (r = 0; r < tone; r++) {
-      _delay_us(15);
-    }
-  }
-  HW_snd_off();
-}
-
-void beep(uint8_t beep)
-{
-    switch (beep) {
-        case BEEP_OK:
-            _beep(15, 255);
-            break;
-        case BEEP_UP:
-            _beep(25, 250);
-            _beep(15, 400);
-            break;
-        case BEEP_DOWN:
-            _beep(15, 400);
-            _beep(25, 250);
-            break;
-    }
-}
-#endif
-
-#if defined(PROGMEM_EEPROM) || defined (ENCODER_SUPPORT)
-
-#define SETTINGS_DELAY 150
-
-uint8_t stage_setting = 0;
-
-typedef enum {
-#if defined(ENCODER_SUPPORT)
-    FORCE_SETTING_ENCODER_OFF=1,        // force encoder off
-    FORCE_SETTING_ENCODER_ON,           // force encoder on
-#endif
-#if defined(PROGMEM_EEPROM)  
-    FORCE_SETTING_EEPROM_REWRITE,       // eeprom rewrite for arduino target
-#endif
-    FORCE_SETTING_MAX    
-} pre_settings_t;
-
-#if defined(PROGMEM_EEPROM)
-void check_eeprom(uint8_t c) {
-    unsigned char tbuf[8];
-    HW_read_eeprom_block((unsigned char*) &tbuf, sizeof(eedata) - 8, 8);
-    if (c == FORCE_SETTING_EEPROM_REWRITE || memcmp_P((unsigned char*) &tbuf, &eedata[sizeof(eedata) - 8], 8) != 0) {
-        uint8_t c;
-        for (c = 0; c < sizeof(eedata); c += 8) {
-            memcpy_P(&tbuf, &eedata[c], 8);
-            HW_write_eeprom_block((unsigned char*) &tbuf, c, 8);
-        }
-    }
-}
-#endif
-
-// force settings overwrite
-// press ok button before start
-// release after pre_setting_t beeps for change setting
-void preinit_settings() {
-    while (HW_key_ok_pressed()) {
-        uint8_t keytime = SETTINGS_DELAY;
-        while (HW_key_ok_pressed()) {
-            HW_delay_ms(10);
-            if (--keytime == 0) {
-                keytime = SETTINGS_DELAY;
-                if (stage_setting < (FORCE_SETTING_MAX - 1)) {
-                    stage_setting++;
-                    for (uint8_t i = 0; i < stage_setting; i++) {
-                        beep(BEEP_OK);
-                        HW_delay_ms(150);
-                    }
-                } else {
-                    while (HW_key_ok_pressed()) {};
-                    stage_setting = 0;
-                }
-            }
-        }
-        if (!HW_key_ok_pressed() && stage_setting != 0) {
-            beep(BEEP_UP);
-            beep(BEEP_UP);
-            beep(BEEP_UP);
-        }
-    }
-#if defined(PROGMEM_EEPROM)
-    // check eeprom special mark and save default eeprom content if mark not exists
-    check_eeprom(stage_setting);
-#endif
-}
-
-#endif
-
 void read_eeprom() {
 
     HW_read_eeprom_block((unsigned char*) &config, EEPROM_CONFIG_ADDRESS, sizeof(config_t));
@@ -1874,6 +1764,155 @@ void save_eeprom() {
     HW_write_eeprom_block((unsigned char*) &cd, EEPROM_CONTINUOUS_DATA_ADDRESS, sizeof (continuous_data_t));
 #endif
 }
+
+#if defined(PROGMEM_EEPROM) || defined (ENCODER_SUPPORT) || defined(ADC_BUTTONS_SUPPORT) || (defined(LCD_1602) && defined(LCD_1602_I2C))
+
+typedef enum {
+    BEEP_OK=1,
+    BEEP_UP,
+    BEEP_DOWN
+} beep_t;
+
+void _beep(uint8_t tone, uint16_t length)
+{
+  uint16_t i;
+  uint8_t r;
+  for (i = 0; i < length; i++) {
+    if ((i & 0x01) == 0) {
+      HW_snd_on();
+    } else {
+      HW_snd_off();
+    }
+    for (r = 0; r < tone; r++) {
+      HW_delay_us(15);
+    }
+  }
+  HW_snd_off();
+}
+
+void beep(uint8_t beep)
+{
+    switch (beep) {
+        case BEEP_OK:
+            _beep(15, 255);
+            break;
+        case BEEP_UP:
+            _beep(25, 250);
+            _beep(15, 400);
+            break;
+        case BEEP_DOWN:
+            _beep(15, 400);
+            _beep(25, 250);
+            break;
+    }
+}
+
+#define SETTINGS_DELAY 150
+
+uint8_t stage_setting = 0;
+
+typedef enum {
+    FORCE_SETTING_START=0,
+#if defined(ENCODER_SUPPORT)
+    FORCE_SETTING_ENCODER_OFF,        // force encoder off
+    FORCE_SETTING_ENCODER_ON,         // force encoder on
+#endif
+#if defined(ADC_BUTTONS_SUPPORT)
+    FORCE_SETTING_ADC_BUTTONS_OFF,    // force adc buttons off
+    FORCE_SETTING_ADC_BUTTONS_ON,     // force adc buttons on
+#endif
+#if defined(LCD_1602) && defined(LCD_1602_I2C)
+    FORCE_SETTING_LCD_1602_I2C_OFF,    // force lcd 1602 i2c off
+    FORCE_SETTING_LCD_1602_I2C_ON,     // force lcd 1602 i2c on
+#endif
+#if defined(PROGMEM_EEPROM)  
+    FORCE_SETTING_EEPROM_REWRITE,     // eeprom rewrite for arduino target
+#endif
+    FORCE_SETTING_MAX    
+} pre_settings_t;
+
+#if defined(PROGMEM_EEPROM)
+void check_eeprom(uint8_t c) {
+    unsigned char tbuf[8];
+    HW_read_eeprom_block((unsigned char*) &tbuf, sizeof(eedata) - 8, 8);
+    if (c == FORCE_SETTING_EEPROM_REWRITE || memcmp_P((unsigned char*) &tbuf, &eedata[sizeof(eedata) - 8], 8) != 0) {
+        uint8_t c;
+        for (c = 0; c < sizeof(eedata); c += 8) {
+            memcpy_P(&tbuf, &eedata[c], 8);
+            HW_write_eeprom_block((unsigned char*) &tbuf, c, 8);
+        }
+    }
+}
+#endif
+
+// force settings overwrite
+// press ok button before start
+// release after pre_setting_t beeps for change setting
+void preinit_settings() {
+    while (HW_key2_pressed()) {
+        uint8_t keytime = SETTINGS_DELAY;
+        while (HW_key2_pressed()) {
+            HW_delay_ms(10);
+            if (--keytime == 0) {
+                keytime = SETTINGS_DELAY;
+                if (stage_setting < (FORCE_SETTING_MAX - 1)) {
+                    stage_setting++;
+#if 0
+                    for (uint8_t i = 0; i < stage_setting; i++) {
+                        beep(BEEP_OK);
+                        HW_delay_ms(150);
+                    }
+#else
+                    beep(BEEP_OK);
+#endif
+                } else {
+                    while (HW_key2_pressed()) {};
+                    stage_setting = 0;
+                }
+            }
+        }
+        if (!HW_key2_pressed() && stage_setting != 0) {
+            beep(BEEP_UP);
+            beep(BEEP_UP);
+            beep(BEEP_UP);
+        }
+    }
+
+#if defined(PROGMEM_EEPROM)
+    // check eeprom special mark and save default eeprom content if mark not exists
+    check_eeprom(stage_setting);
+#endif
+
+    read_eeprom();
+    
+#if defined(ENCODER_SUPPORT)
+    if (stage_setting == FORCE_SETTING_ENCODER_OFF) {
+        config.settings.encoder = 0;
+    } else if (stage_setting == FORCE_SETTING_ENCODER_ON) {
+        config.settings.encoder = 1;
+    }
+    use_encoder_fl = config.settings.encoder;
+#endif
+#if defined(ADC_BUTTONS_SUPPORT)
+    if (stage_setting == FORCE_SETTING_ADC_BUTTONS_OFF) {
+        config.settings.adc_buttons = 0;
+    } else if (stage_setting == FORCE_SETTING_ADC_BUTTONS_ON) {
+        config.settings.adc_buttons = 1;
+    }
+    use_adc_buttons_fl = config.settings.adc_buttons;
+#endif
+#if defined(LCD_1602) && defined(LCD_1602_I2C)
+    if (stage_setting == FORCE_SETTING_LCD_1602_I2C_OFF) {
+        config.settings.lcd_1602_i2c = 0;
+    } else if (stage_setting == FORCE_SETTING_LCD_1602_I2C_ON) {
+        config.settings.lcd_1602_i2c = 1;
+    }
+    use_lcd_1602_i2c_fl = config.settings.lcd_1602_i2c;
+#endif
+
+}
+
+#endif
 
 uint16_t get_yday(uint8_t month, uint8_t day) {
     const uint16_t ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
@@ -2035,18 +2074,10 @@ void fill_misc_values() {
 void power_on() {
     HW_Init();
 
-#if defined(PROGMEM_EEPROM) || defined(ENCODER_SUPPORT)
+#if defined(PROGMEM_EEPROM) || defined(ENCODER_SUPPORT) || defined(ADC_BUTTONS_SUPPORT)
     preinit_settings();
-#endif
-
+#else
     read_eeprom();
-
-#if defined(ENCODER_SUPPORT)
-    if (stage_setting == FORCE_SETTING_ENCODER_OFF) {
-        config.settings.encoder = 0;
-    } else if (stage_setting == FORCE_SETTING_ENCODER_ON) {
-        config.settings.encoder = 1;
-    }
 #endif
 
     LCD_Init();

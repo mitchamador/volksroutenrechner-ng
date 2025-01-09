@@ -48,7 +48,7 @@
 // 2,048V ~ 128
 #define THRESHOLD_VOLTAGE_ADC_VALUE 128
 
-#ifdef ADC_BUTTONS
+#ifdef ADC_BUTTONS_SUPPORT
 // threshold for buttons +-0,2v
 #define ADC_BUTTONS_THRESHOLD 40
 #define ADC_BUTTONS_1V (1024/5)            
@@ -135,12 +135,22 @@ typedef union {
     uint16_t word;
 
     struct {
-#ifdef ENCODER_SUPPORT
+#if defined(ENCODER_SUPPORT)
         unsigned encoder            : 1; // encoder control
-        unsigned dummy              : 5;
 #else
-        unsigned dummy              : 6;
+        unsigned dummy_encoder      : 1;
 #endif
+#if defined(ADC_BUTTONS_SUPPORT)
+        unsigned adc_buttons        : 1; // use adc buttons
+#else
+        unsigned dummy_adc_buttons  : 1;
+#endif
+#if defined(LCD_1602) && defined(LCD_1602_I2C)
+        unsigned lcd_1602_i2c       : 1; // use lcd 1602 i2c
+#else
+        unsigned dummy_lcd_1602_i2c : 1;
+#endif
+        unsigned dummy              : 3;
         unsigned adc_fuel_normalize : 1; // normalize adc_fuel to adc_voltage
         unsigned ds3231_temp        : 1; // use ds3231 temperature as inner sensor
         unsigned show_inner_temp    : 1; // show inner (outer by default) temperature on first screen
@@ -306,8 +316,24 @@ extern volatile flag_t save_tripc_time_fl;
 // key variables and flags
 extern volatile flag_t key1_press, key2_press, key1_longpress, key2_longpress;
 
+#if defined(LCD_1602) && defined(LCD_1602_I2C)
+extern volatile flag_t use_lcd_1602_i2c_fl;
+#define use_lcd_1602_i2c() use_lcd_1602_i2c_fl
+#endif
+
+#if defined(ADC_BUTTONS_SUPPORT)
+extern volatile flag_t use_adc_buttons_fl;
+#define use_adc_buttons() use_adc_buttons_fl
+#else
+#define use_adc_buttons() 0
+#endif
+
 #if defined(ENCODER_SUPPORT)
 extern volatile flag_t key2_doubleclick;
+extern volatile flag_t use_encoder_fl;
+#define use_encoder() use_encoder_fl
+#else
+#define use_encoder() 0
 #endif
 
 #if defined(KEY3_SUPPORT)
@@ -360,7 +386,7 @@ void cd_init(void);
 void cd_increment_filter(void);
 #endif
 
-#if defined(KEY3_SUPPORT) || defined(ADC_BUTTONS)
+#if defined(KEY3_SUPPORT) || defined(ADC_BUTTONS_SUPPORT)
 #define no_key_pressed() (key1_press == 0 && key2_press == 0 && key3_press == 0)
 #if defined(ENCODER_SUPPORT)
 #define clear_keys_state() key1_press = 0; key2_press = 0; key1_longpress = 0; key2_longpress = 0; key2_doubleclick = 0; key3_press = 0; key3_longpress = 0

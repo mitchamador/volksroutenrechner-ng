@@ -36,18 +36,27 @@ volatile uint8_t speed_timer_ofl;
 volatile uint16_t kmh_tmp, fuel_tmp;
 volatile uint16_t kmh, fuel;
 
-#ifdef ADC_BUTTONS
+#if defined(LCD_1602) && defined(LCD_1602_I2C)
+volatile flag_t use_lcd_1602_i2c_fl;
+#endif
+
+#ifdef ADC_BUTTONS_SUPPORT
 
 #define ADC_KEY_OK 2
 #define ADC_KEY_NEXT 1
 #define ADC_KEY_PREV 3
 
 volatile uint8_t adc_key;
+volatile flag_t use_adc_buttons_fl;
 
-#define HW_key1_pressed() (adc_key == ADC_KEY_NEXT)
-#define HW_key2_pressed() (adc_key == ADC_KEY_OK)
-#define HW_key3_pressed() (adc_key == ADC_KEY_PREV)
+#define _key1_pressed() ((use_adc_buttons_fl == 0 && HW_key1_pressed()) || (use_adc_buttons_fl != 0 && adc_key == ADC_KEY_NEXT))
+#define _key2_pressed() ((use_adc_buttons_fl == 0 && HW_key2_pressed()) || (use_adc_buttons_fl != 0 && adc_key == ADC_KEY_OK))
+#define _key3_pressed() ((use_adc_buttons_fl == 0 && HW_key3_pressed()) || (use_adc_buttons_fl != 0 && adc_key == ADC_KEY_PREV))
 
+#else
+#define _key1_pressed() HW_key1_pressed()
+#define _key2_pressed() HW_key2_pressed()
+#define _key3_pressed() HW_key3_pressed()
 #endif
 
 // key variables and flags
@@ -60,6 +69,7 @@ volatile flag_t key3_press, key3_longpress;
 
 #if defined(ENCODER_SUPPORT)
 volatile flag_t key2_doubleclick;
+volatile flag_t use_encoder_fl;
 #endif
 
 volatile uint8_t acc_power_off_counter;
@@ -124,10 +134,10 @@ void adc_handler_voltage(filtered_value_t *f);
 void adc_handler_buttons(filtered_value_t *f);
 void adc_handler_fuel_tank(filtered_value_t *f);
 
-#if defined(ADC_BUTTONS) || defined(FUEL_TANK_SUPPORT)
+#if defined(ADC_BUTTONS_SUPPORT) || defined(FUEL_TANK_SUPPORT)
 uint8_t _adc_ch;
 
-#ifdef ADC_BUTTONS
+#ifdef ADC_BUTTONS_SUPPORT
 filtered_value_t f_buttons = {0, 0};
 #endif
 
@@ -139,7 +149,7 @@ filtered_value_t f_fuel_tank = {0, 3 | FILTERED_VALUE_FIRST_SAMPLE};
 
 adc_item_t adc_items[] = {
     {adc_handler_voltage, &f_voltage, HW_ADC_CHANNEL_POWER_SUPPLY},
-#ifdef ADC_BUTTONS
+#ifdef ADC_BUTTONS_SUPPORT
     {adc_handler_buttons, &f_buttons, HW_ADC_CHANNEL_BUTTONS},
 #endif
 #ifdef FUEL_TANK_SUPPORT
@@ -308,11 +318,7 @@ void int_main_timer_overflow() {
 #endif
 
     if (key_repeat_counter == 0) {
-#ifdef ENCODER_SUPPORT
-        if (config.settings.encoder == 0 && HW_key1_pressed())
-#else
-        if (HW_key1_pressed()) // key pressed
-#endif
+        if (use_encoder() == 0 && _key1_pressed()) // key pressed
         {
             if (key1_counter <= LONGKEY) {
                 key1_counter++;
@@ -332,10 +338,10 @@ void int_main_timer_overflow() {
             key1_counter = 0;
         }
 
-        if (HW_key2_pressed()) // key pressed
+        if (_key2_pressed()) // key pressed
         {
 #if defined(ENCODER_SUPPORT)
-            if (config.settings.encoder != 0 && key2_counter == 0) {
+            if (use_encoder() != 0 && key2_counter == 0) {
                 key2_click_counter = MULTICLICK;
             }
             if (key2_click_counter != 0) {
@@ -353,7 +359,7 @@ void int_main_timer_overflow() {
         } else // key released
         {
 #if defined(ENCODER_SUPPORT)
-            if (config.settings.encoder != 0) {
+            if (use_encoder() != 0) {
                 if (key2_counter >= LONGKEY) {
                     key2_click_counter = 0;
                     key2_clicks = 0;
@@ -392,11 +398,7 @@ void int_main_timer_overflow() {
         }
 
 #if defined(KEY3_SUPPORT)
-#ifdef ENCODER_SUPPORT
-        if (config.settings.encoder == 0 && HW_key3_pressed())
-#else
-        if (HW_key3_pressed()) // key pressed
-#endif
+        if (use_encoder() == 0 && _key3_pressed()) // key pressed
         {
             if (key3_counter <= LONGKEY) {
                 key3_counter++;
@@ -650,7 +652,7 @@ void int_adc_finish() {
 
 #else
     adc_value = HW_adc_read();
-#if defined(ADC_BUTTONS) || defined(FUEL_TANK_SUPPORT)        
+#if defined(ADC_BUTTONS_SUPPORT) || defined(FUEL_TANK_SUPPORT)        
     adc_item_t* h = &adc_items[_adc_ch];
 
     if (++_adc_ch >= sizeof (adc_items) / sizeof (adc_item_t)) {
@@ -677,7 +679,7 @@ void int_adc_finish() {
 // A valid CW or CCW move returns 1, invalid returns 0.
 
 void int_change_encoder_level() {
-    if (config.settings.encoder == 0) return;
+    if (use_encoder() == 0) return;
 
     static int8_t rot_enc_table[] = {0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0};
     static uint8_t prevNextCode = 0;
@@ -733,7 +735,7 @@ void adc_handler_voltage(filtered_value_t *f) {
     }
 };
 
-#ifdef ADC_BUTTONS
+#ifdef ADC_BUTTONS_SUPPORT
 
 void adc_handler_buttons(filtered_value_t *f) {
     if (/*   adc_value >= (ADC_BUTTONS_1V * 0 - ADC_BUTTONS_THRESHOLD) && */adc_value <= (ADC_BUTTONS_1V * 0 + ADC_BUTTONS_THRESHOLD)) {
@@ -776,10 +778,10 @@ void handle_keys_up_down(uint8_t *v, uint8_t min_value, uint8_t max_value, uint8
         timeout_timer1 = timeout;
     }
 #if defined(ENCODER_SUPPORT)
-    if (config.settings.encoder != 0 && key2_press != 0) {
+    if (use_encoder() != 0 && key2_press != 0) {
         timeout_timer1 = 0;
     }
-    if ((config.settings.encoder == 0 && (key2_press != 0 || key3_press != 0)) || (config.settings.encoder != 0 && key3_press != 0)) {
+    if ((use_encoder() == 0 && (key2_press != 0 || key3_press != 0)) || (use_encoder() != 0 && key3_press != 0)) {
 #elif !defined(KEY3_SUPPORT)
     if (key2_press != 0) {
 #else

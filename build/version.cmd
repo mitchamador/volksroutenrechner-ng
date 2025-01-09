@@ -31,7 +31,7 @@ exit
 for /f "delims=" %%a in ('wmic path win32_localtime get dayofweek /format:list ') do for /f "delims=" %%d in ("%%a") do set %%d
 
 echo #ifndef VERSION_H >..\include\version.h
-echo #define	VERSION_H >>..\include\version.h
+echo #define VERSION_H >>..\include\version.h
 echo. >>..\include\version.h
 set _time=%TIME: =0%
 if %dayofweek%==0 (set /a "dayofweek=7")

@@ -7,34 +7,28 @@
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 
-#if defined(ARDUINO)
-#if defined(LCD_SSD1322_1602)
+//#if defined(ARDUINO)
 // ssd1322 1602 lcd
-#define SPI_UART
-#else
+//#define SPI_UART
 // 1602 lcd i2c
-#define LCD_1602_I2C
-#endif
+//#define LCD_1602_I2C
 // adc buttons connected to PC0/ADC0
-#define ADC_BUTTONS
+//#define ADC_BUTTONS_SUPPORT
 // save default eeprom in progmem
-#define PROGMEM_EEPROM
+//#define PROGMEM_EEPROM
 // use internal eeprom for trip journal
-#define JOURNAL_EEPROM_INTERNAL
-#elif defined(__AVR_ATmega168P__)
+//#define JOURNAL_EEPROM_INTERNAL
+//#endif
+
+#if defined(__AVR_ATmega168P__)
 // 1602 lcd 4bit
-#define LCD_LEGACY
+#define LCD_1602
 // no encoder support
 #define NO_ENCODER
 // disable service counters' configuration and checking
 #define NO_SERVICE_COUNTERS_CHECKS
 // no fuel tank support
 #define NO_FUEL_TANK
-#elif defined(__AVR_ATmega328P__)
-#if !defined(LCD_SSD1322_1602)
-// 1602 lcd 4bit
-#define LCD_LEGACY
-#endif
 #endif
 
 #elif defined(_16F876A) || defined(_16F1936) || defined (_16F1938) || defined(_18F252)  || defined(_18F242)
@@ -156,6 +150,11 @@
 
 // end of configuration
 
+#if !defined(LCD_1602_I2C) && !defined(LCD_SSD1322_1602) && !defined(LCD_1602)
+// 1602 lcd 4bit
+#define LCD_1602
+#endif
+
 // disable temperature support
 #if !defined(NO_TEMPERATURE)
 
@@ -225,12 +224,12 @@
 #endif
 
 // key3 support
-#ifndef NO_KEY3
+#if !defined(NO_KEY3) && !defined(KEY3_SUPPORT)
 #define KEY3_SUPPORT
 #endif
 
 // encoder support
-#ifndef NO_ENCODER
+#if !defined(NO_ENCODER) && !defined(ENCODER_SUPPORT)
 #define ENCODER_SUPPORT
 #endif
 

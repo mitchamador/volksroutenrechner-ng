@@ -164,6 +164,14 @@ typedef enum {
 #define SETTING_ADC_FUEL_NORMALIZE      "\0adc fuel nor"
 #endif
 
+#if defined(LCD_1602) && defined(LCD_1602_I2C)
+#define SETTING_LCD_1602_I2C            "\000lcd 1602 i2c"
+#endif
+
+#ifdef ADC_BUTTONS_SUPPORT
+#define SETTING_ADC_BUTTONS             "\0adc buttons"
+#endif
+
 #ifdef ENCODER_SUPPORT
 #define SETTING_ENCODER                 "\0encoder"
 #endif
@@ -404,6 +412,14 @@ typedef enum {
             CONFIG_MENU_MIN_SPEED        \
             CONFIG_MENU_VERSION_INFO     \
 
+#ifndef SETTING_LCD_1602_I2C
+#define SETTING_LCD_1602_I2C            "\0"
+#endif
+
+#ifndef SETTING_ADC_BUTTONS
+#define SETTING_ADC_BUTTONS             "\0"
+#endif
+
 #ifndef SETTING_ENCODER
 #define SETTING_ENCODER                 "\0"
 #endif
@@ -456,8 +472,8 @@ typedef enum {
             "\0"                        \
             "\0"                        \
             "\0"                        \
-            "\0"                        \
-            "\0"                        \
+            SETTING_LCD_1602_I2C        \
+            SETTING_ADC_BUTTONS         \
             SETTING_ENCODER             \
 
 PROGMEM const char symbols_array[] = SYMBOLS_ARRAY;

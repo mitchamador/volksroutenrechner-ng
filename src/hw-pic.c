@@ -7,13 +7,13 @@ __interrupt() void HW_isr(void) {
     static __bit skip_timer_speed_fuel_overflow;
     
     /* pin change interrupt */
-    if (PIN_CHANGE_IF) {
+    if (FUEL_SPEED_CHANGE_IF) {
 #if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
         /* Dummy read of the port, as per datasheet */
         asm("movf PORTB,f");
-#endif
         /* Reset the interrupt flag */
-        PIN_CHANGE_CLEAR_IF = 0;
+        FUEL_SPEED_CHANGE_IF_CLEAR;
+#endif
 
         /* Capture main timer value */
 #if defined(_18F252)  || defined(_18F242)
@@ -44,9 +44,30 @@ __interrupt() void HW_isr(void) {
             }
         }
 
-        int_capture_injector_level_change();
-        int_capture_speed_level_change();
+#if defined(_16F1936) || defined(_16F1938)
+        if (FUEL_CHANGE_IF) {
+            FUEL_CHANGE_IF = 0;
+#else
+        {
+#endif
+            int_capture_injector_level_change();
+        }
+#if defined(_16F1936) || defined(_16F1938)
+        if (SPEED_CHANGE_IF) {
+            SPEED_CHANGE_IF = 0;
+#else
+        {
+#endif
+            int_capture_speed_level_change();
+        }
     }
+
+#if defined(ENCODER_SUPPORT)
+    if (ENCODER_CHANGE_IF) {
+        ENCODER_CHANGE_IF_CLEAR;
+        int_change_encoder_level();
+    }
+#endif
 
     /* fuel timer interrupt */
     if (TIMER_FUEL_IF) {
@@ -134,8 +155,8 @@ void HW_Init(void) {
 
 #if defined(_16F1936) || defined(_16F1938)
     // interrupt on change init
-    IOCBP = (1 << _IOCBP_IOCBP7_POSITION) | (1 << _IOCBP_IOCBP6_POSITION);
-    IOCBN = (1 << _IOCBN_IOCBN7_POSITION) | (1 << _IOCBN_IOCBN6_POSITION);
+    IOCBP = IOCBP_INIT;
+    IOCBN = IOCBN_INIT;
 #endif    
 
     // enable timer0 overflow interrupt, peripheral interrupt, pinb/io change interrupt

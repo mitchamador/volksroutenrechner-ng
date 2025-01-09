@@ -33,9 +33,7 @@
 
 void LCD_CMD(char);
 
-#if defined(LCD_LEGACY)
-#define RS            0
-#else
+#if defined(LCD_1602_I2C)
 #define LCD_I2C_ADDRESS 0x4E
 #define RS            (1 << 0)
 #define RW            (1 << 1)

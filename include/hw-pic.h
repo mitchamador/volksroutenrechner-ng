@@ -157,9 +157,6 @@
 // i2c software bit bang
 #define I2C_SOFTWARE
 
-// lcd parallel interface
-#define LCD_LEGACY
-
 // PORTA definitions (a/d channels)
 // RA0 as digital power control pin
 // RA1 as analog voltage input
@@ -253,12 +250,32 @@
 #define PORTC_INIT 0
 
 #if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
-#define PIN_CHANGE_IF           RBIF
-#define PIN_CHANGE_CLEAR_IF     RBIF
+#define FUEL_SPEED_CHANGE_IF        RBIF
+#define FUEL_SPEED_CHANGE_IF_CLEAR  RBIF = 0;
 #define TIMER_MAIN_IF           CCP2IF
 #elif defined(_16F1936) || defined(_16F1938)
-#define PIN_CHANGE_IF           IOCIF
-#define PIN_CHANGE_CLEAR_IF     IOCBF
+#if defined(ENCODER_SUPPORT)
+#define IOCBP_ENCODER           ((1 << _IOCBP_IOCBP4_POSITION) | (1 << _IOCBP_IOCBP2_POSITION))
+#define IOCBN_ENCODER           ((1 << _IOCBN_IOCBN4_POSITION) | (1 << _IOCBN_IOCBN2_POSITION))
+#define ENCODER_CHANGE_IF       (IOCBF4 || IOCBF2)
+#define ENCODER_CHANGE_IF_CLEAR IOCBF4 = 0; IOCBF2 = 0;
+#define HW_encoder_get_data()   KEY1 
+#define HW_encoder_get_clk()    KEY3 
+#else
+#define IOCBP_ENCODER           0
+#define IOCBN_ENCODER           0
+#endif
+#define IOCBP_FUEL_SPEED        ((1 << _IOCBP_IOCBP7_POSITION) | (1 << _IOCBP_IOCBP6_POSITION))
+#define IOCBN_FUEL_SPEED        ((1 << _IOCBN_IOCBN7_POSITION) | (1 << _IOCBN_IOCBN6_POSITION))
+
+#define IOCBP_INIT              IOCBP_FUEL_SPEED | IOCBP_ENCODER
+#define IOCBN_INIT              IOCBN_FUEL_SPEED | IOCBN_ENCODER
+
+#define FUEL_CHANGE_IF          IOCBF7
+#define SPEED_CHANGE_IF         IOCBF6
+
+#define FUEL_SPEED_CHANGE_IF    (FUEL_CHANGE_IF || SPEED_CHANGE_IF)
+
 #define TIMER_MAIN_IF           CCP5IF
 #endif
 
@@ -292,6 +309,8 @@ typedef unsigned char eeaddr_t;
 #define HW_ADC_CHANNEL_POWER_SUPPLY    ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
 // AN3
 #define HW_ADC_CHANNEL_FUEL_TANK       ((0 << _ADCON0_CHS4_POSITION) | (0 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (1 << _ADCON0_CHS1_POSITION) | (1 << _ADCON0_CHS0_POSITION))
+// AN8
+#define HW_ADC_CHANNEL_BUTTONS         ((0 << _ADCON0_CHS4_POSITION) | (1 << _ADCON0_CHS3_POSITION) | (0 << _ADCON0_CHS2_POSITION) | (0 << _ADCON0_CHS1_POSITION) | (0 << _ADCON0_CHS0_POSITION))
 #endif
 
 #define HW_delay_ms(ms)             __delay_ms(ms)
@@ -327,7 +346,7 @@ typedef unsigned char eeaddr_t;
 #define HW_key1_pressed()           (KEY1 == 0)
 #define HW_key2_pressed()           (KEY2 == 0)
 #ifdef KEY3_SUPPORT
-#define HW_key2_pressed()           (KEY3 == 0)
+#define HW_key3_pressed()           (KEY3 == 0)
 #endif
 
 #define HW_pwr_on()                 (PWR = 1)
@@ -351,7 +370,7 @@ typedef unsigned char eeaddr_t;
 // onewire get bit
 #define HW_1wire_get()              (ONEWIRE_PIN)
 
-#ifdef LCD_LEGACY
+#ifdef LCD_1602
 // LCD definitions
 // rs - RC1
 // rw - RC2
