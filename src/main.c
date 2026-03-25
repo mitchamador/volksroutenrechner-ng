@@ -2074,7 +2074,7 @@ void fill_misc_values() {
 void power_on() {
     HW_Init();
 
-#if defined(PROGMEM_EEPROM) || defined(ENCODER_SUPPORT) || defined(ADC_BUTTONS_SUPPORT)
+#if defined(PROGMEM_EEPROM) || defined(ENCODER_SUPPORT) || defined(ADC_BUTTONS_SUPPORT) || (defined(LCD_1602) && defined(LCD_1602_I2C))
     preinit_settings();
 #else
     read_eeprom();
