@@ -295,6 +295,23 @@ typedef unsigned char eeaddr_t;
 // timer1 compare 10ms, 6250 with prescaler 1:8 at 20MHz
 #define HW_MAIN_TIMER_TICKS_PER_PERIOD     6250
 
+/* Capture main timer value */
+#if defined(_18F252)  || defined(_18F242)
+#define CAPTURE_MAIN_TIMER(main_timer)                                                                             \
+/* read 16bit TMR1 value with RD16 = 1 */                                                                          \
+*((uint8_t*) (&main_timer) + 0) = TMR1L;                                                                           \
+*((uint8_t*) (&main_timer) + 1) = TMR1H;
+#else
+#define CAPTURE_MAIN_TIMER(main_timer)                                                                             \
+/* read 16bit TMR1 value (read TMR1H, TMR1L; check if TMR1H changes during reading TMR1L, if yes re-read TMR1) */  \
+*((uint8_t*)(&main_timer) + 1) = TMR1H;                                                                            \
+*((uint8_t*)(&main_timer) + 0) = TMR1L;                                                                            \
+if (*((uint8_t*)(&main_timer) + 1) != TMR1H) {                                                                     \
+   *((uint8_t*)(&main_timer) + 1) = TMR1H;                                                                         \
+   *((uint8_t*)(&main_timer) + 0) = TMR1L;                                                                         \
+}
+#endif
+
 // min/max value of adc reading
 #define HW_ADC_MIN     0
 #define HW_ADC_MAX     1023

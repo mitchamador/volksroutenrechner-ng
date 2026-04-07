@@ -5,31 +5,24 @@
 #include <avr/eeprom.h>
 #include <util/twi.h>
 
-uint8_t skip_timer_speed_fuel_overflow;
+volatile flag_t skip_timer_speed_fuel_overflow;
 
-/* pin change interrupt vector (speed, fuel)*/
+/* pin change interrupt vector (speed, fuel) */
 ISR(PCINT0_vect) {
 
-    /* Capture main timer value */
-    main_timer = TCNT1;
+    // capture main timer value
+    if (!MAIN_TIMER_IF) {
+        main_timer = TCNT1;
+    }
 
     // check if timer overflow occurs during main_timer reading
-#if defined(_DEBUG_)
-    if ((TIFR1 & (1 << OCF1A)) != 0) {
-#else
-    if ((TIFR1 & (1 << ICF1)) != 0) {
-#endif
-        // check if main timer interrupts occurs before or while reading TMR1
-        if (main_timer <= TCNT1) {
-            // run overflow routines before fuel/speed changing processing
-            int_taho_timer_overflow();
-            int_speed_timer_overflow();
-            skip_timer_speed_fuel_overflow = 1;
-#if defined(_DEBUG_)
-        } else {
-            skip_timer_speed_fuel_overflow = 0;
-#endif
-        }
+    if (MAIN_TIMER_IF) {
+        // recapture main timer value (adds some error)
+        main_timer = TCNT1;
+        // run overflow routines before fuel/speed changing processing
+        int_taho_timer_overflow();
+        int_speed_timer_overflow();
+        skip_timer_speed_fuel_overflow = 1;
     }
 
     int_capture_injector_level_change();
@@ -37,7 +30,7 @@ ISR(PCINT0_vect) {
 }
 
 #if defined(ENCODER_SUPPORT)
-/* pin change interrupt vector (encoder)*/
+/* pin change interrupt vector (encoder) */
 ISR(PCINT1_vect) {
     int_change_encoder_level();
 }
@@ -49,7 +42,7 @@ ISR(TIMER0_COMPA_vect) {
 }
 
 /* main timer overflow interrupt */
-#if defined(_DEBUG_)
+#if defined(__DEBUG) || defined(DEBUG)
 ISR(TIMER1_COMPA_vect) {
     TIFR1 = (1 << OCF1B);
 #else
@@ -94,14 +87,14 @@ void HW_Init(void) {
     // Mode: CTC top=ICR1 (CTC top=OCCR1A for proteus debug)
     // Timer Period: 10 ms
     TCCR1A = (0 << COM1A1) | (0 << COM1A0) | (0 << COM1B1) | (0 << COM1B0) | (0 << WGM11) | (0 << WGM10);
-#if defined(_DEBUG_)
+#if defined(__DEBUG) || defined(DEBUG)
     TCCR1B = (0 << ICNC1) | (0 << ICES1) | (0 << WGM13) | (1 << WGM12) | (0 << CS12) | (0 << CS11) | (0 << CS10);
 #else
     TCCR1B = (0 << ICNC1) | (0 << ICES1) | (1 << WGM13) | (1 << WGM12) | (0 << CS12) | (0 << CS11) | (0 << CS10);
 #endif
     TCNT1H = 0x00;
     TCNT1L = 0x00;
-#if defined(_DEBUG_)
+#if defined(__DEBUG) || defined(DEBUG)
     ICR1H = 0;
     ICR1L = 0;
     OCR1AH = (HW_MAIN_TIMER_TICKS_PER_PERIOD - 1) >> 8;
@@ -131,7 +124,7 @@ void HW_Init(void) {
     TIMSK0 = (0 << OCIE0B) | (1 << OCIE0A) | (0 << TOIE0);
 
     // Timer/Counter 1 Interrupt(s) initialization
-#if defined(_DEBUG_)
+#if defined(__DEBUG) || defined(DEBUG)
     TIMSK1 = (0 << ICIE1) | (0 << OCIE1B) | (1 << OCIE1A) | (0 << TOIE1);
 #else
     TIMSK1 = (1 << ICIE1) | (0 << OCIE1B) | (0 << OCIE1A) | (0 << TOIE1);
@@ -177,7 +170,7 @@ void HW_Init(void) {
     DIDR0 = (0 << ADC5D) | (0 << ADC4D) | (0 << ADC3D) | (0 << ADC2D) | (0 << ADC1D) | (0 << ADC0D);
     ADMUX = ADC_VREF_TYPE | HW_ADC_CHANNEL_POWER_SUPPLY;
     ADCSRA = (1 << ADEN) | (0 << ADSC) | (1 << ADATE) | (0 << ADIF) | (1 << ADIE) | (1 << ADPS2) | (1 << ADPS1) | (1 << ADPS0);
-#if defined(_DEBUG_)
+#if defined(__DEBUG) || defined(DEBUG)
     ADCSRB = (1 << ADTS2) | (0 << ADTS1) | (1 << ADTS0); // Timer/Counter1 compare match B
 #else
     ADCSRB = (1 << ADTS2) | (1 << ADTS1) | (1 << ADTS0); // Timer/Counter1 capture event

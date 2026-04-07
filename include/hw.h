@@ -16,14 +16,14 @@
 #error "device not supported"
 #endif
 
-#if !defined(TAHO_TIMER)
+#if !defined(HW_TAHO_TIMER_PERIOD) && !defined(HW_TAHO_TIMER_TICKS_PER_PERIOD)
 // use main timer for taho
 #define HW_TAHO_TIMER_PERIOD               HW_MAIN_TIMER_PERIOD
 #define HW_TAHO_TIMER_TICKS_PER_PERIOD     HW_MAIN_TIMER_TICKS_PER_PERIOD
 #define taho_timer                         main_timer
 #endif
 
-#if !defined(SPEED_TIMER)
+#if !defined(HW_SPEED_TIMER_PERIOD) && !defined(HW_SPEED_TIMER_TICKS_PER_PERIOD)
 // use main timer for speed
 #define HW_SPEED_TIMER_PERIOD              HW_MAIN_TIMER_PERIOD
 #define HW_SPEED_TIMER_TICKS_PER_PERIOD    HW_MAIN_TIMER_TICKS_PER_PERIOD

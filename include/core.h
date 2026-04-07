@@ -340,8 +340,8 @@ extern volatile flag_t use_encoder_fl;
 extern volatile flag_t key3_press, key3_longpress;
 #endif
 
-extern volatile uint24_t taho;
-extern volatile uint16_t fuel_duration;
+extern volatile uint24_t taho_tmp, taho;
+extern volatile uint16_t fuel_duration_tmp, fuel_duration;
 
 // timeout1 (resolution - 1 s)
 extern volatile uint8_t timeout_timer1;

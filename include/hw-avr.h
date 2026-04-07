@@ -29,6 +29,13 @@ typedef uint32_t uint24_t;
 // timer1 compare 10ms, 2500 with prescaler 1:64 running at 16Mhz
 #define HW_MAIN_TIMER_TICKS_PER_PERIOD      2500
 
+#if defined(__DEBUG) || defined(DEBUG)
+#define MAIN_TIMER_IF ((TIFR1 & (1 << OCF1A)) == 0)
+#else
+#define MAIN_TIMER_IF ((TIFR1 & (1 << ICF1)) == 0)
+#endif
+
+
 // min/max value of adc reading
 #define HW_ADC_MIN     0
 #define HW_ADC_MAX     1023

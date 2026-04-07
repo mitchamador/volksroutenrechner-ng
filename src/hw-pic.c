@@ -15,33 +15,19 @@ __interrupt() void HW_isr(void) {
         FUEL_SPEED_CHANGE_IF_CLEAR;
 #endif
 
-        /* Capture main timer value */
-#if defined(_18F252)  || defined(_18F242)
-        // read 16bit TMR1 value with RD16 = 1
-        *((uint8_t*) (&main_timer) + 0) = TMR1L;
-        *((uint8_t*) (&main_timer) + 1) = TMR1H;
-#else
-        // read 16bit TMR1 value (read TMR1H, TMR1L; check if TMR1H changes during reading TMR1L, if yes re-read TMR1)
-        *((uint8_t*)(&main_timer) + 1) = TMR1H;
-        *((uint8_t*)(&main_timer) + 0) = TMR1L;
-        if (*((uint8_t*)(&main_timer) + 1) != TMR1H) {
-          *((uint8_t*)(&main_timer) + 1) = TMR1H;
-          *((uint8_t*)(&main_timer) + 0) = TMR1L;
+        if (!TIMER_MAIN_IF) {
+            // capture main timer
+            CAPTURE_MAIN_TIMER(main_timer);
         }
-#endif
 
+        // check if timer overflow occurs during main_timer reading
         if (TIMER_MAIN_IF) {
-            // check if main timer interrupts occurs before or while reading TMR1
-            if (*((uint8_t*) (&main_timer) + 1) == TMR1H) {
-                // run overflow routines before fuel/speed changing processing
-                int_taho_timer_overflow();
-                int_speed_timer_overflow();
-                skip_timer_speed_fuel_overflow = 1;
-#if defined(__DEBUG)
-            } else {
-                skip_timer_speed_fuel_overflow = 0;
-#endif
-            }
+            // recapture main timer (adds some error)
+            CAPTURE_MAIN_TIMER(main_timer)
+            // run overflow routines before fuel/speed changing processing
+            int_taho_timer_overflow();
+            int_speed_timer_overflow();
+            skip_timer_speed_fuel_overflow = 1;
         }
 
 #if defined(_16F1936) || defined(_16F1938)
@@ -134,12 +120,12 @@ void HW_Init(void) {
 
 #if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
     // ccp2 init (compare special event trigger 10ms + start adc)
-    CCP2CON = (1 << _CCP2CON_CCP2M3_POSITION) | (0 << _CCP2CON_CCP2M2_POSITION) | (1 << _CCP2CON_CCP2M1_POSITION) | (1 << _CCP2CON_CCP2M0_POSITION);
     CCPR2 = HW_MAIN_TIMER_TICKS_PER_PERIOD;
+    CCP2CON = (1 << _CCP2CON_CCP2M3_POSITION) | (0 << _CCP2CON_CCP2M2_POSITION) | (1 << _CCP2CON_CCP2M1_POSITION) | (1 << _CCP2CON_CCP2M0_POSITION);
 #elif defined(_16F1936) || defined(_16F1938)
     // ccp5 init (compare special event trigger 10ms + start adc)
-    CCP5CON = (1 << _CCP5CON_CCP5M3_POSITION) | (0 << _CCP5CON_CCP5M2_POSITION) | (1 << _CCP5CON_CCP5M1_POSITION) | (1 << _CCP5CON_CCP5M0_POSITION);
     CCPR5 = HW_MAIN_TIMER_TICKS_PER_PERIOD;
+    CCP5CON = (1 << _CCP5CON_CCP5M3_POSITION) | (0 << _CCP5CON_CCP5M2_POSITION) | (1 << _CCP5CON_CCP5M1_POSITION) | (1 << _CCP5CON_CCP5M0_POSITION);
 #endif    
 
     // adc interrupt
@@ -161,6 +147,8 @@ void HW_Init(void) {
 
     // enable timer0 overflow interrupt, peripheral interrupt, pinb/io change interrupt
 #if defined(_16F876A) || defined(_18F252)  || defined(_18F242)
+    /* Dummy read of the port to clear RBIF */
+    asm("movf PORTB,f");
     INTCON = (1 << _INTCON_T0IE_POSITION) | (1 << _INTCON_PEIE_POSITION) | (1 << _INTCON_RBIE_POSITION);
 #elif defined(_16F1936) || defined(_16F1938)
     INTCON = (1 << _INTCON_T0IE_POSITION) | (1 << _INTCON_PEIE_POSITION) | (1 << _INTCON_IOCIE_POSITION);
@@ -180,25 +168,27 @@ void HW_Init(void) {
 
 #if defined(_PIC18)
 
+flag_t _gie = 0;
+
 unsigned char eeprom18_read(unsigned int offset) {
     EEADR = (unsigned char) offset;
 
     EECON1bits.EEPGD = 0; //accesses data EEPROM memory
     EECON1bits.CFGS = 0; //accesses data EEPROM memory
 
-//    // errata fix for some 18fxx2 early revisions
-//    STATUSbits.CARRY = 0;
-//	if (INTCONbits.GIE) {
-//		STATUSbits.CARRY = 1;
-//    }
-//	INTCONbits.GIE = 0;
+    // errata fix for some 18fxx2 early revisions
+    _gie = 0;
+	if (INTCONbits.GIE) {
+        _gie = 1;
+    }
+    INTCONbits.GIE = 0;
 
     EECON1bits.RD = 1; //initiates an EEPROM read
     unsigned char _eedata = EEDATA;
 
-//    if (STATUSbits.CARRY) {
-//		INTCONbits.GIE = 1;
-//    }
+    if (_gie) {
+        INTCONbits.GIE = 1;
+    }
 
     return _eedata;
 }
@@ -212,9 +202,9 @@ void eeprom18_write(unsigned int offset, unsigned char value) {
 
     EECON1bits.WREN = 1; //allows write cycles
 
-    STATUSbits.CARRY = 0;
+    _gie = 0;
     if (INTCONbits.GIE) {
-        STATUSbits.CARRY = 1;
+        _gie = 1;
     }
     INTCONbits.GIE = 0;
 
@@ -223,7 +213,7 @@ void eeprom18_write(unsigned int offset, unsigned char value) {
 
     EECON1bits.WR = 1; //initiates a data EEPROM erase/write cycle
 
-    if (STATUSbits.CARRY) {
+    if (_gie) {
         INTCONbits.GIE = 1;
     }
 

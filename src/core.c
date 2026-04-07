@@ -17,12 +17,11 @@ __bank2 print_trip_t ptrip;
 
 __bank2 live_data_t data;
 
-volatile uint24_t taho, taho_timer_ticks;
-volatile uint16_t taho_timer_prev;
+volatile uint24_t taho_tmp, taho, taho_timer_ticks;
 volatile uint8_t taho_timer_ofl;
 
 // uint16_t - max ~104 ms for pic16f targets (* 2.5 for atmega)
-volatile uint16_t fuel_duration;
+volatile uint16_t fuel_duration_tmp, fuel_duration;
 
 // acceleration measurement flags and variables
 volatile flag_t accel_meas_fl, accel_meas_ok_fl, accel_meas_process_fl, accel_meas_timer_fl, accel_meas_drive_fl;
@@ -165,14 +164,15 @@ adc_item_t adc_item = {adc_handler_voltage, &f_voltage, HW_ADC_CHANNEL_POWER_SUP
 // interrupt routines starts
 
 void int_capture_injector_level_change() {
+
+    static uint16_t taho_timer_prev;
+
     // fuel injector
     if (HW_fuel_active()) {
         if (fuel_fl == 0) {
             // start fuel timer
             HW_start_fuel_timer();
-            fuel_fl = 1;
-            motor_fl = 1;
-            save_tripc_time_fl = 1;
+            fuel_fl = motor_fl = save_tripc_time_fl = 1;
 
             // new taho calculation based on captured value of 0.01s timer
             if (taho_measure_fl == 0) {
@@ -182,7 +182,7 @@ void int_capture_injector_level_change() {
                 taho_timer_prev = taho_timer;
                 taho_timer_ofl = 0;
             } else {
-                taho = taho_timer_ticks + taho_timer - taho_timer_prev;
+                taho_tmp = taho_timer_ticks + taho_timer - taho_timer_prev;
                 taho_fl = 1;
 
                 taho_timer_ticks = 0;
@@ -197,7 +197,7 @@ void int_capture_injector_level_change() {
             fuel_fl = 0;
             // measure fuel duration                
             if (taho_measure_fl != 0) {
-                fuel_duration = (uint16_t) (taho_timer_ticks + taho_timer - taho_timer_prev);
+                fuel_duration_tmp = (uint16_t) (taho_timer_ticks + taho_timer - taho_timer_prev);
             }
         }
     }
@@ -206,11 +206,9 @@ void int_capture_injector_level_change() {
 __section("text999") void int_taho_timer_overflow() {
     if (taho_measure_fl != 0) {
         if (++taho_timer_ofl == TAHO_OVERFLOW) {
-            taho_measure_fl = 0;
             HW_stop_fuel_timer();
-            taho_fl = 0;
-            fuel_duration = 0;
-            motor_fl = 0;
+            taho_measure_fl = taho_fl = motor_fl = 0;
+            fuel_duration_tmp = taho_tmp = 0;
         } else {
             taho_timer_ticks += HW_TAHO_TIMER_TICKS_PER_PERIOD;
         }
@@ -221,8 +219,7 @@ void int_capture_speed_level_change() {
     // speed sensor
     if (HW_tx_active()) {
         if (odom_fl == 0) {
-            odom_fl = 1;
-            drive_fl = 1;
+            odom_fl = drive_fl = 1;
 
             // new speed 100 calculation based on captured value of 0.01s timer
             if (accel_meas_process_fl != 0) {
@@ -243,8 +240,7 @@ void int_capture_speed_level_change() {
 #endif
                     if (accel_meas_speed <= accel_meas_upper_const) {
                         accel_meas_ok_fl = 1;
-                        accel_meas_timer_fl = 0;
-                        accel_meas_process_fl = 0;
+                        accel_meas_timer_fl = accel_meas_process_fl = 0;
                     } else {
                         speed_timer_prev = speed_timer;
                         speed_timer_ticks = 0;
@@ -266,8 +262,7 @@ void int_capture_speed_level_change() {
 __section("text999") void int_speed_timer_overflow() {
     if (accel_meas_fl != 0) {
         if (++speed_timer_ofl == ACCEL_MEAS_OVERFLOW) {
-            accel_meas_fl = 0;
-            accel_meas_drive_fl = 0;
+            accel_meas_fl = accel_meas_drive_fl = 0;
         } else {
             speed_timer_ticks += HW_SPEED_TIMER_TICKS_PER_PERIOD;
         }
@@ -497,6 +492,9 @@ void int_main_timer_overflow() {
             fuel = 0;
         }
         fuel_tmp = 0;
+
+        fuel_duration = fuel_duration_tmp;
+        taho = taho_tmp;
 
         if (kmh_tmp != 0) {
             // main odometer
