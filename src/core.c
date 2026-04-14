@@ -104,8 +104,8 @@ volatile adc_voltage_t adc_voltage = {0};
 #endif
 
 uint8_t fuel1_const;
-uint8_t fuel2_const;
-uint16_t odo_con4;
+//uint8_t fuel2_const;
+//uint16_t odo_con4;
 
 uint8_t drive_min_speed;
 
@@ -301,6 +301,7 @@ void int_fuel_timer_overflow() {
 }
 
 void int_main_timer_overflow() {
+    static uint8_t refresh_interval_counter = REFRESH_INTERVAL;
     static uint8_t main_interval_counter = MAIN_INTERVAL;
 
 #if defined(ENCODER_SUPPORT)
@@ -456,17 +457,37 @@ void int_main_timer_overflow() {
     if (--main_interval_counter == 0) {
         main_interval_counter = MAIN_INTERVAL;
 
-        // screen refresh_flag
-        screen_refresh = 1;
-
         // increment time counters
         if (motor_fl != 0 || drive_fl != 0) {
             services.mh.time++;
             trips.tripA.time++;
             trips.tripB.time++;
             trips.tripC.time++;
+        }
+
+#ifdef TEMPERATURE_SUPPORT
+        if (timeout_temperature > 0) {
+            timeout_temperature--;
+        }
+#endif                
+        if (timeout_ds_read > 0) {
+            timeout_ds_read--;
+        }
+
+        if (timeout_timer1 > 0) {
+            timeout_timer1--;
+        }
+
+    }
+    
+    if (--refresh_interval_counter == 0) {
+        refresh_interval_counter = REFRESH_INTERVAL;
+
+        // screen refresh_flag
+        screen_refresh = 1;
 
 #ifdef CONTINUOUS_DATA_SUPPORT
+        if (motor_fl != 0 || drive_fl != 0) {
             if (cd.filter < CD_FILTER_VALUE_MAX) {
                 if (cd.time < cd.time_threshold) {
                     cd.time++;
@@ -476,8 +497,8 @@ void int_main_timer_overflow() {
             }
             cd_fuel = calc_filtered_value(&cd.f_fuel, fuel_tmp);
             cd_kmh = calc_filtered_value(&cd.f_kmh, kmh_tmp);
-#endif
         }
+#endif
 
         // copy temp interval variables to main (with filtering if enabled and supported)
 #if defined(INSTANT_FUEL_AVERAGE_SUPPORT)
@@ -534,19 +555,6 @@ void int_main_timer_overflow() {
         kmh = kmh_tmp;
         kmh_tmp = 0;
         
-#ifdef TEMPERATURE_SUPPORT
-        if (timeout_temperature > 0) {
-            timeout_temperature--;
-        }
-#endif                
-        if (timeout_ds_read > 0) {
-            timeout_ds_read--;
-        }
-
-        if (timeout_timer1 > 0) {
-            timeout_timer1--;
-        }
-
     }
 
     if (timeout_timer2 > 0) {
@@ -906,19 +914,22 @@ uint16_t get_voltage_value(uint16_t *adc_voltage) {
 }
 
 uint16_t get_speed(uint16_t kmh) {
-    return (uint16_t) ((36000UL * (uint32_t) kmh) / (uint32_t) config.odo_const);
+    // instant speed (0,1*km/h)
+    return (uint16_t) (((uint32_t) (36000 / REFRESH_PERIOD) * (uint32_t) kmh) / (uint32_t) config.odo_const);
 }
 
 uint16_t get_instant_fuel(uint16_t fuel, uint16_t kmh, uint8_t drive_fl) {
-    uint16_t t;
+    // fuel / (fuel_const * fuel1_const) (fixed point 16.16)
+    uint32_t t = (uint32_t) (((uint32_t) fuel << 16) / (uint16_t) (fuel1_const * config.fuel_const));
+    
     if (drive_fl == 0) {
-        // l/h
-        t = round_div((uint16_t) ((uint32_t) fuel * (uint32_t) fuel2_const / (uint32_t) config.fuel_const), 10);
+        // instant fuel (0,01*l/h) = ((3600 / main_interval_period) * fuel) / (fuel_const * fuel1_const) = (3600 / main_interval_period) * t
+        t = round_div((uint16_t) ((uint32_t) ((uint32_t) (3600 / REFRESH_PERIOD) * t) >> 16), 10);
     } else {
-        // l/100km
-        t = round_div((uint16_t) ((((uint32_t) fuel * (uint32_t) odo_con4) / (uint32_t) kmh) / ((uint16_t) config.fuel_const)), 10);
+        // instant fuel (0,01*l/100km) = (100 * odo_const * fuel) / (fuel_const * fuel1_const * kmh) = (100 * odo_const / kmh) * t
+        t = round_div((uint16_t) ((uint32_t) (((100UL * config.odo_const) / kmh) * t) >> 16), 10);
     }
-    return t;
+    return (uint16_t) t;
 }
 
 void fill_live_data() {
@@ -953,15 +964,11 @@ void fill_live_data() {
 }
 
 void set_consts() {
-    // default const
+    // default const (sequentional injection)
     fuel1_const = 65;
-    fuel2_const = 28 * 2;                                                     // immediate fuel consumption const (l/h)
-    odo_con4 = (uint16_t) ((uint32_t) (config.odo_const * 202UL) / 130UL);    // immediate fuel consumption const (l/100km)
-    // const for dual injection
     if (config.settings.par_injection != 0) {
+        // bank-to-bank injection
         fuel1_const <<= 1; // * 2
-        fuel2_const >>= 1; // / 2
-        odo_con4 >>= 1;    // / 2
     }
 #ifndef MIN_SPEED_CONFIG
     config.selected_param.min_speed = MIN_SPEED_DEFAULT;
