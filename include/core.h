@@ -55,7 +55,12 @@
 #endif
 
 // misc constants (in seconds)
+// main 1 sec interval
 #define MAIN_INTERVAL ((uint8_t) (1.0f / HW_MAIN_TIMER_PERIOD))
+// screen refresh period
+#define REFRESH_PERIOD 1.0f
+#define REFRESH_INTERVAL ((uint8_t) (REFRESH_PERIOD / HW_MAIN_TIMER_PERIOD))
+// key periods
 #define DEBOUNCE ((uint8_t) (0.04f / HW_MAIN_TIMER_PERIOD))
 #if defined(__DEBUG) || defined(DEBUG)
 #define SHORTKEY ((uint8_t) (0.4f / HW_MAIN_TIMER_PERIOD))
