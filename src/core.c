@@ -1,5 +1,11 @@
 #include "core.h"
 #include "ds3231.h"
+#include "ds18b20.h"
+#include "eeprom.h"
+#include "lcd.h"
+#include "locale.h"
+#include "ui_16x2_legacy.h"
+#include <string.h>
 
 // __near forces xc8 to use bitbssCOMMON section
 __near volatile flag_t screen_refresh;
@@ -970,4 +976,544 @@ void set_consts() {
     accel_meas_upper_const = (unsigned short) (speed_const(100) / config.odo_const);
 #endif
     drive_min_speed = config.selected_param.min_speed * 10;
+}
+
+//========================================================================================
+// Live/derived state moved from main.c (set by fill_misc_values/handle_temp
+// below, read by the UI layer for display -- see extern decls in core.h)
+//========================================================================================
+
+flag_t drive_min_speed_fl;
+uint8_t fuel_instant_pos;
+#ifdef CONTINUOUS_DATA_SUPPORT
+uint8_t cd_fuel_instant_pos;
+#endif
+
+#ifdef TEMPERATURE_SUPPORT
+flag_t temperature_conv_fl;
+uint8_t main_temp_index;
+
+uint16_t _t;
+uint16_t temps[4] = {DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE, DS18B20_TEMP_NONE};
+#endif
+
+//========================================================================================
+// Functions moved from main.c during the main.c -> core.c / ui_16x2_legacy.c
+// split. See include/core.h for the reasoning. clear_trip() is NOT here --
+// it stays in ui_16x2_legacy.c because it calls request_screen() (an
+// interactive confirmation prompt) for the non-forced case; core.c calls it
+// via the extern declared in ui_16x2_legacy.h.
+//========================================================================================
+
+
+// ---- moved from main.c: clear_trip stays in ui_16x2_legacy.c (see note there); ----
+// ---- moved from main.c: get_mh (guarded, matches original SERVICE_COUNTERS_SUPPORT scope) ----
+#ifdef SERVICE_COUNTERS_SUPPORT
+uint16_t get_mh() {
+    // time based motor hours
+    return (uint16_t) (services.mh.time / 3600UL);
+}
+#endif
+
+// ---- moved from main.c: check_service_counters (guarded, matches original scope) ----
+#ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
+uint8_t check_service_counters() {
+    uint8_t i;
+    uint8_t warn = 0;
+    for (i = 0; i < 5; i++) {
+        if (i == 0) {
+            if (services.mh.limit != 0 && get_mh() >= services.mh.limit) {
+                warn |= (1 << i);
+            }
+        } else {
+            srv_t* srv = &services.srv[i - 1];
+            if (srv->limit != 0 && srv->counter >= (srv->limit * 1000U)) {
+                warn |= (1 << i);
+            }
+        }
+    }
+    return warn;
+}
+#endif
+
+// ---- moved from main.c: read_eeprom/save_eeprom* ----
+void read_eeprom() {
+
+    HW_read_eeprom_block((unsigned char*) &config, EEPROM_CONFIG_ADDRESS, sizeof(config_t));
+    
+    HW_read_eeprom_block((unsigned char*) &trips, EEPROM_TRIPS_ADDRESS, sizeof(trips_t));
+
+#ifdef SERVICE_COUNTERS_SUPPORT
+    HW_read_eeprom_block((unsigned char*) &services, EEPROM_SERVICES_ADDRESS, sizeof(services_t));
+#endif
+    
+#ifdef CONTINUOUS_DATA_SUPPORT
+    HW_read_eeprom_block((unsigned char*) &cd, EEPROM_CONTINUOUS_DATA_ADDRESS, sizeof (continuous_data_t));
+#endif
+}
+
+void save_eeprom_config() {
+    HW_write_eeprom_block((unsigned char*) &config, EEPROM_CONFIG_ADDRESS, sizeof (config_t));
+}
+
+void save_eeprom_trips() {
+    HW_write_eeprom_block((unsigned char*) &trips, EEPROM_TRIPS_ADDRESS, sizeof (trips_t));
+}
+
+void save_eeprom() {
+    save_eeprom_config();
+    
+    save_eeprom_trips();
+
+#ifdef SERVICE_COUNTERS_SUPPORT
+    HW_write_eeprom_block((unsigned char*) &services, EEPROM_SERVICES_ADDRESS, sizeof (services_t));
+#endif
+
+#ifdef CONTINUOUS_DATA_SUPPORT
+    HW_write_eeprom_block((unsigned char*) &cd, EEPROM_CONTINUOUS_DATA_ADDRESS, sizeof (continuous_data_t));
+#endif
+}
+
+// ---- moved from main.c: beep/_beep/check_eeprom/preinit_settings, one self-contained #if unit ----
+#if defined(PROGMEM_EEPROM) || defined (ENCODER_SUPPORT) || defined(ADC_BUTTONS_SUPPORT) || (defined(LCD_1602) && defined(LCD_1602_I2C))
+
+typedef enum {
+    BEEP_OK=1,
+    BEEP_UP,
+    BEEP_DOWN
+} beep_t;
+
+void _beep(uint8_t tone, uint16_t length)
+{
+  uint16_t i;
+  uint8_t r;
+  for (i = 0; i < length; i++) {
+    if ((i & 0x01) == 0) {
+      HW_snd_on();
+    } else {
+      HW_snd_off();
+    }
+    for (r = 0; r < tone; r++) {
+      HW_delay_us(15);
+    }
+  }
+  HW_snd_off();
+}
+
+void beep(uint8_t beep)
+{
+    switch (beep) {
+        case BEEP_OK:
+            _beep(15, 255);
+            break;
+        case BEEP_UP:
+            _beep(25, 250);
+            _beep(15, 400);
+            break;
+        case BEEP_DOWN:
+            _beep(15, 400);
+            _beep(25, 250);
+            break;
+    }
+}
+
+#define SETTINGS_DELAY 150
+
+uint8_t stage_setting = 0;
+
+typedef enum {
+    FORCE_SETTING_START=0,
+#if defined(ENCODER_SUPPORT)
+    FORCE_SETTING_ENCODER_OFF,        // force encoder off
+    FORCE_SETTING_ENCODER_ON,         // force encoder on
+#endif
+#if defined(ADC_BUTTONS_SUPPORT)
+    FORCE_SETTING_ADC_BUTTONS_OFF,    // force adc buttons off
+    FORCE_SETTING_ADC_BUTTONS_ON,     // force adc buttons on
+#endif
+#if defined(LCD_1602) && defined(LCD_1602_I2C)
+    FORCE_SETTING_LCD_1602_I2C_OFF,    // force lcd 1602 i2c off
+    FORCE_SETTING_LCD_1602_I2C_ON,     // force lcd 1602 i2c on
+#endif
+#if defined(PROGMEM_EEPROM)  
+    FORCE_SETTING_EEPROM_REWRITE,     // eeprom rewrite for arduino target
+#endif
+    FORCE_SETTING_MAX    
+} pre_settings_t;
+
+#if defined(PROGMEM_EEPROM)
+void check_eeprom(uint8_t c) {
+    unsigned char tbuf[8];
+    HW_read_eeprom_block((unsigned char*) &tbuf, sizeof(eedata) - 8, 8);
+    if (c == FORCE_SETTING_EEPROM_REWRITE || memcmp_P((unsigned char*) &tbuf, &eedata[sizeof(eedata) - 8], 8) != 0) {
+        uint8_t c;
+        for (c = 0; c < sizeof(eedata); c += 8) {
+            memcpy_P(&tbuf, &eedata[c], 8);
+            HW_write_eeprom_block((unsigned char*) &tbuf, c, 8);
+        }
+    }
+}
+#endif
+
+// force settings overwrite
+// press ok button before start
+// release after pre_setting_t beeps for change setting
+void preinit_settings() {
+    while (HW_key2_pressed()) {
+        uint8_t keytime = SETTINGS_DELAY;
+        while (HW_key2_pressed()) {
+            HW_delay_ms(10);
+            if (--keytime == 0) {
+                keytime = SETTINGS_DELAY;
+                if (stage_setting < (FORCE_SETTING_MAX - 1)) {
+                    stage_setting++;
+#if 0
+                    for (uint8_t i = 0; i < stage_setting; i++) {
+                        beep(BEEP_OK);
+                        HW_delay_ms(150);
+                    }
+#else
+                    beep(BEEP_OK);
+#endif
+                } else {
+                    while (HW_key2_pressed()) {};
+                    stage_setting = 0;
+                }
+            }
+        }
+        if (!HW_key2_pressed() && stage_setting != 0) {
+            beep(BEEP_UP);
+            beep(BEEP_UP);
+            beep(BEEP_UP);
+        }
+    }
+
+#if defined(PROGMEM_EEPROM)
+    // check eeprom special mark and save default eeprom content if mark not exists
+    check_eeprom(stage_setting);
+#endif
+
+    read_eeprom();
+    
+#if defined(ENCODER_SUPPORT)
+    if (stage_setting == FORCE_SETTING_ENCODER_OFF) {
+        config.settings.encoder = 0;
+    } else if (stage_setting == FORCE_SETTING_ENCODER_ON) {
+        config.settings.encoder = 1;
+    }
+    use_encoder_fl = config.settings.encoder;
+#endif
+#if defined(ADC_BUTTONS_SUPPORT)
+    if (stage_setting == FORCE_SETTING_ADC_BUTTONS_OFF) {
+        config.settings.adc_buttons = 0;
+    } else if (stage_setting == FORCE_SETTING_ADC_BUTTONS_ON) {
+        config.settings.adc_buttons = 1;
+    }
+    use_adc_buttons_fl = config.settings.adc_buttons;
+#endif
+#if defined(LCD_1602) && defined(LCD_1602_I2C)
+    if (stage_setting == FORCE_SETTING_LCD_1602_I2C_OFF) {
+        config.settings.lcd_1602_i2c = 0;
+    } else if (stage_setting == FORCE_SETTING_LCD_1602_I2C_ON) {
+        config.settings.lcd_1602_i2c = 1;
+    }
+    use_lcd_1602_i2c_fl = config.settings.lcd_1602_i2c;
+#endif
+
+}
+
+#endif
+
+// ---- moved from main.c: get_yday/check_tripC_time ----
+uint16_t get_yday(uint8_t month, uint8_t day) {
+    const uint16_t ydayArray[] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
+    return ydayArray[bcd8_to_bin(month) - 1] + bcd8_to_bin(day);
+}
+
+uint8_t check_tripC_time() {
+#ifdef SIMPLE_TRIPC_TIME_CHECK    
+    // clear trip C for different day
+    return (time.day != trips.tripC_time.day || time.month != trips.tripC_time.month);
+#else
+    // clear trip C if diff between dates is more than TRIPC_PAUSE_MINUTES minutes
+    int8_t diff = 0;
+    diff = bcd_subtract(time.year, trips.tripC_time.year);
+    if (diff < 0) return 0; else if (diff > 1) return 1;
+
+    uint16_t yday = get_yday(time.month, time.day);
+    uint16_t yday_c = get_yday(trips.tripC_time.month, trips.tripC_time.day);
+    
+    int16_t diff_day = (int16_t) ((diff == 0 ? 0 : 365) + yday - yday_c);
+    if (diff_day < 0) return 0; else if (diff_day > 1) return 1;
+
+    diff = (int8_t) diff_day;
+    
+    if (config.settings.daily_tripc == 0) {
+        diff = (diff == 0 ? 0 : 24) + bcd_subtract(time.hour, trips.tripC_time.hour);
+        if (diff < 0) return 0;
+
+        if ((int16_t) (60 * diff) + bcd_subtract(time.minute, trips.tripC_time.minute) > TRIPC_PAUSE_MINUTES) return 1;
+    } else {
+        return (uint8_t) diff;
+    }
+    
+    return 0;
+#endif
+}
+
+// ---- moved from main.c: check_tripB_month (guarded, matches original scope) ----
+#if defined(JOURNAL_SUPPORT)
+uint8_t check_tripB_month() {
+    if (config.settings.monthly_tripb != 0) {
+        if (trips.tripB_month != 0 && trips.tripB_month != time.month) {
+            return 1;
+        }
+    }
+    return 0;
+}
+#endif
+
+// ---- moved from main.c: handle_temp (guarded, matches original scope) ----
+#if defined(TEMPERATURE_SUPPORT)
+
+// max sequential crc errors before set temp to DS18B20_TEMP_NONE
+#define MAX_CRC_ERROR   5
+
+void handle_temp() {
+    unsigned char buf[8];
+
+#if defined(DS18B20_TEMP) && defined(MAX_CRC_ERROR)
+    static uint8_t t_error[3] = {0, 0, 0};
+#endif
+
+    if (temperature_conv_fl == 0) {
+        // start conversion for ds18b20/ds3231
+        temperature_conv_fl = 1;
+        timeout_temperature = 1;
+#if defined(DS18B20_TEMP)
+        ds18b20_start_conversion();
+#endif
+#if defined(DS3231_TEMP)
+#if defined(DS18B20_TEMP)
+        if (config.settings.ds3231_temp)
+#endif
+        {
+          DS3231_temp_start();
+        }
+#endif        
+    } else {
+        // read temperature for ds18b20/ds3231
+        temperature_conv_fl = 0;
+        timeout_temperature = TIMEOUT_TEMPERATURE;
+#if defined(DS18B20_TEMP)
+        unsigned char _temps_ee_addr = EEPROM_DS18B20_ADDRESS;
+        for (uint8_t i = 0; i < 3; i++) {
+            HW_read_eeprom_block((unsigned char *) &buf, _temps_ee_addr, 8);
+            if (ds18b20_read_temp_matchrom((unsigned char *) &buf, &_t) == 0) {
+#if defined(MAX_CRC_ERROR)
+                if (t_error[i] >= MAX_CRC_ERROR) {
+                    temps[i] = DS18B20_TEMP_NONE;
+                } else {
+                    t_error[i]++;
+                }
+#else
+                temps[i] = DS18B20_TEMP_NONE;
+#endif
+            } else {
+                temps[i] = _t;
+#if defined(MAX_CRC_ERROR)
+                t_error[i] = 0;
+#endif
+            }
+            _temps_ee_addr += 8;
+        }
+#endif
+#if defined(DS3231_TEMP)
+#if defined(DS18B20_TEMP)
+        if (config.settings.ds3231_temp)
+#endif
+        {
+          DS3231_temp_read(&temps[TEMP_IN]);
+        }
+#endif        
+    }
+}
+#endif
+
+// ---- moved from main.c: set_params/fill_misc_values/power_on/power_off ----
+
+// Restores UI navigation state (params/service_param) from the persisted
+// config after an EEPROM read. This is the one place core.c writes directly
+// into ui_16x2_legacy.c's exported globals rather than calling a function --
+// see the comment on params_t in ui_16x2_legacy.h.
+void set_params() {
+    // set core constants
+    set_consts();
+
+    params.main = config.selected_param.main_param;
+    params.main_add = config.selected_param.main_add_param;
+#ifdef SERVICE_COUNTERS_SUPPORT
+    service_param = config.selected_param.service_param;
+#endif
+}
+
+void fill_misc_values() {
+
+    if (data.speed >= drive_min_speed) {
+        fuel_instant_pos = POS_LKM;
+        drive_min_speed_fl = 1;
+    } else {
+        fuel_instant_pos = POS_LH;
+        drive_min_speed_fl = 0;
+    }
+
+#ifdef CONTINUOUS_DATA_SUPPORT
+    if (data.cd_speed >= drive_min_speed) {
+        cd_fuel_instant_pos = POS_LKM;
+    } else {
+        cd_fuel_instant_pos = POS_LH;
+    }
+#endif
+
+#ifdef TEMPERATURE_SUPPORT
+    main_temp_index = (config.settings.show_inner_temp == 0 ? TEMP_OUT : TEMP_IN) | PRINT_TEMP_PARAM_FRACT | PRINT_TEMP_PARAM_DEG_SIGN;
+#endif    
+
+    if (trips.tripA.odo > MAX_ODO_TRIPA) {
+        clear_trip(&trips.tripA);
+    }
+
+    if (trips.tripB.odo > MAX_ODO_TRIPB) {
+        clear_trip(&trips.tripB);
+    }
+
+}
+
+void clear_trip(trip_t* trip) {
+#ifdef JOURNAL_SUPPORT
+    journal_save_trip(trip);
+#endif
+    _memset(trip, 0, sizeof (trip_t));
+
+    save_eeprom_trips();
+}
+
+void power_on() {
+    HW_Init();
+
+#if defined(PROGMEM_EEPROM) || defined(ENCODER_SUPPORT) || defined(ADC_BUTTONS_SUPPORT) || (defined(LCD_1602) && defined(LCD_1602_I2C))
+    preinit_settings();
+#else
+    read_eeprom();
+#endif
+
+    LCD_Init();
+
+    set_params();
+
+    read_ds_time();
+
+#if defined(JOURNAL_SUPPORT)
+    if (journal_check_eeprom() == 0) {
+        ui_16x2_legacy_hide_journal_screen();
+    }
+#endif
+
+    if (time.flags.is_valid) {
+        if (check_tripC_time() != 0) {
+            // clear tripC
+            clear_trip(&trips.tripC);
+            trips.tripC_max_speed = 0;
+        }
+
+#if defined(JOURNAL_SUPPORT)
+        if (check_tripB_month() != 0) {
+            clear_trip(&trips.tripB);
+        }
+#endif
+    }
+
+#if defined(CONTINUOUS_DATA_SUPPORT)
+    cd_init();
+#endif
+    
+}
+
+void power_off() {
+    LCD_Clear();
+    // save and shutdown;
+    HW_disable_interrupts();
+
+    if (save_tripc_time_fl != 0) {
+        // save current time for tripC
+        read_ds_time();
+        fill_trip_time(&trips.tripC_time);
+        trips.tripC_time_dow = time.day_of_week;
+    }
+
+    // save tripB month
+#if defined(JOURNAL_SUPPORT)
+    if (config.settings.monthly_tripb != 0) {
+        if (save_tripc_time_fl != 0 || trips.tripB_month == 0) {
+            trips.tripB_month = time.month;
+        }
+    } else
+#endif
+    {
+        trips.tripB_month = 0;
+    }
+
+    config.selected_param.main_param = params.main;
+    config.selected_param.main_add_param = params.main_add;
+#ifdef SERVICE_COUNTERS_SUPPORT
+    config.selected_param.service_param = service_param;
+#endif
+
+    save_eeprom();
+
+    HW_pwr_off();
+
+    while (1);
+}
+
+//========================================================================================
+// Called once from main() at startup. Former top half of main() before its
+// while(1) loop: power-on/HW/interrupt init.
+//========================================================================================
+void core_init(void) {
+    power_on();
+
+    HW_start_main_timer();
+
+    HW_enable_interrupts();
+
+#ifdef TEMPERATURE_SUPPORT
+    // wait 1 sec before first conversion's request
+    timeout_temperature = 1;
+#endif
+}
+
+//========================================================================================
+// Called once per main-loop iteration from main(), before ui_16x2_legacy_update().
+// Former top of main()'s while(1) body: refresh live/misc data on the timer
+// tick, handle shutdown, handle temperature conversion.
+//========================================================================================
+
+void core_tick(void) {
+    if (screen_refresh != 0) {
+        screen_refresh = 0;
+        fill_live_data();
+        fill_misc_values();
+    }
+
+    // check power
+    if (shutdown_fl != 0) {
+        power_off();
+    }
+
+#ifdef TEMPERATURE_SUPPORT
+    if (timeout_temperature == 0) {
+        handle_temp();
+    }
+#endif
 }

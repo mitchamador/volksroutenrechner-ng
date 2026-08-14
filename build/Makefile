@@ -4,6 +4,7 @@ FIRMWARE := $(or $(FIRMWARE),1)
 ifeq ($(MCU),pic16f876a)
  DFP_DIR := ${XC8-TOOLCHAIN}/packs/PIC16Fxxx_DFP/1.2.33
  MP_PROCESSOR_OPTION := 16F876A
+ MSTACKCALL := -mstackcall
 else ifeq ($(MCU),pic16f1936)
  DFP_DIR := ${XC8-TOOLCHAIN}/packs/PIC12-16F1xxx_DFP/1.2.63
  MP_PROCESSOR_OPTION := 16F1936
@@ -33,7 +34,9 @@ ifneq (,$(filter pic16f% pic18f%,$(MCU)))
   CC=${XC8-TOOLCHAIN}/xc8/bin/xc8-cc
   FIXDEPS=${XC8-TOOLCHAIN}/xc8/bin/fixDeps
   AVR_OBJCOPY=${XC8-TOOLCHAIN}/xc8/bin/avr-objcopy
-ifneq (,$(findstring pic16f,$(MCU)))
+ifeq ($(MCU),pic16f876a)
+  XC8_OPTIONS=-mno-osccal -mno-resetbits -mno-save-resetbits -mstackcall -mstack=compiled:auto:auto:auto
+else ifneq (,$(findstring pic16f,$(MCU)))
   XC8_OPTIONS=-mno-osccal -mno-resetbits -mno-save-resetbits -mno-stackcall -mstack=compiled:auto:auto
 else
   XC8_OPTIONS=-mdefault-config-bits -memi=wordwrite -merrata=none -mstack=compiled:auto:auto:auto
@@ -69,7 +72,7 @@ OBJECTDIR=${TARGET}
 DISTDIR=../dist/${TARGET}
 OUTDIR_FIRMWARE=../firmware
 
-SRCS = src/core.c src/hw-pic.c src/hw-avr.c src/main.c src/ds18b20.c src/ds3231.c src/i2c.c src/lcd.c src/utils.c src/onewire.c src/i2c-eeprom.c src/journal.c src/lcd_ssd1322.c
+SRCS = src/core.c src/hw-pic.c src/hw-avr.c src/main.c src/ui_16x2_legacy.c src/ds18b20.c src/ds3231.c src/i2c.c src/lcd.c src/utils.c src/onewire.c src/i2c-eeprom.c src/journal.c src/lcd_ssd1322.c
 ifneq (,$(filter pic16f% pic18f%,$(MCU)))
   OBJS = $(SRCS:%.c=${OBJECTDIR}/${IMAGE_TYPE}/%.p1)
   DEPS := $(OBJS:.p1=.d)
@@ -87,7 +90,7 @@ VPATH = ..
 usage:
 	$(info usage:)
 	$(info make XC8-TOOLCHAIN=/path/to/xc8-toolchain or AVR-GCC-TOOLCHAIN=/path/to/avr-gcc-toolchain MCU=TARGET_CPU)
-	$(info TARGET_CPU is one of pic16F876a, pic16f1936, pic16f1938 (default), pic18f242, pic18f252, atmega168p, atmega328p)
+	$(info TARGET_CPU is one of pic16f876a, pic16f1936, pic16f1938 (default), pic18f242, pic18f252, atmega168p, atmega328p)
 	$(info creating release:)
 	$(info make XC8-TOOLCHAIN=/path/to/xc8-toolchain AVR-GCC-TOOLCHAIN=/path/to/avr-gcc-toolchain release)
 

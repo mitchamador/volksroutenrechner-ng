@@ -432,4 +432,67 @@ void set_consts(void);
 
 uint16_t round_div(uint16_t dividend, uint16_t divisor);
 
+void clear_trip(trip_t* trip);
+
+extern flag_t journal_check_eeprom(void);
+
+//========================================================================================
+// Derived/live state, computed by core.c (fill_misc_values/handle_temp) and
+// read by the UI layer (ui_16x2_legacy.c) for display. Moved here verbatim
+// from main.c during the main.c -> core.c/ui_16x2_legacy.c split; ownership
+// (who writes) did not change, only which file the definitions live in.
+//========================================================================================
+
+extern flag_t drive_min_speed_fl;
+extern uint8_t fuel_instant_pos;
+#ifdef CONTINUOUS_DATA_SUPPORT
+extern uint8_t cd_fuel_instant_pos;
+#endif
+
+#ifdef TEMPERATURE_SUPPORT
+extern flag_t temperature_conv_fl;
+extern uint8_t main_temp_index;
+
+extern uint16_t _t;
+extern uint16_t temps[4];
+#endif
+
+//========================================================================================
+// Functions moved from main.c: eeprom/config persistence, power on/off,
+// startup checks, trip housekeeping, sound, and the main-loop scheduling
+// helpers (core_init/core_tick). None of these touch the LCD directly.
+//========================================================================================
+
+uint16_t get_mh(void);
+uint8_t check_service_counters(void);
+
+void read_eeprom(void);
+void save_eeprom(void);
+void save_eeprom_trips(void);
+void save_eeprom_config(void);
+
+void beep(uint8_t beep);
+
+void check_eeprom(uint8_t c);
+void preinit_settings(void);
+
+uint8_t check_tripC_time(void);
+uint8_t check_tripB_month(void);
+
+void handle_temp(void);
+void set_params(void);
+void fill_misc_values(void);
+
+void power_on(void);
+void power_off(void);
+
+// Called once from main() at startup: HW/interrupt init, initial EEPROM/RTC
+// read, etc. -- the former top half of main() before its while(1) loop.
+void core_init(void);
+
+// Called once per main-loop iteration from main(), before the UI update:
+// refreshes live_data/misc values on the timer tick, checks for shutdown,
+// handles temperature conversion. The former top of main()'s while(1) body.
+void core_tick(void);
+
 #endif	/* CORE_H */
