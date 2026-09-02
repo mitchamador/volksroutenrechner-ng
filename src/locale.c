@@ -1,5 +1,9 @@
 #include "locale.h"
 
+// Actual PROGMEM string/array definitions -- storage is allocated here,
+// exactly once, no matter how many .c files #include locale.h. See the
+// note at the top of locale.h for why this file exists.
+
 PROGMEM const char config_menu_fuel_constant[] = CONFIG_MENU_FUEL_CONSTANT;
 PROGMEM const char config_menu_vss_constant[] = CONFIG_MENU_VSS_CONSTANT;
 PROGMEM const char config_menu_total_trip[] = CONFIG_MENU_TOTAL_TRIP;

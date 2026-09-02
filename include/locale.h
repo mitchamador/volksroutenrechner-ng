@@ -1,8 +1,17 @@
 #ifndef LOCALE_H
 #define	LOCALE_H
 
-#include "utils.h"
 #include "version.h"
+#include "utils.h"
+
+// The PROGMEM const char ...[] = ...; definitions used to live here
+// directly in this header. That's fine as long as exactly one .c file
+// ever #includes locale.h -- which stopped being true once the old
+// main.c was split into core.c/ui_16x2_legacy.c/main.c. Now more than
+// one translation unit includes this header, so each PROGMEM array got
+// its own copy -- "multiple definition of ..." at link time. The real
+// definitions now live in locale.c (compiled once); this header only
+// declares them extern, which every includer is allowed to do.
 
 typedef enum {
     POS_KMH=1,        

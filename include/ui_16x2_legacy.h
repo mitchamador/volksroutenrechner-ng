@@ -9,7 +9,6 @@
 //
 // Public surface used from outside this module:
 //   - ui_16x2_legacy_update()             called once per main-loop iteration
-//   - ui_16x2_legacy_hide_journal_screen() called from core.c's power_on()
 //   - clear_trip()                        called from core.c's fill_misc_values/power_on
 //   - print_warning_service_counters()     called from main()'s init sequence
 //   - params / service_param               read/written by core.c's

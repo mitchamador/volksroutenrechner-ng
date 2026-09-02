@@ -4,7 +4,6 @@ FIRMWARE := $(or $(FIRMWARE),1)
 ifeq ($(MCU),pic16f876a)
  DFP_DIR := ${XC8-TOOLCHAIN}/packs/PIC16Fxxx_DFP/1.2.33
  MP_PROCESSOR_OPTION := 16F876A
- MSTACKCALL := -mstackcall
 else ifeq ($(MCU),pic16f1936)
  DFP_DIR := ${XC8-TOOLCHAIN}/packs/PIC12-16F1xxx_DFP/1.2.63
  MP_PROCESSOR_OPTION := 16F1936
@@ -34,10 +33,19 @@ ifneq (,$(filter pic16f% pic18f%,$(MCU)))
   CC=${XC8-TOOLCHAIN}/xc8/bin/xc8-cc
   FIXDEPS=${XC8-TOOLCHAIN}/xc8/bin/fixDeps
   AVR_OBJCOPY=${XC8-TOOLCHAIN}/xc8/bin/avr-objcopy
-ifeq ($(MCU),pic16f876a)
-  XC8_OPTIONS=-mno-osccal -mno-resetbits -mno-save-resetbits -mstackcall -mstack=compiled:auto:auto:auto
-else ifneq (,$(findstring pic16f,$(MCU)))
-  XC8_OPTIONS=-mno-osccal -mno-resetbits -mno-save-resetbits -mno-stackcall -mstack=compiled:auto:auto
+ifneq (,$(findstring pic16f,$(MCU)))
+  # pic16f876a has an 8-level hardware call stack (vs. 16 on the enhanced
+  # mid-range 16F19xx parts) and can overflow it once core.c/ui_16x2_legacy.c
+  # calls from main() add call depth that used to be inlined within a single
+  # file. -mstackcall makes XC8 route calls through a software-managed jump
+  # table instead of the hardware stack for functions where that's needed,
+  # at the cost of extra flash/cycles per such call -- only worth it here.
+  ifeq ($(MCU),pic16f876a)
+    XC8_STACKCALL_OPTION=-mstackcall
+  else
+    XC8_STACKCALL_OPTION=-mno-stackcall
+  endif
+  XC8_OPTIONS=-mno-osccal -mno-resetbits -mno-save-resetbits $(XC8_STACKCALL_OPTION) -mstack=compiled:auto:auto
 else
   XC8_OPTIONS=-mdefault-config-bits -memi=wordwrite -merrata=none -mstack=compiled:auto:auto:auto
 endif
