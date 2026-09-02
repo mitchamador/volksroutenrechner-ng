@@ -163,9 +163,10 @@ stored in EEPROM and configured from the on-device configuration screen.
 
 ## Status
 
-Licensing and authorship are not specified in the source files — please
-check with the repository author before republishing or redistributing the
-firmware.
+The project is now fully open-source and officially licensed under the
+permissive **MIT License**. You are free to use, modify, and redistribute
+this firmware for any purpose, including commercial projects, as long
+as the original copyright notice is included.
 
 ---
 
@@ -331,7 +332,9 @@ make XC8-TOOLCHAIN=/path/to/xc8 AVR-GCC-TOOLCHAIN=/path/to/avr-gcc-toolchain rel
 
 ## Статус
 
-Лицензия и авторство в исходных файлах не указаны — при необходимости
-уточните их у автора репозитория, прежде чем публиковать или распространять
-прошивку.
+Проект полностью переведен в разряд open-source и официально распространяется
+под разрешительной лицензией **MIT**. Вы можете свободно использовать, изменять
+и распространять эту прошивку для любых целей, включая коммерческие проекты,
+при условии сохранения оригинального уведомления об авторских правах.
+
 
