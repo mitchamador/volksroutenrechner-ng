@@ -9,7 +9,6 @@
 #include "i2c_eeprom.h"
 #include "utils.h"
 #include "journal.h"
-#include "locale.h"
 #include <stdbool.h>
 #include <string.h>
 

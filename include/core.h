@@ -455,9 +455,8 @@ extern void journal_check_eeprom(void);
 //========================================================================================
 
 extern flag_t drive_min_speed_fl;
-extern uint8_t fuel_instant_pos;
 #ifdef CONTINUOUS_DATA_SUPPORT
-extern uint8_t cd_fuel_instant_pos;
+extern flag_t cd_drive_min_speed_fl;
 #endif
 
 #ifdef TEMPERATURE_SUPPORT

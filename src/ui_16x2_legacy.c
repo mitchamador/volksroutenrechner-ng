@@ -989,6 +989,7 @@ void screen_main(void) {
             print_voltage(LCD_CURSOR_POS_11, (uint16_t *) &adc_voltage.current, POS_NONE, ALIGN_RIGHT);
         } else {
             print_selected_param1(LCD_CURSOR_POS_10, ALIGN_LEFT);
+            uint8_t fuel_instant_pos = drive_min_speed_fl ? POS_LKM : POS_LH;
             print_fuel(LCD_CURSOR_POS_11, data.fuel_instant, fuel_instant_pos, ALIGN_RIGHT);
         }
 #ifdef EXTENDED_ACCELERATION_MEASUREMENT
@@ -1090,6 +1091,7 @@ void screen_main(void) {
                 
                 if (continuous_data_fl != 0) {
                     print_speed(LCD_CURSOR_POS_10, round_div(data.cd_speed, 10), 0, POS_NONE, ALIGN_LEFT);
+                    uint8_t cd_fuel_instant_pos = cd_drive_min_speed_fl ? POS_LKM : POS_LH;
                     print_fuel(LCD_CURSOR_POS_11, data.cd_fuel_instant, cd_fuel_instant_pos, ALIGN_RIGHT);
                 } else {
                     uint8_t len = strcpy2(buf, (char *) &empty_string, 0);

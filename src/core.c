@@ -4,7 +4,6 @@
 #include "eeprom.h"
 #include "lcd.h"
 #include "journal.h"
-#include "locale.h"
 #include "ui_16x2_legacy.h"
 #include <string.h>
 
@@ -992,9 +991,8 @@ void set_consts() {
 //========================================================================================
 
 flag_t drive_min_speed_fl;
-uint8_t fuel_instant_pos;
 #ifdef CONTINUOUS_DATA_SUPPORT
-uint8_t cd_fuel_instant_pos;
+flag_t cd_drive_min_speed_fl;
 #endif
 
 #ifdef TEMPERATURE_SUPPORT
@@ -1368,18 +1366,16 @@ void set_params() {
 void fill_misc_values() {
 
     if (data.speed >= drive_min_speed) {
-        fuel_instant_pos = POS_LKM;
         drive_min_speed_fl = 1;
     } else {
-        fuel_instant_pos = POS_LH;
         drive_min_speed_fl = 0;
     }
 
 #ifdef CONTINUOUS_DATA_SUPPORT
     if (data.cd_speed >= drive_min_speed) {
-        cd_fuel_instant_pos = POS_LKM;
+        cd_drive_min_speed_fl = 1;
     } else {
-        cd_fuel_instant_pos = POS_LH;
+        cd_drive_min_speed_fl = 0;
     }
 #endif
 
