@@ -1415,19 +1415,16 @@ void power_on() {
     read_eeprom();
 #endif
 
-    LCD_Init();
-#if defined LCD_Set_Contrast
-    LCD_Set_Contrast(config.lcd_contrast);
+    LCD_init();
+#if defined LCD_CONTRAST_CONFIG
+    LCD_set_contrast(config.lcd_contrast);
 #endif
-
     set_params();
 
     read_ds_time();
 
 #if defined(JOURNAL_SUPPORT)
-    if (journal_check_eeprom() == 0) {
-        ui_16x2_legacy_hide_journal_screen();
-    }
+    journal_check_eeprom();
 #endif
 
     if (time.flags.is_valid) {
@@ -1451,7 +1448,7 @@ void power_on() {
 }
 
 void power_off() {
-    LCD_Clear();
+    LCD_off();
     // save and shutdown;
     HW_disable_interrupts();
 

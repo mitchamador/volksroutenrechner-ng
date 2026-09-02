@@ -18,15 +18,14 @@
 
 #include "core.h"
 
-
 typedef union {
     uint8_t byte;
     struct {
-        unsigned index : 4;
+        unsigned trip : 4;
         unsigned config_switch : 1;
         unsigned skip_key_handler : 1;
         unsigned drive_mode : 1;
-        unsigned skip : 1;
+        unsigned dummy : 1;
     };
 } main_page_t;
 
@@ -35,13 +34,9 @@ typedef struct {
     main_page_t page;
 } screen_item_t;
 
-typedef union {
-    uint8_t byte;
-
-    struct {
-        unsigned title_string_index : 4;
-        unsigned index : 4;
-    };
+typedef struct {
+    const char *title;
+    uint8_t index;
 } config_page_t;
 
 typedef struct {
@@ -89,10 +84,6 @@ extern uint8_t service_param;
 // navigation/dispatch/refresh-timing logic that used to be the tail half of
 // main()'s while(1) body.
 void ui_16x2_legacy_update(void);
-
-// Lets core.c (power_on) hide the journal menu entry when no journal is
-// present in EEPROM, without reaching into this module's private items_main[].
-void ui_16x2_legacy_hide_journal_screen(void);
 
 // Displays the service-counter warning on the LCD at startup. The check
 // itself (check_service_counters()) is core logic and lives in core.c;

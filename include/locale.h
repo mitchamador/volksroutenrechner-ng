@@ -31,30 +31,6 @@ typedef enum {
     TRIPS_POS_B,
 } trips_name_t;
 
-typedef enum {
-    FUEL_CONSTANT_INDEX = 1,
-    VSS_CONSTANT_INDEX,
-    TOTAL_TRIP_INDEX,
-    VOLTAGE_ADJUST_INDEX,
-    SETTINGS_BITS_INDEX,
-#if defined(MIN_SPEED_CONFIG)
-    MIN_SPEED_INDEX,
-#endif
-#if defined(FUEL_TANK_CONFIG)
-    FUEL_TANK_INDEX,
-#endif
-#if defined(LCD_CONTRAST_CONFIG)
-    LCD_CONTRAST_INDEX,
-#endif
-#if defined(DS18B20_CONFIG)
-    TEMP_SENSOR_INDEX,
-#endif
-#if defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
-    SERVICE_COUNTERS_INDEX,
-#endif
-    VERSION_INFO_INDEX,
-} services_str_t;
-
 #define EMPTY                           "----"
 #define NO_TIME                         "-----'--"
 
@@ -192,37 +168,37 @@ typedef enum {
 
 #define JOURNAL_VIEWER_NO_ITEMS         "no items"
 
-#define CONFIG_MENU_FUEL_CONSTANT       "\0fuel constant"
+#define CONFIG_MENU_FUEL_CONSTANT       "fuel constant"
 
-#define CONFIG_MENU_VSS_CONSTANT        "\0vss constant"
+#define CONFIG_MENU_VSS_CONSTANT        "vss constant"
 
-#define CONFIG_MENU_TOTAL_TRIP          "\0total trip"
+#define CONFIG_MENU_TOTAL_TRIP          "total trip"
 
-#define CONFIG_MENU_VOLTAGE_ADJUST      "\0voltage adjust"
+#define CONFIG_MENU_VOLTAGE_ADJUST      "voltage adjust"
 
-#define CONFIG_MENU_SETTINGS_BITS       "\0settings bits"
+#define CONFIG_MENU_SETTINGS_BITS       "settings bits"
 
 #if defined(MIN_SPEED_CONFIG)
-#define CONFIG_MENU_MIN_SPEED           "\0min speed"
+#define CONFIG_MENU_MIN_SPEED           "min speed"
 #endif
 
 #if defined(LCD_CONTRAST_CONFIG)
-#define CONFIG_MENU_LCD_CONTRAST        "\0lcd contrast"
+#define CONFIG_MENU_LCD_CONTRAST        "lcd contrast"
 #endif
 
 #if defined(FUEL_TANK_CONFIG)
-#define CONFIG_MENU_FUEL_TANK                "\0fuel tank"
+#define CONFIG_MENU_FUEL_TANK           "fuel tank"
 #endif
 
 #if defined(DS18B20_CONFIG)
-#define CONFIG_MENU_TEMP_SENSORS        "\0temp sensors"
+#define CONFIG_MENU_TEMP_SENSORS        "temp sensors"
 #endif
 
 #if defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
-#define CONFIG_MENU_SERVICE_COUNTERS    "\0service cntrs"
+#define CONFIG_MENU_SERVICE_COUNTERS    "service cntrs"
 #endif
 
-#define CONFIG_MENU_VERSION_INFO        "\0sw version"
+#define CONFIG_MENU_VERSION_INFO        "sw version"
 
 #define DAY_OF_WEEK_ARRAY               "\0monday\0tuesday\0wednesday\0thursday\0friday\0saturday\0sunday"
 
@@ -413,39 +389,6 @@ typedef enum {
 
 #endif /* LOCALE_RUSSIAN */
 
-#ifndef CONFIG_MENU_TEMP_SENSORS
-#define CONFIG_MENU_TEMP_SENSORS
-#endif
-
-#ifndef CONFIG_MENU_SERVICE_COUNTERS
-#define CONFIG_MENU_SERVICE_COUNTERS
-#endif
-
-#ifndef CONFIG_MENU_MIN_SPEED
-#define CONFIG_MENU_MIN_SPEED
-#endif
-
-#ifndef CONFIG_MENU_LCD_CONTRAST
-#define CONFIG_MENU_LCD_CONTRAST
-#endif
-
-#ifndef CONFIG_MENU_FUEL_TANK
-#define CONFIG_MENU_FUEL_TANK
-#endif
-
-#define CONFIG_MENU_ARRAY                \
-            CONFIG_MENU_FUEL_CONSTANT    \
-            CONFIG_MENU_VSS_CONSTANT     \
-            CONFIG_MENU_TOTAL_TRIP       \
-            CONFIG_MENU_VOLTAGE_ADJUST   \
-            CONFIG_MENU_SETTINGS_BITS    \
-            CONFIG_MENU_MIN_SPEED        \
-            CONFIG_MENU_FUEL_TANK        \
-            CONFIG_MENU_LCD_CONTRAST     \
-            CONFIG_MENU_TEMP_SENSORS     \
-            CONFIG_MENU_SERVICE_COUNTERS \
-            CONFIG_MENU_VERSION_INFO     \
-
 #ifndef SETTING_LCD_1602_I2C
 #define SETTING_LCD_1602_I2C            "\0"
 #endif
@@ -503,12 +446,40 @@ typedef enum {
             SETTING_INOUT_TEMP          \
             SETTING_DS3231_TEMP         \
             SETTING_ADC_FUEL_NORMALIZE  \
-            "\0"                        \
-            "\0"                        \
-            "\0"                        \
+            SETTING_DUMMY               \
+            SETTING_DUMMY               \
+            SETTING_DUMMY               \
             SETTING_LCD_1602_I2C        \
             SETTING_ADC_BUTTONS         \
             SETTING_ENCODER             \
+
+extern PROGMEM const char config_menu_fuel_constant[];
+extern PROGMEM const char config_menu_vss_constant[];
+extern PROGMEM const char config_menu_total_trip[];
+extern PROGMEM const char config_menu_voltage_adjust[];
+extern PROGMEM const char config_menu_settings_bits[];
+
+#ifdef CONFIG_MENU_TEMP_SENSORS
+extern PROGMEM const char config_menu_temp_sensors[];
+#endif
+
+#ifdef CONFIG_MENU_SERVICE_COUNTERS
+extern PROGMEM const char config_menu_service_counters[];
+#endif
+
+#ifdef CONFIG_MENU_MIN_SPEED
+extern PROGMEM const char config_menu_min_speed[];
+#endif
+
+#ifdef CONFIG_MENU_LCD_CONTRAST
+extern PROGMEM const char config_menu_lcd_contrast[];
+#endif
+
+#ifdef CONFIG_MENU_FUEL_TANK
+extern PROGMEM const char config_menu_fuel_tank[];
+#endif
+
+extern PROGMEM const char config_menu_version_info[];
 
 extern PROGMEM const char symbols_array[];
 extern PROGMEM const char trips_array[];

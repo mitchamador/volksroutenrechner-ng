@@ -445,7 +445,7 @@ uint16_t round_div(uint16_t dividend, uint16_t divisor);
 
 void clear_trip(trip_t* trip);
 
-extern flag_t journal_check_eeprom(void);
+extern void journal_check_eeprom(void);
 
 //========================================================================================
 // Derived/live state, computed by core.c (fill_misc_values/handle_temp) and

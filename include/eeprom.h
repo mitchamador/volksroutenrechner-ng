@@ -64,7 +64,7 @@ volatile const char dummy_data[J_EEPROM_START] EEMEM;
 volatile const char dummy_data[J_EEPROM_START - sizeof(eedata)] EEMEM;
 #endif
 
-#include "eeprom-journal.h"
+#include "journal_eeprom.h"
 
 #endif
 

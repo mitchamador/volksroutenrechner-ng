@@ -1,4 +1,4 @@
-#include "i2c-eeprom.h"
+#include "i2c_eeprom.h"
 #include "string.h"
 
 #if defined(JOURNAL_SUPPORT) && !defined(JOURNAL_EEPROM_INTERNAL)

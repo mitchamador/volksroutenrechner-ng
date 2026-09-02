@@ -4,7 +4,7 @@
 #include "lcd.h"
 #include "ds3231.h"
 #include "ds18b20.h"
-#include "i2c-eeprom.h"
+#include "i2c_eeprom.h"
 #include "utils.h"
 #include "journal.h"
 #include <stdbool.h>
@@ -43,27 +43,17 @@ typedef enum {
     drive_mode_screen_max
 } drive_mode_screens;
 
-typedef enum {
-    SCREEN_INDEX_MAIN = 0,
-    SCREEN_INDEX_TRIP_C,
-    SCREEN_INDEX_TRIP_A,
-    SCREEN_INDEX_TRIP_B,
-    SCREEN_INDEX_TIME,
-    SCREEN_INDEX_SERVICE_COUNTERS,
-    SCREEN_INDEX_JOURNAL
-} screen_item_index;
-
 screen_item_t items_main[] = {
-    { .screen = screen_main, .page.index = SCREEN_INDEX_MAIN, .page.config_switch = 1, .page.drive_mode = 1},
-    { .screen = screen_trip, .page.index = SCREEN_INDEX_TRIP_C, .page.drive_mode = 1},
-    {screen_trip, SCREEN_INDEX_TRIP_A},
-    {screen_trip, SCREEN_INDEX_TRIP_B},
-    {screen_time, SCREEN_INDEX_TIME},
+    { .screen = screen_main, .page.config_switch = 1, .page.drive_mode = 1},
+    { .screen = screen_trip, .page.trip = TRIPS_POS_DAY, .page.drive_mode = 1},
+    {screen_trip, TRIPS_POS_A},
+    {screen_trip, TRIPS_POS_B},
+    {screen_time},
 #ifdef SERVICE_COUNTERS_SUPPORT   
-    {screen_service_counters, SCREEN_INDEX_SERVICE_COUNTERS},
+    {screen_service_counters},
 #endif
 #ifdef JOURNAL_SUPPORT
-    {screen_journal_viewer, SCREEN_INDEX_JOURNAL},
+    {screen_journal_viewer},
 #endif
 };
 
@@ -82,27 +72,27 @@ void config_screen_lcd_contrast(void);
 void config_screen_version(void);
 
 screen_config_item_t items_config[] = {
-    {config_screen_fuel_constant, FUEL_CONSTANT_INDEX},
-    {config_screen_vss_constant, VSS_CONSTANT_INDEX},
-    {config_screen_total_trip, TOTAL_TRIP_INDEX},
-    {config_screen_ua_const, VOLTAGE_ADJUST_INDEX},
-    {config_screen_settings_bits, SETTINGS_BITS_INDEX},
+    {config_screen_fuel_constant, .page.title=config_menu_fuel_constant},
+    {config_screen_vss_constant, .page.title=config_menu_vss_constant},
+    {config_screen_total_trip, .page.title=config_menu_total_trip},
+    {config_screen_ua_const, .page.title=config_menu_voltage_adjust},
+    {config_screen_settings_bits, .page.title=config_menu_settings_bits},
 #if defined(MIN_SPEED_CONFIG)
-    {config_screen_min_speed, MIN_SPEED_INDEX},
+    {config_screen_min_speed, .page.title=config_menu_min_speed},
 #endif
 #if defined(FUEL_TANK_CONFIG)
-    {config_screen_fuel_tank, FUEL_TANK_INDEX},
+    {config_screen_fuel_tank, .page.title=config_menu_fuel_tank},
 #endif 
-#if defined LCD_CONTRAST_CONFIG
-    {config_screen_lcd_contrast, LCD_CONTRAST_INDEX},
-#endif
 #if defined(DS18B20_TEMP) && defined(DS18B20_CONFIG)
-    {config_screen_temp_sensors, TEMP_SENSOR_INDEX},
+    {config_screen_temp_sensors, .page.title=config_menu_temp_sensors},
 #endif
 #ifdef SERVICE_COUNTERS_CHECKS_SUPPORT
-    {config_screen_service_counters, SERVICE_COUNTERS_INDEX},
+    {config_screen_service_counters, .page.title=config_menu_service_counters},
 #endif
-    {config_screen_version, VERSION_INFO_INDEX},
+#if defined LCD_CONTRAST_CONFIG
+    {config_screen_lcd_contrast, .page.title=config_menu_lcd_contrast},
+#endif
+    {config_screen_version, .page.title=config_menu_version_info},
 };
 
 screen_config_item_t *current_item_config;
@@ -117,7 +107,7 @@ void journal_save_accel(uint8_t index);
 
 void wait_refresh_timeout() {
 
-    if (key2_longpress != 0) {
+    if (key1_longpress != 0 || key2_longpress != 0) {
         screen_refresh = 1;
         timeout_timer1 = 0;
     }
@@ -155,7 +145,7 @@ void wait_timeout(uint8_t timeout) {
 void lcd_print_full_width(uint8_t cursor_pos, uint8_t len, align_t align) {
     if (cursor_pos != LCD_CURSOR_POS_NONE) {
         LCD_cursor_set_position(cursor_pos);
-        LCD_Write_String(buf, len, LCD_WIDTH, align);
+        LCD_write_string(buf, len, LCD_WIDTH, align);
     }
 }
 
@@ -168,7 +158,7 @@ void lcd_print_full_width(uint8_t cursor_pos, uint8_t len, align_t align) {
 void lcd_print_half_width(uint8_t cursor_pos, uint8_t len, align_t align) {
     if (cursor_pos != LCD_CURSOR_POS_NONE) {
         LCD_cursor_set_position(cursor_pos);
-        LCD_Write_String(buf, len, LCD_WIDTH / 2, align);
+        LCD_write_string(buf, len, LCD_WIDTH / 2, align);
     }
 }
 #else
@@ -199,7 +189,7 @@ void lcd_print_half_width2(uint8_t cursor_pos, uint8_t len, uint8_t pos_prefix, 
 
     if (cursor_pos != LCD_CURSOR_POS_NONE) {
         LCD_cursor_set_position(cursor_pos);
-        LCD_Write_String(buf, len, LCD_WIDTH / 2, align);
+        LCD_write_string(buf, len, LCD_WIDTH / 2, align);
     }
 }
 
@@ -231,23 +221,6 @@ uint8_t print_fract(uint24_t num, uint8_t frac) {
 
 #define VALUE_EMPTY     0x80
 
-#if 0
-
-uint8_t buf_print_value(uint24_t value, uint8_t frac) {
-    uint8_t len;
-    if (value == 0 && (frac & VALUE_EMPTY) != 0) {
-        len = strcpy2(buf, (char *) &empty_string, 0);
-    } else {
-        len = print_fract(value, frac & ~VALUE_EMPTY);
-    }
-    return len;
-}
-
-#define POS_COMPOSE(prefix, suffix)  prefix, suffix
-#define print_value(cursor_pos, value, frac, pos_compose, align) { lcd_print_half_width2(cursor_pos, buf_print_value(value, frac), pos_compose, align); }
-
-#else
-
 #define POS_COMPOSITE
 
 #if defined(POS_COMPOSITE)
@@ -271,7 +244,6 @@ void print_value(uint8_t cursor_pos, uint24_t value, uint8_t frac, uint8_t pos_p
     lcd_print_half_width2(cursor_pos, len, pos_prefix, pos_suffix, align);
 #endif
 }
-#endif
 
 uint8_t print_index_number(uint8_t index) {
     uint8_t len = ultoa2_10(buf, index);
@@ -459,11 +431,9 @@ void screen_time(void) {
 #if defined(ENCODER_SUPPORT)
         uint8_t edit_mode = 0;
 #endif
-        LCD_Clear();
+        LCD_clear();
         
-        timeout_timer1 = DEFAULT_TIMEOUT;
-        while (screen_refresh = 0, timeout_timer1 != 0) {
-            //screen_refresh = 0;
+        timeout_timer1_loop(DEFAULT_TIMEOUT) {
 
 #if defined(ENCODER_SUPPORT)
             if (use_encoder() != 0 && key2_press != 0) {
@@ -738,7 +708,7 @@ uint8_t request_screen(char* request_str) {
     if (key2_longpress != 0) {
         key2_longpress = 0;
 
-        LCD_Clear();
+        LCD_clear();
 
         lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, request_str, 0), ALIGN_CENTER);
         
@@ -845,7 +815,7 @@ void acceleration_measurement(uint8_t index) {
                     timeout_timer1 = 30;
                     _accel_meas_started_fl = 1;
 
-                    LCD_Clear();
+                    LCD_clear();
                 }
                 
                 // speed
@@ -894,7 +864,7 @@ void acceleration_measurement(uint8_t index) {
 #ifdef EXTENDED_ACCELERATION_MEASUREMENT
 void select_acceleration_measurement() {
 
-    LCD_Clear();
+    LCD_clear();
 
     uint8_t v = 0, max_value = sizeof (accel_meas_limits) / sizeof (accel_meas_limits[0]) - 1, index = 0xFF;
 
@@ -1136,26 +1106,22 @@ void screen_main(void) {
 
 void screen_trip() {
     trip_t *trip;
-    uint8_t trips_pos, max_trip_params;
     
-    uint8_t item_index = current_item_main->page.index;
+    uint8_t trips_pos = current_item_main->page.trip;
+    uint8_t max_trip_params = 2;
 
-    if (item_index == SCREEN_INDEX_TRIP_C) {
-        trip = &trips.tripC;
-#ifdef SIMPLE_TRIPC_TIME_CHECK
-        trips_pos = TRIPS_POS_DAY;
-#else
-        trips_pos = config.settings.daily_tripc ? TRIPS_POS_DAY : TRIPS_POS_CURR;
-#endif
-        max_trip_params = 3;
-    } else if (item_index == SCREEN_INDEX_TRIP_A) {
+    if (trips_pos == TRIPS_POS_A) {
         trip = &trips.tripA;
-        trips_pos = TRIPS_POS_A;
-        max_trip_params = 2;
-    } else /*if (item_index == SCREEN_INDEX_TRIP_B) */{
+    } else if (trips_pos == TRIPS_POS_B) {
         trip = &trips.tripB;
-        trips_pos = TRIPS_POS_B;
-        max_trip_params = 2;
+    } else {
+        trip = &trips.tripC;
+#ifndef SIMPLE_TRIPC_TIME_CHECK
+        if (!config.settings.daily_tripc) {
+            trips_pos = TRIPS_POS_CURR;
+        }
+#endif
+        max_trip_params++;
     };
 
     uint8_t len = strcpy2(buf, (char *) &trip_string, 0);
@@ -1482,15 +1448,11 @@ void config_screen_temp_sensors() {
     uint8_t _t_num[3] = {0, 0, 0};
     uint8_t current_device = 0;
     
-#if defined(HW_LEGACY)
-    // bad timings for pic (?) - wait for sound off and disable interrupts while 1-wire searching
+    // wait for sound off and disable interrupts while 1-wire searching
     while (buzzer_fl != 0) {};
     HW_disable_interrupts();
     uint8_t num_devices = onewire_search_devices((uint8_t *) tbuf, 3);
     HW_enable_interrupts();
-#else
-    uint8_t num_devices = onewire_search_devices((uint8_t *) tbuf, 3);
-#endif
 
     ds18b20_start_conversion(); config_temperature_conv_fl = 0; timeout_timer2 = 100;
 
@@ -1539,7 +1501,7 @@ void config_screen_temp_sensors() {
             add_leading_symbols(&buf[12], ' ', len, 4);
 
         } else {
-            lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX), ALIGN_LEFT);
+            lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_temp_sensors, 0), ALIGN_LEFT);
             _memset(buf, ' ', 16);
             strcpy2(buf, (char *) &temp_no_sensors, 0);
         }
@@ -1551,6 +1513,9 @@ void config_screen_temp_sensors() {
             temps[0] = DS18B20_TEMP_NONE; temps[1] = DS18B20_TEMP_NONE; temps[2] = DS18B20_TEMP_NONE;
             _memset(&tbuf, 0xFF, 8 * 3);
             timeout_timer1 = 0;
+        } else if (screen_refresh == 1) {
+            //screen_refresh = 0;
+            timeout_timer1 = DEFAULT_TIMEOUT;
         }
 
         wait_refresh_timeout();
@@ -1614,10 +1579,10 @@ void config_screen_temp_sensors() {
         } else {
             _memset(buf, ' ', 16);
         }
-        strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX);
+        strcpy2(buf, (char *) config_menu_temp_sensors, 0);
         lcd_print_full_width(LCD_CURSOR_POS_00, 16, ALIGN_NONE);
 #else
-        lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, TEMP_SENSOR_INDEX), ALIGN_LEFT);
+        lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_temp_sensors, 0), ALIGN_LEFT);
 #endif
 
         llptrtohex((unsigned char*) tbuf, (unsigned char*) buf);
@@ -1687,7 +1652,7 @@ void config_screen_items() {
     lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) &config_menu_title_string, 0), ALIGN_LEFT);
 
     uint8_t len = print_index_number(current_item_config->page.index + 1);
-    len += strcpy2(&buf[len], (char *) config_menu_array, current_item_config->page.title_string_index);
+    len += strcpy2(&buf[len], (char *) current_item_config->page.title, 0);
     lcd_print_full_width(LCD_CURSOR_POS_10, len, ALIGN_LEFT);
 }
 
@@ -1711,31 +1676,6 @@ void print_warning_service_counters(uint8_t warn) {
     }
 }
 #endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//========================================================================================
-// Setter used by core.c (power_on) to hide the journal menu item when no journal
-// is present in EEPROM. Keeps items_main[] private to this module -- core never
-// touches the UI's own tables directly.
-//========================================================================================
-
-void ui_16x2_legacy_hide_journal_screen(void) {
-#if defined(JOURNAL_SUPPORT)
-    items_main[SCREEN_INDEX_JOURNAL].page.skip = 1;
-#endif
-}
 
 //========================================================================================
 // Single entry point called once per main-loop iteration from main().
@@ -1761,7 +1701,12 @@ void ui_16x2_legacy_update(void) {
 
         current_item_main = &items_main[c_item];
 
-        while (current_item_main->page.skip != 0 || (drive_min_speed_fl != 0 && current_item_main->page.drive_mode == 0)) {
+            while ((drive_min_speed_fl != 0 && current_item_main->page.drive_mode == 0)
+                    //|| current_item_main->page.skip != 0
+#ifdef JOURNAL_SUPPORT
+                    || (current_item_main->screen == screen_journal_viewer && journal_support == 0)
+#endif
+                  ) {
 #ifdef KEY3_SUPPORT
                 if (c_item < c_item_prev) {
                     if (c_item-- == 0) {
@@ -1831,9 +1776,9 @@ void ui_16x2_legacy_update(void) {
                 // config screen items' editor
                 if (key2_press != 0) {
                     key2_press = 0;
-                    LCD_Clear();
+                    LCD_clear();
                     timeout_timer1_loop(DEFAULT_TIMEOUT) {
-                        lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) config_menu_array, current_item_config->page.title_string_index), ALIGN_LEFT);
+                        lcd_print_full_width(LCD_CURSOR_POS_00, strcpy2(buf, (char *) current_item_config->page.title, 0), ALIGN_LEFT);
                         current_item_config->screen();
                         LCD_cursor_off();
                         wait_refresh_timeout();

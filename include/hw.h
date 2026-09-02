@@ -8,10 +8,10 @@
 
 #if defined(_MPC_)
 // pic
-#include "hw-pic.h"
+#include "hw_pic.h"
 #elif defined(__AVR)
 // avr
-#include "hw-avr.h"
+#include "hw_avr.h"
 #else
 #error "device not supported"
 #endif

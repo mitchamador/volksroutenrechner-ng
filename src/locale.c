@@ -1,5 +1,33 @@
 #include "locale.h"
 
+PROGMEM const char config_menu_fuel_constant[] = CONFIG_MENU_FUEL_CONSTANT;
+PROGMEM const char config_menu_vss_constant[] = CONFIG_MENU_VSS_CONSTANT;
+PROGMEM const char config_menu_total_trip[] = CONFIG_MENU_TOTAL_TRIP;
+PROGMEM const char config_menu_voltage_adjust[] = CONFIG_MENU_VOLTAGE_ADJUST;
+PROGMEM const char config_menu_settings_bits[] = CONFIG_MENU_SETTINGS_BITS;
+
+#ifdef CONFIG_MENU_TEMP_SENSORS
+PROGMEM const char config_menu_temp_sensors[] = CONFIG_MENU_TEMP_SENSORS;
+#endif
+
+#ifdef CONFIG_MENU_SERVICE_COUNTERS
+PROGMEM const char config_menu_service_counters[] = CONFIG_MENU_SERVICE_COUNTERS;
+#endif
+
+#ifdef CONFIG_MENU_MIN_SPEED
+PROGMEM const char config_menu_min_speed[] = CONFIG_MENU_MIN_SPEED;
+#endif
+
+#ifdef CONFIG_MENU_LCD_CONTRAST
+PROGMEM const char config_menu_lcd_contrast[] = CONFIG_MENU_LCD_CONTRAST;
+#endif
+
+#ifdef CONFIG_MENU_FUEL_TANK
+PROGMEM const char config_menu_fuel_tank[] = CONFIG_MENU_FUEL_TANK;
+#endif
+
+PROGMEM const char config_menu_version_info[] = CONFIG_MENU_VERSION_INFO;
+
 PROGMEM const char symbols_array[] = SYMBOLS_ARRAY;
 PROGMEM const char trips_array[] = TRIPS_ARRAY;
 
@@ -35,7 +63,6 @@ PROGMEM const char warning_string[] = WARNING;
 #endif
 
 PROGMEM const char config_menu_title_string[] = CONFIG_MENU_TITLE;
-PROGMEM const char config_menu_array[] = CONFIG_MENU_ARRAY;
 PROGMEM const char service_counters_array[] = SERVICE_COUNTERS_ARRAY;
 
 PROGMEM const char settings_bits_array[] = SETTINGS_BITS_ARRAY;

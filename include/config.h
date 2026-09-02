@@ -3,19 +3,6 @@
 
 #if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168P__)
 
-//#if defined(ARDUINO)
-// ssd1322 1602 lcd
-//#define SPI_UART
-// 1602 lcd i2c
-//#define LCD_1602_I2C
-// adc buttons connected to PC0/ADC0
-//#define ADC_BUTTONS_SUPPORT
-// save default eeprom in progmem
-//#define PROGMEM_EEPROM
-// use internal eeprom for trip journal
-//#define JOURNAL_EEPROM_INTERNAL
-//#endif
-
 #if defined(__AVR_ATmega168P__)
 // 1602 lcd 4bit
 #define LCD_1602
@@ -149,6 +136,10 @@
 #if !defined(LCD_1602_I2C) && !defined(LCD_SSD1322_1602) && !defined(LCD_1602)
 // 1602 lcd 4bit
 #define LCD_1602
+#endif
+
+#if defined LCD_SSD1322_1602
+#define LCD_CONTRAST_CONFIG
 #endif
 
 // disable temperature support

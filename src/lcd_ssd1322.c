@@ -1,7 +1,7 @@
-#if defined(LCD_SSD1322_1602)
-
 #include "core.h"
-#include "lcd_ssd1322.h"
+#include "lcd.h"
+
+#if defined(LCD_SSD1322_1602)
 
 #include "fonts/jetbrains_mono_16x32.h"
 #include "fonts/source_code_pro_semibold.h"
@@ -9,20 +9,21 @@
 
 BMFont *bmFont;
 
-void LCD_Init() {
+void LCD_init() {
 
   HW_delay_ms(10);
   
   SSD1322_HW_init();
   
-  uint8_t  numCommands, numArgs;
+  uint8_t  command, numArgs;
   uint16_t ms;
   uint8_t *addr = (uint8_t *) &SSD1322_init_commands;
 
-  numCommands = pgm_read_byte(addr++);
+  while(1) {
+    command = pgm_read_byte(addr++);
+    if (command == 0) break;
 
-  while(numCommands--) {
-    SSD1322_command(pgm_read_byte(addr++));
+    SSD1322_command(command);
     numArgs  = pgm_read_byte(addr++);
     while(numArgs--) SSD1322_data(pgm_read_byte(addr++));
   }
@@ -73,6 +74,16 @@ void LCD_flush_buffer() {
     }
   } while (SSD1322_next_page());
   SSD1322_send_buffer();
+}
+
+void LCD_clear(void) {
+    _memset(lcd_buf, ' ', LCD_WIDTH * 2);
+}
+
+void LCD_off() {
+  SSD1322_clear_all();
+  // display off
+  SSD1322_command(0xAE);
 }
 
 void bmfont_draw_char(int x, int y, unsigned char c, unsigned char style)

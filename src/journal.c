@@ -51,7 +51,7 @@ void journal_update_header() {
     JOURNAL_write_eeprom_block((unsigned char *) &journal_header, J_EEPROM_MARK_POS + 8, sizeof (journal_header));
 }
 
-flag_t journal_check_eeprom() {
+void journal_check_eeprom() {
     // check mark
     bool init_fl = true;
     unsigned char buf[8];
@@ -86,7 +86,6 @@ flag_t journal_check_eeprom() {
         // read journal header
         JOURNAL_read_eeprom_block((unsigned char *) &journal_header, J_EEPROM_MARK_POS + 8, sizeof (journal_header));
     }
-    return journal_support;
 }
 
 uint16_t journal_find_eeaddr(uint8_t index, int8_t item_index) {

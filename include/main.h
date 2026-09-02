@@ -6,7 +6,7 @@
 #include "eeprom.h"
 #include "ds3231.h"
 #include "ds18b20.h"
-#include "i2c-eeprom.h"
+#include "i2c_eeprom.h"
 #include "utils.h"
 #include "journal.h"
 #include "locale.h"
