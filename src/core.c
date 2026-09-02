@@ -3,6 +3,7 @@
 #include "ds18b20.h"
 #include "eeprom.h"
 #include "lcd.h"
+#include "journal.h"
 #include "locale.h"
 #include "ui_16x2_legacy.h"
 #include <string.h>

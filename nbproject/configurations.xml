@@ -38,6 +38,7 @@
       <itemPath>src/ds3231.c</itemPath>
       <itemPath>src/i2c.c</itemPath>
       <itemPath>src/lcd.c</itemPath>
+      <itemPath>src/locale.c</itemPath>
       <itemPath>src/utils.c</itemPath>
       <itemPath>src/onewire.c</itemPath>
       <itemPath>src/i2c-eeprom.c</itemPath>

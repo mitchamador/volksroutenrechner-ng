@@ -102,7 +102,6 @@ uint8_t request_screen(char *);
 
 void config_screen();
 
-void journal_save_trip(trip_t *trip);
 void journal_save_accel(uint8_t index);
 
 #define timeout_timer1_loop(timeout) timeout_timer1 = timeout; while (screen_refresh = 0, timeout_timer1 != 0)
