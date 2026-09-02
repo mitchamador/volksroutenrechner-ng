@@ -978,12 +978,12 @@ void set_consts() {
         fuel1_const <<= 1; // * 2
     }
 #ifndef MIN_SPEED_CONFIG
-    config.selected_param.min_speed = MIN_SPEED_DEFAULT;
+    config.min_speed = MIN_SPEED_DEFAULT;
 #endif
 #ifndef EXTENDED_ACCELERATION_MEASUREMENT
     accel_meas_upper_const = (unsigned short) (speed_const(100) / config.odo_const);
 #endif
-    drive_min_speed = config.selected_param.min_speed * 10;
+    drive_min_speed = config.min_speed * 10;
 }
 
 //========================================================================================
@@ -1358,10 +1358,10 @@ void set_params() {
     // set core constants
     set_consts();
 
-    params.main = config.selected_param.main_param;
-    params.main_add = config.selected_param.main_add_param;
+    params.main = config.main_param;
+    params.main_add = config.main_add_param;
 #ifdef SERVICE_COUNTERS_SUPPORT
-    service_param = config.selected_param.service_param;
+    service_param = config.service_param;
 #endif
 }
 
@@ -1416,6 +1416,9 @@ void power_on() {
 #endif
 
     LCD_Init();
+#if defined LCD_Set_Contrast
+    LCD_Set_Contrast(config.lcd_contrast);
+#endif
 
     set_params();
 
@@ -1471,10 +1474,10 @@ void power_off() {
         trips.tripB_month = 0;
     }
 
-    config.selected_param.main_param = params.main;
-    config.selected_param.main_add_param = params.main_add;
+    config.main_param = params.main;
+    config.main_add_param = params.main_add;
 #ifdef SERVICE_COUNTERS_SUPPORT
-    config.selected_param.service_param = service_param;
+    config.service_param = service_param;
 #endif
 
     save_eeprom();

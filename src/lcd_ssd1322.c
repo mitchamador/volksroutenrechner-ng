@@ -35,6 +35,15 @@ void LCD_Init() {
 
 }
 
+void LCD_set_contrast(uint8_t contrast) {
+  // master contrast current control
+  SSD1322_command(0xC7);
+  SSD1322_data(contrast);
+  // set contrast current
+  SSD1322_command(0xC1);
+  SSD1322_data((uint8_t) (contrast << 4) | contrast);
+}
+
 void LCD_flush_buffer() {
   SSD1322_start_page();
   do
@@ -313,6 +322,5 @@ void SSD1322_send_buffer() {
   SSD1322_command(0xA1); /*start line*/ 
   SSD1322_data(pageY); 
 }
-
 
 #endif

@@ -23,9 +23,6 @@ params_t params = {0, 0, 0};
 uint8_t service_param = 0;
 #endif
         
-screen_item_t *current_item_main;
-screen_config_item_t *current_item_config;
-
 void wait_refresh_timeout(void);
 void wait_timeout(uint8_t timeout);
 
@@ -70,6 +67,8 @@ screen_item_t items_main[] = {
 #endif
 };
 
+screen_item_t *current_item_main;
+
 void config_screen_fuel_constant(void);
 void config_screen_vss_constant(void);
 void config_screen_total_trip(void);
@@ -78,6 +77,8 @@ void config_screen_temp_sensors(void);
 void config_screen_service_counters(void);
 void config_screen_ua_const(void);
 void config_screen_min_speed(void);
+void config_screen_fuel_tank(void);
+void config_screen_lcd_contrast(void);
 void config_screen_version(void);
 
 screen_config_item_t items_config[] = {
@@ -86,8 +87,14 @@ screen_config_item_t items_config[] = {
     {config_screen_total_trip, TOTAL_TRIP_INDEX},
     {config_screen_ua_const, VOLTAGE_ADJUST_INDEX},
     {config_screen_settings_bits, SETTINGS_BITS_INDEX},
-#ifdef MIN_SPEED_CONFIG
+#if defined(MIN_SPEED_CONFIG)
     {config_screen_min_speed, MIN_SPEED_INDEX},
+#endif
+#if defined(FUEL_TANK_CONFIG)
+    {config_screen_fuel_tank, FUEL_TANK_INDEX},
+#endif 
+#if defined LCD_CONTRAST_CONFIG
+    {config_screen_lcd_contrast, LCD_CONTRAST_INDEX},
 #endif
 #if defined(DS18B20_TEMP) && defined(DS18B20_CONFIG)
     {config_screen_temp_sensors, TEMP_SENSOR_INDEX},
@@ -97,6 +104,8 @@ screen_config_item_t items_config[] = {
 #endif
     {config_screen_version, VERSION_INFO_INDEX},
 };
+
+screen_config_item_t *current_item_config;
 
 uint8_t request_screen(char *);
 
@@ -443,7 +452,7 @@ void screen_time(void) {
 
     time_editor_item_t *time_editor_item;
 
-    if (request_screen((char *) &time_correction_string) != 0) {
+    if (request_screen((char *) time_correction_string) != 0) {
 
         uint8_t c = 0, save_time = 0;
 
@@ -536,11 +545,20 @@ void screen_time(void) {
 typedef enum {
     CHAREDIT_MODE_NONE = POS_NONE,
     CHAREDIT_MODE_KMH = POS_KMH,
-    CHAREDIT_MODE_10000KM = POS_KM
+    CHAREDIT_MODE_10000KM = POS_KM,
+    CHAREDIT_MODE_LITR = POS_LITR,
 } edit_value_char_t;
 
+#if defined LCD_CONTRAST_CONFIG
+#define EDIT_VALUE_CHAR_CALLBACK
+#endif
 
+#if defined EDIT_VALUE_CHAR_CALLBACK
+#define edit_value_char(v, mode, min_value, max_value) edit_value_char_callback(v, mode, min_value, max_value, NULL)
+uint8_t edit_value_char_callback(uint8_t v, edit_value_char_t mode, uint8_t min_value, uint8_t max_value, void (*callback)(uint8_t)) {
+#else
 uint8_t edit_value_char(uint8_t v, edit_value_char_t mode, uint8_t min_value, uint8_t max_value) {
+#endif    
     timeout_timer1_loop(DEFAULT_TIMEOUT) {
         handle_keys_up_down(&v, min_value, max_value, DEFAULT_TIMEOUT);
 
@@ -548,6 +566,11 @@ uint8_t edit_value_char(uint8_t v, edit_value_char_t mode, uint8_t min_value, ui
 
         lcd_print_half_width2(LCD_CURSOR_POS_10 + LCD_WIDTH / 4, len, POS_NONE, (uint8_t) mode, ALIGN_RIGHT);
 
+#if defined EDIT_VALUE_CHAR_CALLBACK
+        if (callback != NULL) {
+            callback(v);
+        }
+#endif
         wait_refresh_timeout();
     }
     screen_refresh = 1;
@@ -1004,7 +1027,7 @@ void screen_main(void) {
             select_acceleration_measurement();
         }
 #else
-        if (drive_fl == 0 && motor_fl != 0 && request_screen((char *) &accel_meas_string) != 0) {
+        if (drive_fl == 0 && motor_fl != 0 && request_screen((char *) accel_meas_string) != 0) {
             acceleration_measurement(0);
         }
 #endif        
@@ -1065,7 +1088,7 @@ void screen_main(void) {
 #if defined(MIN_MAX_VOLTAGES_SUPPORT)
             case main_screen_page1_param_voltages:
                 if (key2_longpress != 0) {
-                    if (request_screen((char *) &reset_string) != 0) {
+                    if (request_screen((char *) reset_string) != 0) {
                         adc_voltage.min = adc_voltage.max = adc_voltage.current;
                     }
                     timeout_timer1 = ADDPAGE_TIMEOUT;
@@ -1080,7 +1103,7 @@ void screen_main(void) {
 #if defined(CONTINUOUS_DATA_SUPPORT)
             case main_screen_page1_param_cd:
                 if (key2_longpress != 0) {
-                    if (request_screen((char *) &reset_string) != 0) {
+                    if (request_screen((char *) reset_string) != 0) {
                         cd.filter = 0;
                         cd_init();
                     }
@@ -1158,7 +1181,7 @@ void screen_trip() {
             break;
     }
 
-    if (request_screen((char *) &reset_string) != 0) {
+    if (request_screen((char *) reset_string) != 0) {
         clear_trip(trip);
     }
 }
@@ -1195,7 +1218,7 @@ void screen_service_counters() {
     
     print_time_dmy(LCD_CURSOR_POS_11, srv->day, srv->month, srv->year, ALIGN_RIGHT);
     
-    if (request_screen((char *) &reset_string) != 0) {
+    if (request_screen((char *) reset_string) != 0) {
         read_ds_time();
         if (service_param == 0 || service_param == 1) {
             services.mh.time = 0;
@@ -1427,7 +1450,20 @@ void config_screen_settings_bits() {
 
 #ifdef MIN_SPEED_CONFIG
 void config_screen_min_speed() {
-    config.selected_param.min_speed = edit_value_char(config.selected_param.min_speed, CHAREDIT_MODE_KMH, 1, 10);
+    config.min_speed = edit_value_char(config.min_speed, CHAREDIT_MODE_KMH, 1, 10);
+}
+#endif
+
+#ifdef FUEL_TANK_CONFIG
+void config_screen_fuel_tank() {
+    config.fuel_tank = edit_value_char(config.fuel_tank, CHAREDIT_MODE_LITR, 1, 120);
+}
+#endif
+
+#ifdef LCD_CONTRAST_CONFIG
+void config_screen_lcd_contrast() {
+    config.lcd_contrast = edit_value_char_callback(config.lcd_contrast, CHAREDIT_MODE_NONE, 0, 15, LCD_set_contrast);
+    //config.lcd_contrast = edit_value_char(config.lcd_contrast, CHAREDIT_MODE_NONE, 0, 15);
 }
 #endif
 
@@ -1510,7 +1546,7 @@ void config_screen_temp_sensors() {
 
         lcd_print_full_width(LCD_CURSOR_POS_10, LCD_WIDTH, ALIGN_NONE);
         
-        if (request_screen((char *) &reset_string) != 0) {
+        if (request_screen((char *) reset_string) != 0) {
             _t_num[0] = 1; _t_num[1] = 2; _t_num[2] = 3;
             temps[0] = DS18B20_TEMP_NONE; temps[1] = DS18B20_TEMP_NONE; temps[2] = DS18B20_TEMP_NONE;
             _memset(&tbuf, 0xFF, 8 * 3);

@@ -5,7 +5,7 @@
 #include "utils.h"
 
 #if defined(LCD_SSD1322_1602)
-#define LCD_BUFFERED
+#include "lcd_ssd1322.h"
 #endif
 
 #define LCD_CURSOR_OFF         0x0C
@@ -18,7 +18,12 @@
 // print to buffer only
 #define LCD_CURSOR_POS_NONE     0xFF
 
-#if !defined(LCD_SSD1322_1602)
+#if defined(LCD_SSD1322_1602)
+
+#define LCD_BUFFERED
+#define LCD_CONTRAST_CONFIG
+
+#else
 
 // max delays for ~190kHz
 #define LCD_DELAY_CMD 53
@@ -46,6 +51,10 @@ void LCD_CMD(char);
 void LCD_Init(void);
 void LCD_Clear(void);
 void LCD_Write_String(char*, unsigned char, unsigned char, align_t);
+
+#if defined(LCD_CONTRAST_CONFIG)
+void LCD_set_contrast(uint8_t contrast);
+#endif
 
 #if !defined(LCD_BUFFERED)
 

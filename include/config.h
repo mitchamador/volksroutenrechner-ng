@@ -238,6 +238,7 @@
 #ifndef NO_FUEL_TANK
 //#define FUEL_TANK_SUPPORT
 #define CONTINUOUS_DATA_SUPPORT
+#define FUEL_TANK_CONFIG
 #endif
 
 // no fuel tank support with simple adc handler

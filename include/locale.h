@@ -37,14 +37,20 @@ typedef enum {
     TOTAL_TRIP_INDEX,
     VOLTAGE_ADJUST_INDEX,
     SETTINGS_BITS_INDEX,
+#if defined(MIN_SPEED_CONFIG)
+    MIN_SPEED_INDEX,
+#endif
+#if defined(FUEL_TANK_CONFIG)
+    FUEL_TANK_INDEX,
+#endif
+#if defined(LCD_CONTRAST_CONFIG)
+    LCD_CONTRAST_INDEX,
+#endif
 #if defined(DS18B20_CONFIG)
     TEMP_SENSOR_INDEX,
 #endif
 #if defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
     SERVICE_COUNTERS_INDEX,
-#endif
-#if defined(MIN_SPEED_CONFIG)
-    MIN_SPEED_INDEX,
 #endif
     VERSION_INFO_INDEX,
 } services_str_t;
@@ -196,16 +202,24 @@ typedef enum {
 
 #define CONFIG_MENU_SETTINGS_BITS       "\0settings bits"
 
+#if defined(MIN_SPEED_CONFIG)
+#define CONFIG_MENU_MIN_SPEED           "\0min speed"
+#endif
+
+#if defined(LCD_CONTRAST_CONFIG)
+#define CONFIG_MENU_LCD_CONTRAST        "\0lcd contrast"
+#endif
+
+#if defined(FUEL_TANK_CONFIG)
+#define CONFIG_MENU_FUEL_TANK                "\0fuel tank"
+#endif
+
 #if defined(DS18B20_CONFIG)
 #define CONFIG_MENU_TEMP_SENSORS        "\0temp sensors"
 #endif
 
 #if defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
 #define CONFIG_MENU_SERVICE_COUNTERS    "\0service cntrs"
-#endif
-
-#if defined(MIN_SPEED_CONFIG)
-#define CONFIG_MENU_MIN_SPEED           "\0min speed"
 #endif
 
 #define CONFIG_MENU_VERSION_INFO        "\0sw version"
@@ -360,6 +374,21 @@ typedef enum {
 // "биты настроек"
 #define CONFIG_MENU_SETTINGS_BITS       "\0\xB2\xB8\xBF\xC3 \xBD\x61\x63\xBF\x70\x6F\x65\xBA"
 
+#if defined(MIN_SPEED_CONFIG)
+// "мин. скорость"
+#define CONFIG_MENU_MIN_SPEED           "\0\xBC\xB8\xBD. \x63\xBA\x6F\x70\x6F\x63\xBF\xC4"
+#endif
+
+#if defined(FUEL_TANK_CONFIG)
+// "бак"
+#define CONFIG_MENU_FUEL_TANK                "\0\xB2\x61\xBA"
+#endif
+
+#if defined(LCD_CONTRAST_CONFIG)
+// "lcd контраст"
+#define CONFIG_MENU_LCD_CONTRAST        "\0lcd \xBA\x6F\xBD\xBF\x70\x61\x63\xBF"
+#endif
+
 #if defined(DS18B20_CONFIG)
 // "темп. датчики"
 #define CONFIG_MENU_TEMP_SENSORS        "\0\xBF\x65\xBC\xBE. \xE3\x61\xBF\xC0\xB8\xBA\xB8"
@@ -368,11 +397,6 @@ typedef enum {
 #if defined(SERVICE_COUNTERS_CHECKS_SUPPORT)
 // "серв. интерв."
 #define CONFIG_MENU_SERVICE_COUNTERS    "\0\x63\x65\x70\xB3. \xB8\xBD\xBF\x65\x70\xB3."
-#endif
-
-#if defined(MIN_SPEED_CONFIG)
-// "мин. скорость"
-#define CONFIG_MENU_MIN_SPEED           "\0\xBC\xB8\xBD. \x63\xBA\x6F\x70\x6F\x63\xBF\xC4"
 #endif
 
 // "версия по"
@@ -401,15 +425,25 @@ typedef enum {
 #define CONFIG_MENU_MIN_SPEED
 #endif
 
+#ifndef CONFIG_MENU_LCD_CONTRAST
+#define CONFIG_MENU_LCD_CONTRAST
+#endif
+
+#ifndef CONFIG_MENU_FUEL_TANK
+#define CONFIG_MENU_FUEL_TANK
+#endif
+
 #define CONFIG_MENU_ARRAY                \
             CONFIG_MENU_FUEL_CONSTANT    \
             CONFIG_MENU_VSS_CONSTANT     \
             CONFIG_MENU_TOTAL_TRIP       \
             CONFIG_MENU_VOLTAGE_ADJUST   \
             CONFIG_MENU_SETTINGS_BITS    \
+            CONFIG_MENU_MIN_SPEED        \
+            CONFIG_MENU_FUEL_TANK        \
+            CONFIG_MENU_LCD_CONTRAST     \
             CONFIG_MENU_TEMP_SENSORS     \
             CONFIG_MENU_SERVICE_COUNTERS \
-            CONFIG_MENU_MIN_SPEED        \
             CONFIG_MENU_VERSION_INFO     \
 
 #ifndef SETTING_LCD_1602_I2C

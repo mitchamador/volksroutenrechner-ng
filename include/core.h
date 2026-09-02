@@ -173,17 +173,6 @@ typedef union {
     };
 } settings_u;
 
-typedef union {
-    uint16_t word;
-
-    struct {
-        uint8_t main_param          : 4;
-        uint8_t service_param       : 4;
-        uint8_t min_speed           : 4;
-        uint8_t main_add_param      : 4;
-    };
-} param_u;
-
 typedef struct {
     // main odometer
     uint32_t odo;
@@ -201,12 +190,29 @@ typedef struct {
     settings_u settings;
 
     // selected params + min speed
-    param_u selected_param;
+    union {
+        uint16_t w1;
 
-    // dummy bytes
-    //uint8_t dummy[2];
+        struct {
+            uint8_t main_param      : 4;
+            uint8_t service_param   : 4;
+            uint8_t min_speed       : 4;
+            uint8_t main_add_param  : 4;
+        };
+    };
 
-} config_t;                     // 14 bytes total (16 bytes eeprom block)
+    // lcd contrast + ...
+    union {
+        uint16_t w2;
+
+        struct {
+            uint8_t lcd_contrast    : 4;
+            uint8_t dummy1          : 4;
+            uint8_t fuel_tank;
+        };
+    };
+
+} config_t;                     // 16 bytes total (16 bytes eeprom block)
 
 typedef struct {
     uint16_t speed;
